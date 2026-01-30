@@ -272,7 +272,8 @@ def score_file(filepath, profile):
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
-def cli(path, agent, fix):
+@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
+def cli(path, agent, fix, badge):
     """Analyze code compatibility for specific AI Agents."""
 
     if agent not in PROFILES:
@@ -332,11 +333,53 @@ def cli(path, agent, fix):
 
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
+    if badge:
+        svg_content = generate_badge(final_score)
+        with open("agent-score.svg", "w", encoding="utf-8") as f:
+            f.write(svg_content)
+        console.print("[bold cyan]Badge generated: agent-score.svg[/bold cyan]")
+
     if final_score < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
+
+
+def generate_badge(score):
+    """Generates an SVG badge for the agent score."""
+    if score >= 90:
+        color = "#4c1"  # Bright Green
+    elif score >= 70:
+        color = "#97ca00"  # Green
+    elif score >= 50:
+        color = "#dfb317"  # Yellow
+    else:
+        color = "#e05d44"  # Red
+
+    score_str = f"{score:.1f}"
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
+    <linearGradient id="b" x2="0" y2="100%">
+        <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+        <stop offset="1" stop-opacity=".1"/>
+    </linearGradient>
+    <mask id="a">
+        <rect width="120" height="20" rx="3" fill="#fff"/>
+    </mask>
+    <g mask="url(#a)">
+        <path fill="#555" d="M0 0h80v20H0z"/>
+        <path fill="{color}" d="M80 0h40v20H80z"/>
+        <path fill="url(#b)" d="M0 0h120v20H0z"/>
+    </g>
+    <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+        <text x="40" y="15" fill="#010101" fill-opacity=".3">Agent Score</text>
+        <text x="40" y="14">Agent Score</text>
+        <text x="100" y="15" fill="#010101" fill-opacity=".3">{score_str}</text>
+        <text x="100" y="14">{score_str}</text>
+    </g>
+</svg>"""
+
 
 if __name__ == "__main__":
     cli()
