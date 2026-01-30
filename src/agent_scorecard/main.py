@@ -1,4 +1,5 @@
 import os
+import sys
 import ast
 import click
 import mccabe
@@ -7,6 +8,34 @@ from rich.table import Table
 from rich.panel import Panel
 
 console = Console()
+
+# --- CONSTANTS ---
+AGENT_CONTEXT_TEMPLATE = """# Agent Context: {project_name}
+
+## Project Goal
+[Brief description of what this project does]
+
+## Architecture
+- **Entry Point:** [Main file]
+- **Key Modules:**
+    - `module_a`: Handles X
+    - `module_b`: Handles Y
+
+## Developer Constraints
+- Use Python 3.10+
+- All functions must have docstrings
+- Type hints are strict
+"""
+
+INSTRUCTIONS_TEMPLATE = """# Instructions
+
+1. **Install Dependencies:** `pip install -r requirements.txt`
+2. **Run Tests:** `pytest`
+3. **Lint:** `pylint src/`
+"""
+
+TYPE_HINT_STUB = "# TODO: Add type hints for Agent clarity"
+DOCSTRING_TEXT = '"""TODO: Add docstring for AI context."""'
 
 # --- AGENT PROFILES ---
 PROFILES = {
@@ -96,6 +125,118 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
+# --- FIX LOGIC ---
+
+def fix_file_issues(filepath):
+    """Injects docstrings and type hint TODOs where missing."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        code = "".join(lines)
+        tree = ast.parse(code)
+    except (SyntaxError, UnicodeDecodeError):
+        return
+
+    insertions = [] # List of (line_index, text)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            # Check for missing docstring
+            if not ast.get_docstring(node):
+                # Insert after the function definition line (handling decorators)
+                # The body starts at node.body[0].lineno.
+                # We need to insert *before* the first statement of the body.
+
+                body_start_line = node.body[0].lineno - 1 # 0-indexed
+
+                # Determine indentation from the first line of the body
+                body_line_content = lines[body_start_line]
+                body_indent = len(body_line_content) - len(body_line_content.lstrip())
+                indent_str = body_line_content[:body_indent] # Preserve tab vs space
+
+                # Check if it's just 'pass' or '...' on the same line (rare but possible)
+                # If body[0].lineno is same as node.lineno (e.g. def foo(): pass), simpler to skip or handle carefully.
+                if node.body[0].lineno > node.lineno:
+                     insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
+
+            # Check for 0% type hints
+            has_return = node.returns is not None
+            has_args = any(arg.annotation is not None for arg in node.args.args)
+            if not has_return and not has_args:
+                # Insert comment above function definition
+                # Start line is node.lineno - 1 (0-indexed)
+                # BUT if decorators exist, we want to go above them.
+                start_line = node.lineno - 1
+                if node.decorator_list:
+                    start_line = node.decorator_list[0].lineno - 1
+
+                # Check idempotency: peek at line before start_line
+                # Use strict check to avoid re-adding if already present
+                prev_line_idx = start_line - 1
+                if prev_line_idx >= 0 and TYPE_HINT_STUB in lines[prev_line_idx]:
+                    continue
+
+                # Determine function indentation
+                func_line_content = lines[node.lineno-1]
+                func_indent = len(func_line_content) - len(func_line_content.lstrip())
+                indent_str = func_line_content[:func_indent]
+
+                insertions.append((start_line, f"{indent_str}{TYPE_HINT_STUB}\n"))
+
+    if not insertions:
+        return
+
+    # Sort insertions by line number descending to keep indices valid
+    # Also handle multiple insertions at same line (e.g. type hint + something else? unlikely here but safe)
+    # Using stable sort with reverse=True handles order.
+    insertions.sort(key=lambda x: x[0], reverse=True)
+
+    for line_idx, text in insertions:
+        lines.insert(line_idx, text)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    console.print(f"[bold green][Fixed][/bold green] Injected issues in {filepath}")
+
+def apply_fixes(path, profile):
+    """Applies fixes to project files and structure."""
+
+    # 1. Project Docs
+    if os.path.isdir(path):
+        required = profile.get("required_files", [])
+        existing = [f.lower() for f in os.listdir(path)]
+
+        for req in required:
+            if req.lower() not in existing:
+                filepath = os.path.join(path, req)
+                content = ""
+                if req.lower() == "agents.md":
+                    content = AGENT_CONTEXT_TEMPLATE.format(project_name=os.path.basename(os.path.abspath(path)))
+                elif req.lower() == "instructions.md":
+                    content = INSTRUCTIONS_TEMPLATE
+                elif req.lower() == "readme.md":
+                    content = "# Project\n\nAuto-generated README."
+
+                if content:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    console.print(f"[bold green][Fixed][/bold green] Created {req}")
+
+    # 2. File Fixes
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+
+    for py_file in py_files:
+        fix_file_issues(py_file)
+
+
 # --- CORE LOGIC ---
 
 def score_file(filepath, profile):
@@ -130,7 +271,8 @@ def score_file(filepath, profile):
 @click.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-def cli(path, agent):
+@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
+def cli(path, agent, fix):
     """Analyze code compatibility for specific AI Agents."""
 
     if agent not in PROFILES:
@@ -138,6 +280,12 @@ def cli(path, agent):
         agent = "generic"
 
     profile = PROFILES[agent]
+
+    if fix:
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+        apply_fixes(path, profile)
+        console.print("") # Newline
+
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
     # 1. Project Level Check
@@ -186,7 +334,6 @@ def cli(path, agent):
 
     if final_score < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
-        import sys
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
