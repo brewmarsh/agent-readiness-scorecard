@@ -19,4 +19,6 @@ requires-python = ">=3.8"
 agent-score = "agent_scorecard.main:cli"
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = [
+    "pytest",
+]

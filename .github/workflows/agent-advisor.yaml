@@ -1,0 +1,36 @@
+name: Agent Advisor
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 9 * * 1' # Runs every Monday at 9am (Weekly Audit)
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Needed to comment on PRs
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Agent Scorecard
+        run: pip install .
+
+      - name: Run Advisor Analysis
+        id: advisor
+        # Output to a file so we can read it into the step summary
+        run: |
+          agent-score advise --output agent_report.md
+          
+      - name: Post Summary to GitHub
+        if: always()
+        run: |
+          cat agent_report.md >> $GITHUB_STEP_SUMMARY
