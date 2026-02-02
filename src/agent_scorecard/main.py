@@ -5,6 +5,7 @@ import click
 import mccabe
 from rich.console import Console
 from rich.table import Table
+from . import analyzer, report
 from rich.panel import Panel
 
 console = Console()
@@ -62,68 +63,6 @@ PROFILES = {
     }
 }
 
-# --- ANALYZERS ---
-
-def get_loc(filepath):
-    """Returns lines of code excluding whitespace/comments roughly."""
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return sum(1 for line in f if line.strip() and not line.strip().startswith("#"))
-    except UnicodeDecodeError:
-        return 0
-
-def get_complexity_score(filepath, threshold):
-    """Returns (average_complexity, penalty)."""
-    try:
-        code = open(filepath, "r", encoding="utf-8").read()
-        tree = ast.parse(code, filepath)
-    except (SyntaxError, UnicodeDecodeError):
-        return 0, 0
-
-    visitor = mccabe.PathGraphingAstVisitor()
-    visitor.preorder(tree, visitor)
-
-    complexities = [graph.complexity() for graph in visitor.graphs.values()]
-    if not complexities:
-        return 0, 0
-
-    avg_complexity = sum(complexities) / len(complexities)
-    penalty = 10 if avg_complexity > threshold else 0
-    return avg_complexity, penalty
-
-def check_type_hints(filepath, threshold):
-    """Returns (coverage_percent, penalty)."""
-    try:
-        code = open(filepath, "r", encoding="utf-8").read()
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError):
-        return 0, 0
-
-    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
-    if not functions:
-        return 100, 0
-
-    typed_functions = 0
-    for func in functions:
-        has_return = func.returns is not None
-        has_args = any(arg.annotation is not None for arg in func.args.args)
-        if has_return or has_args:
-            typed_functions += 1
-
-    coverage = (typed_functions / len(functions)) * 100
-    penalty = 20 if coverage < threshold else 0
-    return coverage, penalty
-
-def scan_project_docs(root_path, required_files):
-    """Checks for existence of agent-critical markdown files."""
-    missing = []
-    # Normalize checking logic to look in the root of the provided path
-    root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
-
-    for req in required_files:
-        if req.lower() not in root_files:
-            missing.append(req)
-    return missing
 
 # --- FIX LOGIC ---
 
@@ -239,42 +178,70 @@ def apply_fixes(path, profile):
 
 # --- CORE LOGIC ---
 
-def score_file(filepath, profile):
-    """Calculates score based on the selected profile."""
+def _calculate_final_score(stats, path, profile=PROFILES['generic']):
+    """Helper to calculate the final score from stats."""
+
+    file_scores = []
+    for s in stats:
+        score = 100
+        # LOC penalty
+        if s['loc'] > profile['max_loc']:
+            score -= (s['loc'] - profile['max_loc']) // 10
+        # Complexity penalty
+        if s['complexity'] > profile['max_complexity']:
+            score -= 10
+        # Type coverage penalty
+        if s['type_coverage'] < profile['min_type_coverage']:
+            score -= 20
+        file_scores.append(max(0, score))
+
+    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
+
+    missing_docs = analyzer.scan_project_docs(path, profile['required_files'])
+    project_penalty = len(missing_docs) * 15
+    project_score = 100 - project_penalty
+
+    return (avg_file_score * 0.8) + (project_score * 0.2)
+
+def _score_file_from_stats(stats, profile):
+    """Calculates score and notes for a single file from its stats."""
     score = 100
     details = []
 
-    # 1. Lines of Code
-    loc = get_loc(filepath)
+    # LOC
     limit = profile["max_loc"]
-    if loc > limit:
-        # -1 point per 10 lines over limit
-        excess = loc - limit
+    if stats['loc'] > limit:
+        excess = stats['loc'] - limit
         loc_penalty = (excess // 10)
         score -= loc_penalty
-        details.append(f"LOC {loc} > {limit} (-{loc_penalty})")
+        details.append(f"LOC {stats['loc']} > {limit} (-{loc_penalty})")
 
-    # 2. Complexity
-    avg_comp, comp_penalty = get_complexity_score(filepath, profile["max_complexity"])
-    score -= comp_penalty
-    if comp_penalty:
-        details.append(f"Complexity {avg_comp:.1f} > {profile['max_complexity']} (-{comp_penalty})")
+    # Complexity
+    if stats['complexity'] > profile['max_complexity']:
+        comp_penalty = 10
+        score -= comp_penalty
+        details.append(f"Complexity {stats['complexity']:.1f} > {profile['max_complexity']} (-{comp_penalty})")
 
-    # 3. Type Hints
-    type_cov, type_penalty = check_type_hints(filepath, profile["min_type_coverage"])
-    score -= type_penalty
-    if type_penalty:
-        details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
+    # Type Hints
+    if stats['type_coverage'] < profile['min_type_coverage']:
+        type_penalty = 20
+        score -= type_penalty
+        details.append(f"Types {stats['type_coverage']:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
 
     return max(score, 0), ", ".join(details)
 
-@click.command()
+@click.group()
+def cli():
+    """Main entry point for the agent-scorecard CLI."""
+    pass
+
+@cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def cli(path, agent, fix, badge):
-    """Analyze code compatibility for specific AI Agents."""
+def score(path, agent, fix, badge):
+    """Scores a codebase based on AI-agent compatibility."""
 
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
@@ -289,47 +256,41 @@ def cli(path, agent, fix, badge):
 
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
-    # 1. Project Level Check
-    project_score = 100
-    missing_docs = []
-
-    if os.path.isdir(path):
-        missing_docs = scan_project_docs(path, profile["required_files"])
-        if missing_docs:
-            penalty = len(missing_docs) * 15
-            project_score -= penalty
-            console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)} (-{penalty} pts)")
-
-    # 2. File Level Check
-    table = Table(title="File Analysis")
-    table.add_column("File", style="cyan")
-    table.add_column("Score", justify="right")
-    table.add_column("Issues", style="magenta")
-
     py_files = []
-    if os.path.isfile(path):
-        if path.endswith(".py"): py_files = [path]
-    else:
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
         for root, _, files in os.walk(path):
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    file_scores = []
+    stats = []
     for filepath in py_files:
-        score, notes = score_file(filepath, profile)
-        file_scores.append(score)
+        stats.append({
+            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+            "loc": analyzer.get_loc(filepath),
+            "complexity": analyzer.get_complexity_score(filepath),
+            "type_coverage": analyzer.check_type_hints(filepath)
+        })
 
+    table = Table(title="File Analysis")
+    table.add_column("File", style="cyan")
+    table.add_column("Score", justify="right")
+    table.add_column("Issues", style="magenta")
+
+    for s in stats:
+        score, notes = _score_file_from_stats(s, profile)
         status_color = "green" if score >= 70 else "red"
-        rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        table.add_row(rel_path, f"[{status_color}]{score}[/{status_color}]", notes)
+        table.add_row(s['file'], f"[{status_color}]{score}[/{status_color}]", notes)
 
     console.print(table)
 
-    # 3. Final Aggregation
-    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
-    # Weighted average: 80% file quality, 20% project structure
-    final_score = (avg_file_score * 0.8) + (project_score * 0.2)
+    missing_docs = analyzer.scan_project_docs(path, profile["required_files"])
+    if missing_docs:
+        console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)}")
+
+    final_score = _calculate_final_score(stats, path, profile)
 
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
@@ -392,6 +353,45 @@ def generate_badge(score):
 """
     return svg_template.strip()
 
+
+@cli.command(name="advise")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
+def advise(path, output_file):
+    """Generates a Markdown report with actionable advice."""
+
+    console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
+
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+
+    stats = []
+    for filepath in py_files:
+        stats.append({
+            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+            "loc": analyzer.get_loc(filepath),
+            "complexity": analyzer.get_complexity_score(filepath),
+            "type_coverage": analyzer.check_type_hints(filepath)
+        })
+
+    # Calculate the final score
+    profile = PROFILES['generic']
+    final_score = _calculate_final_score(stats, path, profile)
+
+    markdown_report = report.generate_markdown_report(stats, final_score, path, profile)
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(markdown_report)
+        console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
+    else:
+        console.print("\n" + markdown_report)
 
 if __name__ == "__main__":
     cli()
