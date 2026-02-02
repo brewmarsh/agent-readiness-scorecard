@@ -240,7 +240,8 @@ def cli():
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def score(path, agent, fix, badge):
+@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
+def score(path, agent, fix, badge, report_path):
     """Scores a codebase based on AI-agent compatibility."""
 
     if agent not in PROFILES:
@@ -279,8 +280,10 @@ def score(path, agent, fix, badge):
     table.add_column("Score", justify="right")
     table.add_column("Issues", style="magenta")
 
+    rows = []
     for s in stats:
         score, notes = _score_file_from_stats(s, profile)
+        rows.append((s['file'], score, notes))
         status_color = "green" if score >= 70 else "red"
         table.add_row(s['file'], f"[{status_color}]{score}[/{status_color}]", notes)
 
@@ -301,6 +304,20 @@ def score(path, agent, fix, badge):
             f.write(svg_content)
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
+
+    if report_path:
+        # Generate Markdown report
+        markdown_report = f"# Agent Scorecard Report\n\n"
+        markdown_report += f"**Final Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+        markdown_report += "| File | Score | Issues |\n"
+        markdown_report += "|---|---|---|\n"
+
+        for file, score, notes in rows:
+            markdown_report += f"| {file} | {score} | {notes or 'None'} |\n"
+
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(markdown_report)
+        console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
 
     if final_score < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
