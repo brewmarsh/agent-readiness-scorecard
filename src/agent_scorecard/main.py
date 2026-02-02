@@ -109,7 +109,8 @@ def cli():
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def score(path: str, agent: str, fix: bool, badge: bool) -> None:
+@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
 
     if agent not in PROFILES:
@@ -152,6 +153,13 @@ def score(path: str, agent: str, fix: bool, badge: bool) -> None:
             f.write(svg_content)
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
+
+    # MERGE RESOLUTION: Use the helper function instead of manual string building
+    if report_path:
+        report_content = generate_markdown_report(results)
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report_content)
+        console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
 
     if results["final_score"] < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
