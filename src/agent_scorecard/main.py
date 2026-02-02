@@ -6,18 +6,24 @@ from rich.table import Table
 from rich.panel import Panel
 
 from .constants import PROFILES
-from .checks import scan_project_docs
+from .analyzer import scan_project_docs, get_loc, analyze_complexity, analyze_type_hints
 from .fix import apply_fixes
 from .scoring import score_file, generate_badge
+from .report import generate_report
 
 console = Console()
 
-@click.command()
+@click.group()
+def cli():
+    """Agent Scorecard: AI-readiness analyzer."""
+    pass
+
+@cli.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def cli(path: str, agent: str, fix: bool, badge: bool) -> None:
+def score(path: str, agent: str, fix: bool, badge: bool):
     """Analyze code compatibility for specific AI Agents."""
 
     if agent not in PROFILES:
@@ -61,12 +67,12 @@ def cli(path: str, agent: str, fix: bool, badge: bool) -> None:
 
     file_scores = []
     for filepath in py_files:
-        score, notes = score_file(filepath, profile)
-        file_scores.append(score)
+        s, notes = score_file(filepath, profile)
+        file_scores.append(s)
 
-        status_color = "green" if score >= 70 else "red"
+        status_color = "green" if s >= 70 else "red"
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        table.add_row(rel_path, f"[{status_color}]{score}[/{status_color}]", notes)
+        table.add_row(rel_path, f"[{status_color}]{s}[/{status_color}]", notes)
 
     console.print(table)
 
@@ -91,51 +97,68 @@ def cli(path: str, agent: str, fix: bool, badge: bool) -> None:
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
 
+@cli.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
+@click.option("--output", default="agent_advisor.md", help="Output file for the report.")
+def advise(path: str, agent: str, output: str):
+    """Generate a detailed Advisor Report."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
 
-def generate_badge(score):
-    """Generates an SVG badge for the agent score."""
-    if score >= 90:
-        color = "#4c1"  # Bright Green
-    elif score >= 70:
-        color = "#dfb317"  # Yellow/Orange
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Running Agent Advisor[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+
+    # Collect data
+    missing_docs = []
+    project_score = 100
+    if os.path.isdir(path):
+        missing_docs = scan_project_docs(path, profile["required_files"])
+        if missing_docs:
+            project_score -= (len(missing_docs) * 15)
+
+    py_files = []
+    if os.path.isfile(path):
+        if path.endswith(".py"): py_files = [path]
     else:
-        color = "#e05d44"  # Red
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
 
-    score_str = f"{int(score)}/100"
+    file_results = []
+    file_scores = []
 
-    # Constants for SVG generation
-    left_width = 70
-    right_width = 50
-    total_width = left_width + right_width
-    height = 20
-    border_radius = 3
+    with console.status("[bold green]Analyzing files..."):
+        for filepath in py_files:
+            # We need raw metrics + score
+            loc = get_loc(filepath)
+            complexity = analyze_complexity(filepath)
+            type_cov = analyze_type_hints(filepath)
 
-    # SVG template using f-strings
-    svg_template = f"""
-<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="{height}" role="img" aria-label="Agent Score: {score_str}">
-    <title>Agent Score: {score_str}</title>
-    <linearGradient id="s" x2="0" y2="100%">
-        <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-        <stop offset="1" stop-opacity=".1"/>
-    </linearGradient>
-    <clipPath id="r">
-        <rect width="{total_width}" height="{height}" rx="{border_radius}" fill="#fff"/>
-    </clipPath>
-    <g clip-path="url(#r)">
-        <rect width="{left_width}" height="{height}" fill="#555"/>
-        <rect x="{left_width}" width="{right_width}" height="{height}" fill="{color}"/>
-        <rect width="{total_width}" height="{height}" fill="url(#s)"/>
-    </g>
-    <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-        <text aria-hidden="true" x="{left_width * 10 / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(left_width - 10) * 10}">Agent Score</text>
-        <text x="{left_width * 10 / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="{(left_width - 10) * 10}">Agent Score</text>
-        <text aria-hidden="true" x="{(left_width + right_width / 2) * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(right_width - 10) * 10}">{score_str}</text>
-        <text x="{(left_width + right_width / 2) * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="{(right_width - 10) * 10}">{score_str}</text>
-    </g>
-</svg>
-"""
-    return svg_template.strip()
+            # Calculate score using score_file logic (or calling it)
+            # Since score_file calculates penalties internally, we can call it to get the score.
+            s, _ = score_file(filepath, profile)
+            file_scores.append(s)
 
+            file_results.append({
+                "filepath": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": loc,
+                "complexity": complexity,
+                "type_coverage": type_cov,
+                "score": s
+            })
+
+    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
+    final_score = (avg_file_score * 0.8) + (project_score * 0.2)
+
+    report = generate_report(final_score, file_results, missing_docs, profile)
+
+    with open(output, "w", encoding="utf-8") as f:
+        f.write(report)
+
+    console.print(f"[bold green]Report generated at {output}[/bold green]")
 
 if __name__ == "__main__":
     cli()

@@ -1,7 +1,8 @@
 import pytest
 import textwrap
 from pathlib import Path
-from src.agent_scorecard.main import get_loc, get_complexity_score, check_type_hints, PROFILES
+from src.agent_scorecard.analyzer import get_loc, analyze_complexity, analyze_type_hints
+from src.agent_scorecard.constants import PROFILES
 
 def test_get_loc(tmp_path: Path):
     """Tests that get_loc correctly counts lines, ignoring comments and blank lines."""
@@ -15,9 +16,9 @@ def test_get_loc(tmp_path: Path):
     loc = get_loc(str(py_file))
     assert loc == 210
 
-def test_get_complexity_score(tmp_path: Path):
-    """Tests that get_complexity_score penalizes overly complex functions."""
-    # Create a file with a function that is too complex
+def test_analyze_complexity(tmp_path: Path):
+    """Tests that analyze_complexity measures complexity correctly."""
+    # Create a file with a function that is complex
     content = textwrap.dedent("""
     def very_complex_function(a, b, c):
         if a > 0:
@@ -36,12 +37,11 @@ def test_get_complexity_score(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     # Using the "jules" profile which has a max_complexity of 8
-    avg_complexity, penalty = get_complexity_score(str(py_file), PROFILES["jules"]["max_complexity"])
-    assert penalty > 0
+    avg_complexity = analyze_complexity(str(py_file))
     assert avg_complexity > PROFILES["jules"]["max_complexity"]
 
-def test_check_type_hints(tmp_path: Path):
-    """Tests that check_type_hints penalizes files with low type hint coverage."""
+def test_analyze_type_hints(tmp_path: Path):
+    """Tests that analyze_type_hints calculates coverage."""
     # File with 100% type hint coverage
     typed_content = """
 def fully_typed_function(a: int, b: str) -> bool:
@@ -58,14 +58,8 @@ def untyped_function(a, b):
     untyped_file = tmp_path / "untyped.py"
     untyped_file.write_text(untyped_content, encoding="utf-8")
 
-    # Using "jules" profile which requires 80% coverage
-    profile = PROFILES["jules"]
-
-    typed_coverage, typed_penalty = check_type_hints(str(typed_file), profile["min_type_coverage"])
-    untyped_coverage, untyped_penalty = check_type_hints(str(untyped_file), profile["min_type_coverage"])
+    typed_coverage = analyze_type_hints(str(typed_file))
+    untyped_coverage = analyze_type_hints(str(untyped_file))
 
     assert typed_coverage == 100
-    assert typed_penalty == 0
-
     assert untyped_coverage == 0
-    assert untyped_penalty > 0

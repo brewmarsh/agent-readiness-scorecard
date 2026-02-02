@@ -1,6 +1,7 @@
 import os
 import ast
 import mccabe
+from typing import List, Tuple
 
 def get_loc(filepath: str) -> int:
     """Returns lines of code excluding whitespace/comments roughly."""
@@ -10,36 +11,34 @@ def get_loc(filepath: str) -> int:
     except UnicodeDecodeError:
         return 0
 
-def get_complexity_score(filepath: str, threshold: int) -> tuple[float, int]:
-    """Returns (average_complexity, penalty)."""
+def analyze_complexity(filepath: str) -> float:
+    """Returns average complexity."""
     try:
         code = open(filepath, "r", encoding="utf-8").read()
         tree = ast.parse(code, filepath)
     except (SyntaxError, UnicodeDecodeError):
-        return 0.0, 0
+        return 0.0
 
     visitor = mccabe.PathGraphingAstVisitor()
     visitor.preorder(tree, visitor)
 
     complexities = [graph.complexity() for graph in visitor.graphs.values()]
     if not complexities:
-        return 0.0, 0
+        return 0.0
 
-    avg_complexity = sum(complexities) / len(complexities)
-    penalty = 10 if avg_complexity > threshold else 0
-    return avg_complexity, penalty
+    return sum(complexities) / len(complexities)
 
-def check_type_hints(filepath: str, threshold: int) -> tuple[float, int]:
-    """Returns (coverage_percent, penalty)."""
+def analyze_type_hints(filepath: str) -> float:
+    """Returns type hint coverage percentage."""
     try:
         code = open(filepath, "r", encoding="utf-8").read()
         tree = ast.parse(code)
     except (SyntaxError, UnicodeDecodeError):
-        return 0.0, 0
+        return 0.0
 
     functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     if not functions:
-        return 100.0, 0
+        return 100.0
 
     typed_functions = 0
     for func in functions:
@@ -48,11 +47,9 @@ def check_type_hints(filepath: str, threshold: int) -> tuple[float, int]:
         if has_return or has_args:
             typed_functions += 1
 
-    coverage = (typed_functions / len(functions)) * 100
-    penalty = 20 if coverage < threshold else 0
-    return coverage, penalty
+    return (typed_functions / len(functions)) * 100
 
-def scan_project_docs(root_path: str, required_files: list[str]) -> list[str]:
+def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
     # Normalize checking logic to look in the root of the provided path

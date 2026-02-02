@@ -1,5 +1,5 @@
 from typing import Dict, Any, Tuple
-from .checks import get_loc, get_complexity_score, check_type_hints
+from .analyzer import get_loc, analyze_complexity, analyze_type_hints
 
 def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
     """Calculates score based on the selected profile."""
@@ -17,15 +17,19 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
         details.append(f"LOC {loc} > {limit} (-{loc_penalty})")
 
     # 2. Complexity
-    avg_comp, comp_penalty = get_complexity_score(filepath, profile["max_complexity"])
-    score -= comp_penalty
-    if comp_penalty:
+    avg_comp = analyze_complexity(filepath)
+    comp_penalty = 0
+    if avg_comp > profile["max_complexity"]:
+        comp_penalty = 10  # Fixed penalty for complexity
+        score -= comp_penalty
         details.append(f"Complexity {avg_comp:.1f} > {profile['max_complexity']} (-{comp_penalty})")
 
     # 3. Type Hints
-    type_cov, type_penalty = check_type_hints(filepath, profile["min_type_coverage"])
-    score -= type_penalty
-    if type_penalty:
+    type_cov = analyze_type_hints(filepath)
+    type_penalty = 0
+    if type_cov < profile["min_type_coverage"]:
+        type_penalty = 20 # Fixed penalty for types
+        score -= type_penalty
         details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
 
     return max(score, 0), ", ".join(details)
@@ -41,25 +45,37 @@ def generate_badge(score: float) -> str:
     else:
         color = "#e05d44"  # Red
 
-    score_str = f"{score:.1f}"
+    score_str = f"{int(score)}/100"
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-    <linearGradient id="b" x2="0" y2="100%">
+    # Constants for SVG generation
+    left_width = 70
+    right_width = 50
+    total_width = left_width + right_width
+    height = 20
+    border_radius = 3
+
+    # SVG template using f-strings
+    svg_template = f"""
+<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="{height}" role="img" aria-label="Agent Score: {score_str}">
+    <title>Agent Score: {score_str}</title>
+    <linearGradient id="s" x2="0" y2="100%">
         <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
         <stop offset="1" stop-opacity=".1"/>
     </linearGradient>
-    <mask id="a">
-        <rect width="120" height="20" rx="3" fill="#fff"/>
-    </mask>
-    <g mask="url(#a)">
-        <path fill="#555" d="M0 0h80v20H0z"/>
-        <path fill="{color}" d="M80 0h40v20H80z"/>
-        <path fill="url(#b)" d="M0 0h120v20H0z"/>
+    <clipPath id="r">
+        <rect width="{total_width}" height="{height}" rx="{border_radius}" fill="#fff"/>
+    </clipPath>
+    <g clip-path="url(#r)">
+        <rect width="{left_width}" height="{height}" fill="#555"/>
+        <rect x="{left_width}" width="{right_width}" height="{height}" fill="{color}"/>
+        <rect width="{total_width}" height="{height}" fill="url(#s)"/>
     </g>
-    <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-        <text x="40" y="15" fill="#010101" fill-opacity=".3">Agent Score</text>
-        <text x="40" y="14">Agent Score</text>
-        <text x="100" y="15" fill="#010101" fill-opacity=".3">{score_str}</text>
-        <text x="100" y="14">{score_str}</text>
+    <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+        <text aria-hidden="true" x="{left_width * 10 / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(left_width - 10) * 10}">Agent Score</text>
+        <text x="{left_width * 10 / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="{(left_width - 10) * 10}">Agent Score</text>
+        <text aria-hidden="true" x="{(left_width + right_width / 2) * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(right_width - 10) * 10}">{score_str}</text>
+        <text x="{(left_width + right_width / 2) * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="{(right_width - 10) * 10}">{score_str}</text>
     </g>
-</svg>"""
+</svg>
+"""
+    return svg_template.strip()
