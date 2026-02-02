@@ -87,9 +87,22 @@ def test_scan_project_docs(tmp_path: Path) -> None:
     assert "instructions.md" in missing
 
 def test_generate_badge() -> None:
+    # >= 90: Bright Green
     svg = generate_badge(95)
-    assert "#4c1" in svg  # Bright Green
+    assert "#4c1" in svg
     assert "95.0" in svg
 
+    # >= 70 and < 90: Green
+    svg = generate_badge(85)
+    assert "#97ca00" in svg
+    assert "85.0" in svg
+
+    # >= 50 and < 70: Yellow
+    svg = generate_badge(60)
+    assert "#dfb317" in svg
+    assert "60.0" in svg
+
+    # < 50: Red
     svg = generate_badge(40)
-    assert "#e05d44" in svg # Red
+    assert "#e05d44" in svg
+    assert "40.0" in svg
