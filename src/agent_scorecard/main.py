@@ -334,10 +334,12 @@ def cli(path, agent, fix, badge):
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
     if badge:
+        output_path = "agent_score.svg"
         svg_content = generate_badge(final_score)
-        with open("agent-score.svg", "w", encoding="utf-8") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
-        console.print("[bold cyan]Badge generated: agent-score.svg[/bold cyan]")
+        console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
+        console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
     if final_score < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
@@ -351,34 +353,44 @@ def generate_badge(score):
     if score >= 90:
         color = "#4c1"  # Bright Green
     elif score >= 70:
-        color = "#97ca00"  # Green
-    elif score >= 50:
-        color = "#dfb317"  # Yellow
+        color = "#dfb317"  # Yellow/Orange
     else:
         color = "#e05d44"  # Red
 
-    score_str = f"{score:.1f}"
+    score_str = f"{int(score)}/100"
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-    <linearGradient id="b" x2="0" y2="100%">
+    # Constants for SVG generation
+    left_width = 70
+    right_width = 50
+    total_width = left_width + right_width
+    height = 20
+    border_radius = 3
+
+    # SVG template using f-strings
+    svg_template = f"""
+<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="{height}" role="img" aria-label="Agent Score: {score_str}">
+    <title>Agent Score: {score_str}</title>
+    <linearGradient id="s" x2="0" y2="100%">
         <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
         <stop offset="1" stop-opacity=".1"/>
     </linearGradient>
-    <mask id="a">
-        <rect width="120" height="20" rx="3" fill="#fff"/>
-    </mask>
-    <g mask="url(#a)">
-        <path fill="#555" d="M0 0h80v20H0z"/>
-        <path fill="{color}" d="M80 0h40v20H80z"/>
-        <path fill="url(#b)" d="M0 0h120v20H0z"/>
+    <clipPath id="r">
+        <rect width="{total_width}" height="{height}" rx="{border_radius}" fill="#fff"/>
+    </clipPath>
+    <g clip-path="url(#r)">
+        <rect width="{left_width}" height="{height}" fill="#555"/>
+        <rect x="{left_width}" width="{right_width}" height="{height}" fill="{color}"/>
+        <rect width="{total_width}" height="{height}" fill="url(#s)"/>
     </g>
-    <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-        <text x="40" y="15" fill="#010101" fill-opacity=".3">Agent Score</text>
-        <text x="40" y="14">Agent Score</text>
-        <text x="100" y="15" fill="#010101" fill-opacity=".3">{score_str}</text>
-        <text x="100" y="14">{score_str}</text>
+    <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+        <text aria-hidden="true" x="{left_width * 10 / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(left_width - 10) * 10}">Agent Score</text>
+        <text x="{left_width * 10 / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="{(left_width - 10) * 10}">Agent Score</text>
+        <text aria-hidden="true" x="{(left_width + right_width / 2) * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(right_width - 10) * 10}">{score_str}</text>
+        <text x="{(left_width + right_width / 2) * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="{(right_width - 10) * 10}">{score_str}</text>
     </g>
-</svg>"""
+</svg>
+"""
+    return svg_template.strip()
 
 
 if __name__ == "__main__":
