@@ -61,3 +61,22 @@ def test_cli_badge_generation():
         assert result.exit_code == 0
         assert os.path.exists("agent_score.svg")
         assert "Badge saved" in result.output
+
+def test_cli_advise_command():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create dummy python file
+        with open("hello.py", "w") as f:
+            f.write("def hello():\n    pass\n")
+        with open("README.md", "w") as f:
+            f.write("# README")
+
+        # Run advise command with --output
+        result = runner.invoke(cli, ["advise", ".", "--output", "report.md"])
+        assert result.exit_code == 0
+        assert os.path.exists("report.md")
+        with open("report.md", "r") as f:
+            content = f.read()
+            assert "# Agent Scorecard Report" in content
+            assert "Final Score" in content
+            assert "File Analysis" in content

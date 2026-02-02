@@ -268,44 +268,21 @@ def score_file(filepath, profile):
 
     return max(score, 0), ", ".join(details)
 
-@click.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
-@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def cli(path, agent, fix, badge):
-    """Analyze code compatibility for specific AI Agents."""
-
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-
-    profile = PROFILES[agent]
-
-    if fix:
-        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-        apply_fixes(path, profile)
-        console.print("") # Newline
-
-    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
+def perform_analysis(path, agent_name):
+    """Core analysis logic that returns data for presentation."""
+    if agent_name not in PROFILES:
+        agent_name = "generic"
+    profile = PROFILES[agent_name]
 
     # 1. Project Level Check
     project_score = 100
     missing_docs = []
-
     if os.path.isdir(path):
         missing_docs = scan_project_docs(path, profile["required_files"])
-        if missing_docs:
-            penalty = len(missing_docs) * 15
-            project_score -= penalty
-            console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)} (-{penalty} pts)")
+        penalty = len(missing_docs) * 15
+        project_score -= penalty
 
     # 2. File Level Check
-    table = Table(title="File Analysis")
-    table.add_column("File", style="cyan")
-    table.add_column("Score", justify="right")
-    table.add_column("Issues", style="magenta")
-
     py_files = []
     if os.path.isfile(path):
         if path.endswith(".py"): py_files = [path]
@@ -315,38 +292,138 @@ def cli(path, agent, fix, badge):
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    file_scores = []
+    file_results = []
     for filepath in py_files:
-        score, notes = score_file(filepath, profile)
-        file_scores.append(score)
-
-        status_color = "green" if score >= 70 else "red"
+        score, issues = score_file(filepath, profile)
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        table.add_row(rel_path, f"[{status_color}]{score}[/{status_color}]", notes)
+        file_results.append({
+            "file": rel_path,
+            "score": score,
+            "issues": issues
+        })
 
-    console.print(table)
-
-    # 3. Final Aggregation
-    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
-    # Weighted average: 80% file quality, 20% project structure
+    # 3. Aggregation
+    avg_file_score = sum(f["score"] for f in file_results) / len(file_results) if file_results else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
-    console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
+    return {
+        "agent": agent_name,
+        "profile": profile,
+        "final_score": final_score,
+        "project_score": project_score,
+        "missing_docs": missing_docs,
+        "file_results": file_results
+    }
 
-    if badge:
-        output_path = "agent_score.svg"
-        svg_content = generate_badge(final_score)
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(svg_content)
-        console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
-        console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
+@click.command()
+@click.argument("path_or_cmd", default=".", required=False)
+@click.argument("extra_path", default=None, required=False)
+@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
+@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
+@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
+@click.option("--output", type=click.Path(), help="Path to save the Markdown report (for 'advise' command).")
+def cli(path_or_cmd, extra_path, agent, fix, badge, output):
+    """Analyze code compatibility for specific AI Agents."""
 
-    if final_score < 70:
-        console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
-        sys.exit(1)
+    command = "score"
+    path = path_or_cmd
+
+    if path_or_cmd == "advise":
+        command = "advise"
+        path = extra_path or "."
+    elif path_or_cmd == "score": # Optional explicit score command
+        command = "score"
+        path = extra_path or "."
+
+    if not os.path.exists(path):
+        console.print(f"[bold red]Path does not exist: {path}[/bold red]")
+        sys.exit(2)
+
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+
+    profile = PROFILES[agent]
+
+    if command == "score":
+        if fix:
+            console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+            apply_fixes(path, profile)
+            console.print("")
+
+        results = perform_analysis(path, agent)
+
+        console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
+
+        if results["missing_docs"]:
+            penalty = len(results["missing_docs"]) * 15
+            console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
+
+        table = Table(title="File Analysis")
+        table.add_column("File", style="cyan")
+        table.add_column("Score", justify="right")
+        table.add_column("Issues", style="magenta")
+
+        for res in results["file_results"]:
+            status_color = "green" if res["score"] >= 70 else "red"
+            table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
+
+        console.print(table)
+        console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
+
+        if badge:
+            output_path = "agent_score.svg"
+            svg_content = generate_badge(results["final_score"])
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(svg_content)
+            console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
+            console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
+
+        if results["final_score"] < 70:
+            console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
+            sys.exit(1)
+        else:
+            console.print("[bold green]PASSED: Agent-Ready[/bold green]")
+
+    elif command == "advise":
+        results = perform_analysis(path, agent)
+        report = generate_markdown_report(results)
+
+        if output:
+            with open(output, "w", encoding="utf-8") as f:
+                f.write(report)
+            console.print(f"[bold green][Generated][/bold green] Report saved to {output}")
+        else:
+            console.print(report)
+
+def generate_markdown_report(results):
+    """Formats analysis results into a Markdown string."""
+    profile = results["profile"]
+    md = f"# Agent Scorecard Report\n\n"
+    md += f"**Target Agent Profile:** {results['agent'].upper()}\n"
+    md += f"**Description:** {profile['description']}\n\n"
+    md += f"## Final Score: {results['final_score']:.1f}/100\n\n"
+
+    if results["final_score"] >= 70:
+        md += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        console.print("[bold green]PASSED: Agent-Ready[/bold green]")
+        md += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
 
+    if results["missing_docs"]:
+        md += "### ⚠ Missing Critical Documentation\n"
+        for doc in results["missing_docs"]:
+            md += f"- `{doc}` (-15 pts)\n"
+        md += "\n"
+
+    md += "### 📂 File Analysis\n\n"
+    md += "| File | Score | Issues |\n"
+    md += "| :--- | :---: | :--- |\n"
+    for res in results["file_results"]:
+        status = "✅" if res["score"] >= 70 else "❌"
+        md += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+
+    md += "\n---\n*Generated by Agent-Scorecard*"
+    return md
 
 def generate_badge(score):
     """Generates an SVG badge for the agent score."""
@@ -391,7 +468,6 @@ def generate_badge(score):
 </svg>
 """
     return svg_template.strip()
-
 
 if __name__ == "__main__":
     cli()
