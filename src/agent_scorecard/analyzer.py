@@ -265,7 +265,7 @@ def get_project_issues(path, py_files, profile):
         
     return penalty, issues
 
-def perform_analysis(path: str, agent: str) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict[str, Any]:
     """Orchestrates the full project analysis."""
     profile = PROFILES[agent]
 
@@ -280,6 +280,11 @@ def perform_analysis(path: str, agent: str) -> Dict[str, Any]:
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
+
+    all_py_files = py_files[:]
+    if limit_to_files:
+        # Filter 'py_files' (files to score) but keep 'all_files' for graph analysis
+        py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
 
     file_results = []
     file_scores = []
@@ -300,7 +305,7 @@ def perform_analysis(path: str, agent: str) -> Dict[str, Any]:
         })
 
     # Project Level
-    penalty, project_issues = get_project_issues(path, py_files, profile)
+    penalty, project_issues = get_project_issues(path, all_py_files, profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0

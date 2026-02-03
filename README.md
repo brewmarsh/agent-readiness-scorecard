@@ -79,3 +79,14 @@ my-project/
 Show off your Agent-Readiness!
 
 *(Run `agent-score --badge` to generate this for your repo)*
+
+## ⚡ CI/CD & Diff Mode
+
+Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request. This mode is faster and focuses on new changes while still validating the entire project for circular dependencies.
+
+```bash
+# Score only changes vs the main branch
+agent-score score --diff origin/main
+```
+
+This feature uses `git diff` to identify modified `.py` files and ensures that even if you only check one file, the codebase's global "Agent Physics" (like dependency cycles) remains healthy.
