@@ -1,4 +1,3 @@
-#agent_scorecard/main.py
 import os
 import sys
 import click
@@ -88,6 +87,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     health_table.add_column("Check", style="cyan")
     health_table.add_column("Status", justify="right")
 
+    # Use the auditor module for environment checks
     health = auditor.check_environment_health(path)
     health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
     health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
