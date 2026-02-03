@@ -1,21 +1,19 @@
 import pytest
 from pathlib import Path
 from click.testing import CliRunner
-# RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
 from src.agent_scorecard.main import cli
-from src.agent_scorecard.analyzer import check_type_hints
+from src.agent_scorecard.checks import analyze_type_hints
 
 def test_async_function_support_checks(tmp_path: Path):
-    """Test that check_type_hints correctly identifies async functions."""
+    """Test that analyze_type_hints correctly identifies async functions."""
     p = tmp_path / "async_test.py"
     p.write_text("""
 async def fetch_data(url):
-    return url
+    await some_lib.get(url)
 """)
 
     # Should find 1 function, 0 typed -> 0% coverage.
-    # RESOLUTION: Updated function name from analyze_type_hints to check_type_hints
-    cov = check_type_hints(str(p))
+    cov = analyze_type_hints(str(p))
     assert cov == 0
 
 def test_fix_async_function(tmp_path: Path):
@@ -45,7 +43,5 @@ async def process_data(data):
 
     runner = CliRunner()
     result = runner.invoke(cli, ["score", str(p)])
-    
-    # RESOLUTION: Updated assertion to match scoring.py output format
-    # The CLI table outputs "Types 0% < 50%" based on the Generic profile.
-    assert "Types 0%" in result.output
+    # We verify that it detects the type hint issue
+    assert "Type Safety Index 0% < 90%" in result.output

@@ -1,5 +1,5 @@
-import os
 import sys
+import os
 import click
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
@@ -7,34 +7,23 @@ from rich.table import Table
 from rich.panel import Panel
 
 # Import common modules
-from . import analyzer, report, auditor
+from . import analyzer, report
 
+# Use the Modular Refactor imports
 from .constants import PROFILES
 from .fix import apply_fixes
-from .scoring import generate_badge, score_file
+from .scoring import generate_badge
 
 console = Console()
 
-# --- VERSION SETUP ---
+# --- MERGED VERSION SETUP ---
 try:
     __version__ = version("agent-scorecard")
 except PackageNotFoundError:
     __version__ = "0.0.0"
 
-# --- CLI DEFINITION ---
-class DefaultGroup(click.Group):
-    """Invokes a default command if a subcommand is not found."""
-    def resolve_command(self, ctx, args):
-        try:
-            return super().resolve_command(ctx, args)
-        except click.UsageError:
-            if args and not args[0].startswith('-'):
-                args.insert(0, "score")
-            elif not args:
-                args.insert(0, "score")
-            return super().resolve_command(ctx, args)
-
-@click.group(cls=DefaultGroup)
+# --- MERGED CLI DEFINITION ---
+@click.group(cls=analyzer.DefaultGroup)
 @click.version_option(version=__version__)
 def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
@@ -52,29 +41,18 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         apply_fixes(path, profile)
         console.print("")
 
-    # Run Analysis
     results = analyzer.perform_analysis(path, agent)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
-    # 1. Critical Docs Check
     if results["missing_docs"]:
         penalty = len(results["missing_docs"]) * 15
         console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
 
-    # 2. Dependency Analysis (Resolved from Main Branch)
-    dep = results.get("dep_analysis", {})
-    if dep.get("cycles"):
-        console.print(f"\n[bold red]⚠ Circular Dependencies Detected:[/bold red] {len(dep['cycles'])} cycles found (-30 pts)")
-        for cycle in dep['cycles']:
-            cycle_str = " -> ".join([os.path.basename(f) for f in cycle])
-            console.print(f"  - {cycle_str} -> {os.path.basename(cycle[0])}")
+    if results.get("project_issues"):
+        for issue in results["project_issues"]:
+            if "Missing Critical Agent Docs" not in issue:
+                console.print(f"[bold yellow]⚠ {issue}[/bold yellow]")
 
-    if dep.get("god_modules"):
-        console.print(f"\n[bold red]⚠ God Modules Detected (In-Degree > 50):[/bold red] {len(dep['god_modules'])} found")
-        for file, count in dep['god_modules'].items():
-            console.print(f"  - {os.path.basename(file)} (In-Degree: {count})")
-
-    # 3. File Table
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -87,7 +65,6 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     console.print(table)
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
 
-    # 4. Badge Generation
     if badge:
         output_path = "agent_score.svg"
         svg_content = generate_badge(results["final_score"])
@@ -96,16 +73,8 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
-    # 5. Report Generation
     if report_path:
-        # Use the correct function signature from our resolved report.py
-        report_content = report.generate_markdown_report(
-            results["file_results"], # stats
-            results["final_score"], 
-            path, 
-            profile, 
-            results.get("project_issues")
-        )
+        report_content = report.generate_markdown_report(results)
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
@@ -115,20 +84,6 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
-
-@cli.command(name="fix")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use.")
-def fix(path: str, agent: str) -> None:
-    """Automatically fix common issues in the codebase."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-    profile = PROFILES[agent]
-
-    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-    apply_fixes(path, profile)
-    console.print("[bold green]Fixes applied![/bold green]")
 
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
@@ -140,6 +95,21 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> No
     """Scores a codebase based on AI-agent compatibility."""
     run_scoring(path, agent, fix, badge, report_path)
 
+
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use.")
+def fix(path, agent):
+    """Automatically fix common issues."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("[bold green]Fixes applied![/bold green]")
+
+
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
@@ -148,6 +118,7 @@ def advise(path, output_file):
 
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
 
+    # Use Advisor logic
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
@@ -163,19 +134,16 @@ def advise(path, output_file):
     stats = []
     with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
         for filepath in py_files:
-            # Updated to use analyzer.py directly
-            loc = analyzer.get_loc(filepath)
-            complexity = analyzer.get_complexity_score(filepath)
-            
-            # Use Beta logic: Calculate ACL at function level and take MAX
-            func_stats = analyzer.get_function_stats(filepath)
-            max_acl = max((f['acl'] for f in func_stats), default=0)
+            from .checks import get_loc, analyze_complexity
+            loc = get_loc(filepath)
+            complexity = analyze_complexity(filepath)
+            acl = analyzer.calculate_acl(complexity, loc)
 
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": loc,
                 "complexity": complexity,
-                "acl": max_acl
+                "acl": acl
             })
 
         # Dependency Analysis
@@ -193,6 +161,7 @@ def advise(path, output_file):
             f.write(markdown_report)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
+        # Use rich Markdown for pretty printing
         from rich.markdown import Markdown
         console.print(Markdown(markdown_report))
 

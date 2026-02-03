@@ -86,7 +86,3 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
         if req.lower() not in root_files:
             missing.append(req)
     return missing
-
-# Aliases for backward compatibility
-get_complexity_score = analyze_complexity
-check_type_hints = analyze_type_hints
