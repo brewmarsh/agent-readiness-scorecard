@@ -9,8 +9,8 @@ from src.agent_scorecard.analyzer import (
     get_import_graph, 
     get_inbound_imports, 
     detect_cycles,
-    get_directory_entropy
 )
+from src.agent_scorecard.auditor import get_crowded_directories
 from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
@@ -32,7 +32,7 @@ def test_get_directory_entropy(tmp_path):
         (subdir / f"sub_{i}.txt").touch()
 
     # Use Beta threshold (matches resolved code)
-    entropy = get_directory_entropy(str(tmp_path), threshold=20)
+    entropy = get_crowded_directories(str(tmp_path), threshold=20)
     base_name = tmp_path.name
 
     assert base_name in entropy
