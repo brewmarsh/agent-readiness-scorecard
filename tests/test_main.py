@@ -1,16 +1,6 @@
 import os
 import pytest
 from pathlib import Path
-<<<<<<< HEAD
-from agent_scorecard.checks import (
-    get_loc,
-    get_complexity_score,
-    check_type_hints,
-    scan_project_docs,
-)
-from agent_scorecard.scoring import generate_badge
-from agent_scorecard.constants import PROFILES
-=======
 
 # RESOLUTION: Point to 'analyzer' instead of the deleted 'checks' module
 # and rename functions to match the resolved analyzer.py
@@ -22,7 +12,6 @@ from src.agent_scorecard.analyzer import (
 )
 from src.agent_scorecard.scoring import generate_badge
 from src.agent_scorecard.constants import PROFILES
->>>>>>> origin/upgrade-scoring-logic-4412913730962226252
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:
@@ -52,44 +41,6 @@ def add(a: int, b: int) -> int:
     return p
 
 def test_get_loc(sample_file: Path) -> None:
-<<<<<<< HEAD
-    # 2 defs, 1 print, 1 if, 1 if, 1 if, 1 return, 1 return = 8 lines?
-    # get_loc excludes whitespace/comments.
-    # The file has 9 lines of code (including defs and body).
-    # Let's count manually:
-    # 1. def hello():
-    # 2.     print("Hello")
-    # 3. def complex_func(n):
-    # 4.     if n > 1:
-    # 5.         if n > 2:
-    # 6.             if n > 3:
-    # 7.                 return 3
-    # 8.     return 1
-    # Total 8 lines.
-    assert get_loc(str(sample_file)) == 8
-
-def test_get_complexity_score(sample_file: Path) -> None:
-    # hello: 1
-    # complex_func: 4 (1 + 3 ifs)
-    # Avg: 2.5
-    avg, penalty = get_complexity_score(str(sample_file), 10)
-    assert avg == 2.5
-    assert penalty == 0
-
-    avg, penalty = get_complexity_score(str(sample_file), 2)
-    assert penalty == 10
-
-def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
-    # sample_file: 0/2 typed -> 0%
-    cov, penalty = check_type_hints(str(sample_file), 50)
-    assert cov == 0
-    assert penalty == 20
-
-    # typed_file: 1/1 typed -> 100%
-    cov, penalty = check_type_hints(str(typed_file), 50)
-    assert cov == 100
-    assert penalty == 0
-=======
     # Manual count: 8 lines
     assert get_loc(str(sample_file)) == 8
 
@@ -110,7 +61,6 @@ def test_analyze_type_hints(sample_file: Path, typed_file: Path) -> None:
     # typed_file: 1/1 typed -> 100%
     cov = check_type_hints(str(typed_file))
     assert cov == 100
->>>>>>> origin/upgrade-scoring-logic-4412913730962226252
 
 def test_scan_project_docs(tmp_path: Path) -> None:
     required = ["agents.md", "instructions.md"]
@@ -127,11 +77,7 @@ def test_generate_badge() -> None:
     # >= 90: Bright Green
     svg = generate_badge(95)
     assert "#4c1" in svg
-<<<<<<< HEAD
-    assert "95.0" in svg
-=======
     assert "95.0" in svg # float formatting in badge
->>>>>>> origin/upgrade-scoring-logic-4412913730962226252
 
     # >= 70 and < 90: Green
     svg = generate_badge(85)
@@ -146,8 +92,4 @@ def test_generate_badge() -> None:
     # < 50: Red
     svg = generate_badge(40)
     assert "#e05d44" in svg
-<<<<<<< HEAD
     assert "40.0" in svg
-=======
-    assert "40.0" in svg
->>>>>>> origin/upgrade-scoring-logic-4412913730962226252
