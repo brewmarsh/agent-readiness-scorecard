@@ -97,17 +97,17 @@ def test_generate_advisor_report_standalone():
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
-    code = textwrap.dedent("""
+    # Indent 12 spaces to align with the function body inside the dedented string (base indent 8 + 4)
+    padding = "\n".join([f"            x_{i} = {i}" for i in range(20)])
+    code = textwrap.dedent(f"""
         def complex_function():
             if True:
                 print("yes")
             else:
                 print("no")
-            # padding
+{padding}
             return 0
     """)
-    # Pad to ensure LOC > 20
-    code += "\n" * 20
 
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
