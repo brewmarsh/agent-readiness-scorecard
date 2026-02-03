@@ -54,28 +54,9 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     table.add_column("Score", justify="right")
     table.add_column("Issues", style="magenta")
 
-    file_scores = []
-    stats = []
-    
-    for filepath in py_files:
-        # Use the imported modular function
-        s_score, notes = score_file(filepath, profile)
-        file_scores.append(s_score)
-        
-        if report_file:
-            loc = analyzer.get_loc(filepath)
-            complexity = analyzer.get_complexity_score(filepath)
-            stats.append({
-                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-                "loc": loc,
-                "complexity": complexity,
-                "type_coverage": analyzer.check_type_hints(filepath),
-                "acl": analyzer.get_acl_score(loc, complexity)
-            })
-
-        status_color = "green" if s_score >= 70 else "red"
-        rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        table.add_row(rel_path, f"[{status_color}]{s_score}[/{status_color}]", notes)
+    for res in results["file_results"]:
+        status_color = "green" if res["score"] >= 70 else "red"
+        table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
 
     console.print(table)
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
@@ -131,39 +112,8 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> No
 def advise(path, output_file, agent):
     """Generates a Markdown report with actionable advice."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-    
-    # Simple re-implementation for advice using the report module
-    # Assuming report module handles the logic internally
-    # For now, we stub this to ensure it calls the imported report generator
-    
-    # Re-gather stats for the report generator
-    # Note: In a full refactor, 'stats' generation should likely be its own function 
-    # in analyzer.py, but we will leave this inline logic for safety unless
-    # analyzer.get_project_stats() exists.
-    
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-
-    stats = []
-    for filepath in py_files:
-        loc = analyzer.get_loc(filepath)
-        complexity = analyzer.get_complexity_score(filepath)
-        stats.append({
-            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-            "loc": loc,
-            "complexity": complexity,
-            "type_coverage": analyzer.check_type_hints(filepath),
-            "acl": analyzer.get_acl_score(loc, complexity)
-        })
-
-    final_score = 0 # Placeholder if we don't recalculate
-    markdown_report = report.generate_markdown_report(stats, final_score, path, PROFILES['generic'])
+    results = analyzer.perform_analysis(path, agent)
+    report_content = report.generate_markdown_report(results)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
