@@ -1,72 +1,64 @@
 import os
-import click
-from .constants import PROFILES
-from .checks import scan_project_docs
-from .scoring import score_file
+import ast
+import mccabe
 
-class DefaultGroup(click.Group):
-    """Click group that defaults to 'score' if no subcommand is provided."""
-    def __init__(self, *args, **kwargs):
-        self.default_command = 'score'
-        super().__init__(*args, **kwargs)
+def get_loc(filepath):
+    """Returns lines of code excluding whitespace/comments roughly."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return sum(1 for line in f if line.strip() and not line.strip().startswith("#"))
+    except UnicodeDecodeError:
+        return 0
 
-    def resolve_command(self, ctx, args):
-        try:
-            return super().resolve_command(ctx, args)
-        except click.UsageError:
-            if args and not args[0].startswith('-'):
-                args.insert(0, self.default_command)
-            elif not args:
-                args.insert(0, self.default_command)
-            return super().resolve_command(ctx, args)
+def get_complexity_score(filepath):
+    """Returns average cyclomatic complexity."""
+    try:
+        code = open(filepath, "r", encoding="utf-8").read()
+        tree = ast.parse(code, filepath)
+    except (SyntaxError, UnicodeDecodeError):
+        return 0
 
-def perform_analysis(path, agent_name):
-    """Core analysis logic that returns data for presentation."""
-    if agent_name not in PROFILES:
-        agent_name = "generic"
-    profile = PROFILES[agent_name]
+    visitor = mccabe.PathGraphingAstVisitor()
+    visitor.preorder(tree, visitor)
 
-    # 1. Project Level Check
-    project_score = 100
-    missing_docs = []
-    if os.path.isdir(path):
-        missing_docs = scan_project_docs(path, profile["required_files"])
-        penalty = len(missing_docs) * 15
-        project_score = max(0, 100 - penalty)
+    complexities = [graph.complexity() for graph in visitor.graphs.values()]
+    if not complexities:
+        return 0
 
-    # 2. Gather Files
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
+    return sum(complexities) / len(complexities)
 
-    # 3. File Level Check
-    file_results = []
-    for filepath in py_files:
-        score, issues, loc, complexity, type_cov = score_file(filepath, profile)
-        rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        file_results.append({
-            "file": rel_path,
-            "score": score,
-            "issues": issues,
-            "loc": loc,
-            "complexity": complexity,
-            "type_coverage": type_cov
-        })
+def check_type_hints(filepath):
+    """Returns type hint coverage percentage."""
+    try:
+        code = open(filepath, "r", encoding="utf-8").read()
+        tree = ast.parse(code)
+    except (SyntaxError, UnicodeDecodeError):
+        return 0
 
-    # 4. Aggregation
-    avg_file_score = sum(f["score"] for f in file_results) / len(file_results) if file_results else 0
-    final_score = (avg_file_score * 0.8) + (project_score * 0.2)
+    functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if not functions:
+        return 100
 
-    return {
-        "agent": agent_name,
-        "profile": profile,
-        "final_score": final_score,
-        "project_score": project_score,
-        "missing_docs": missing_docs,
-        "file_results": file_results
-    }
+    typed_functions = 0
+    for func in functions:
+        has_return = func.returns is not None
+        has_args = any(arg.annotation is not None for arg in func.args.args)
+        if has_return or has_args:
+            typed_functions += 1
+
+    return (typed_functions / len(functions)) * 100
+
+def get_acl_score(loc, complexity):
+    """Calculates Agent Cognitive Load (ACL)."""
+    return complexity + (loc / 20)
+
+def scan_project_docs(root_path, required_files):
+    """Checks for existence of agent-critical markdown files."""
+    missing = []
+    # Normalize checking logic to look in the root of the provided path
+    root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
+
+    for req in required_files:
+        if req.lower() not in root_files:
+            missing.append(req)
+    return missing
