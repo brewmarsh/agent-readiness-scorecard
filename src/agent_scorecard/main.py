@@ -1,5 +1,6 @@
 import sys
 import click
+from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -14,11 +15,24 @@ from .scoring import generate_badge
 
 console = Console()
 
+# --- MERGED VERSION SETUP ---
+try:
+    __version__ = version("agent-scorecard")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
+# --- MERGED CLI DEFINITION ---
+# We use analyzer.DefaultGroup from the 'fix' branch to enable correct default behavior
+# We use version_option from the 'main' branch for standard --version support
 @click.group(cls=analyzer.DefaultGroup)
+@click.version_option(version=__version__)
 def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
     pass
 
+# Note: The inline definitions of 'perform_analysis' and 'generate_markdown_report' 
+# that appeared in the conflict were removed because the functions below 
+# now use the imported versions (analyzer.perform_analysis, report.generate_markdown_report).
 
 def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
     """Helper to run the scoring logic."""

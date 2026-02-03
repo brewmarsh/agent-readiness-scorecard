@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools_scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-scorecard"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A tool to analyze codebases for AI-Agent Friendliness"
 readme = "README.md"
 authors = [{ name = "Jules", email = "jules@example.com" }]
@@ -22,3 +22,6 @@ agent-score = "agent_scorecard.main:cli"
 dev = [
     "pytest",
 ]
+
+[tool.setuptools_scm]
+write_to = "src/agent_scorecard/_version.py"
