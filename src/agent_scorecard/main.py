@@ -10,7 +10,7 @@ from . import analyzer, report
 
 # Use the Modular Refactor (Beta Branch)
 from .constants import PROFILES
-from .checks import scan_project_docs
+from .analyzer import scan_project_docs
 from .fix import apply_fixes
 from .scoring import score_file, generate_badge
 
@@ -98,11 +98,14 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         file_scores.append(s_score)
         
         if report_file:
+            func_stats = analyzer.get_function_stats(filepath)
+            acl_violations = [f for f in func_stats if f['acl'] > 15]
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": analyzer.get_loc(filepath),
                 "complexity": analyzer.get_complexity_score(filepath),
-                "type_coverage": analyzer.check_type_hints(filepath)
+                "type_coverage": analyzer.check_type_hints(filepath),
+                "acl_violations": acl_violations
             })
 
         status_color = "green" if s_score >= 70 else "red"
@@ -112,14 +115,13 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     console.print(table)
 
     # 4. Project Level Checks
-    # Use the imported modular function
-    missing_docs = scan_project_docs(path, profile["required_files"])
-    if missing_docs:
-        console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)}")
-        project_penalty = len(missing_docs) * 15
-        project_score = max(0, 100 - project_penalty)
-    else:
-        project_score = 100
+    project_penalty, project_issues = analyzer.get_project_issues(path, py_files, profile)
+
+    for issue in project_issues:
+        color = "red" if "God Modules" in issue else "yellow"
+        console.print(f"\n[bold {color}]⚠ {issue}[/bold {color}]")
+
+    project_score = max(0, 100 - project_penalty)
 
     # 5. Final Calculation
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
@@ -139,7 +141,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     # 7. Generate Report
     if report_file:
-        markdown_content = report.generate_markdown_report(stats, final_score, path, profile)
+        markdown_content = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
         with open(report_file, "w", encoding="utf-8") as f:
             f.write(markdown_content)
         console.print(f"\n[bold green]Report saved to {report_file}[/bold green]")
@@ -156,17 +158,9 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 def advise(path, output_file):
     """Generates a Markdown report with actionable advice."""
     
-    # We can reuse the logic here or delegate to report module
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # Simple re-implementation for advice using the report module
-    # Assuming report module handles the logic internally
-    # For now, we stub this to ensure it calls the imported report generator
-    
-    # Re-gather stats for the report generator
-    # Note: In a full refactor, 'stats' generation should likely be its own function 
-    # in analyzer.py, but we will leave this inline logic for safety unless
-    # analyzer.get_project_stats() exists.
+    profile = PROFILES['generic'] # Default for advise
     
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
@@ -179,15 +173,21 @@ def advise(path, output_file):
 
     stats = []
     for filepath in py_files:
+        func_stats = analyzer.get_function_stats(filepath)
+        acl_violations = [f for f in func_stats if f['acl'] > 15]
         stats.append({
             "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
             "loc": analyzer.get_loc(filepath),
             "complexity": analyzer.get_complexity_score(filepath),
-            "type_coverage": analyzer.check_type_hints(filepath)
+            "type_coverage": analyzer.check_type_hints(filepath),
+            "acl_violations": acl_violations
         })
 
-    final_score = 0 # Placeholder if we don't recalculate
-    markdown_report = report.generate_markdown_report(stats, final_score, path, PROFILES['generic'])
+    # Recalculate project issues
+    _, project_issues = analyzer.get_project_issues(path, py_files, profile)
+
+    final_score = 0 # Placeholder as advise doesn't necessarily output a score
+    markdown_report = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:

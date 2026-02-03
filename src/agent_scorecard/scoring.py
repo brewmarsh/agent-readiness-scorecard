@@ -1,5 +1,5 @@
 from typing import Dict, Any, Tuple
-from .checks import get_loc, get_complexity_score, check_type_hints
+from . import analyzer
 
 def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
     """Calculates score based on the selected profile."""
@@ -7,7 +7,7 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
     details = []
 
     # 1. Lines of Code
-    loc = get_loc(filepath)
+    loc = analyzer.get_loc(filepath)
     limit = profile["max_loc"]
     if loc > limit:
         # -1 point per 10 lines over limit
@@ -17,16 +17,29 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
         details.append(f"LOC {loc} > {limit} (-{loc_penalty})")
 
     # 2. Complexity
-    avg_comp, comp_penalty = get_complexity_score(filepath, profile["max_complexity"])
+    avg_comp = analyzer.get_complexity_score(filepath)
+    comp_penalty = 10 if avg_comp > profile["max_complexity"] else 0
     score -= comp_penalty
     if comp_penalty:
         details.append(f"Complexity {avg_comp:.1f} > {profile['max_complexity']} (-{comp_penalty})")
 
     # 3. Type Hints
-    type_cov, type_penalty = check_type_hints(filepath, profile["min_type_coverage"])
+    type_cov = analyzer.check_type_hints(filepath)
+    type_penalty = 20 if type_cov < profile["min_type_coverage"] else 0
     score -= type_penalty
     if type_penalty:
         details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
+
+    # 4. Agent Cognitive Load (ACL)
+    func_stats = analyzer.get_function_stats(filepath)
+    acl_penalty = 0
+    for func in func_stats:
+        if func['acl'] > 15:
+            penalty = 5
+            acl_penalty += penalty
+            details.append(f"ACL({func['name']}) {func['acl']:.1f} > 15 (-{penalty})")
+
+    score -= acl_penalty
 
     return max(score, 0), ", ".join(details)
 
