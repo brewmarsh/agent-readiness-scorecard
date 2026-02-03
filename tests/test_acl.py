@@ -5,7 +5,7 @@ from src.agent_scorecard.analyzer import calculate_acl, get_loc, get_complexity_
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
-def test_calculate_acl_logic():
+def test_acl_calculation_logic():
     """Tests the ACL calculation formula."""
     # Formula: ACL = CC + (LOC / 20)
 
@@ -30,9 +30,13 @@ def test_calculate_acl_logic():
 def test_scoring_with_acl_penalty(tmp_path: Path):
     """Tests that a function with high ACL receives a penalty."""
 
+    # RESOLUTION: We use the Advisor-Mode setup (Large Function) because 
+    # the new logic ignores global scope for ACL calculations.
     content = textwrap.dedent("""
-    def very_long_function():
+    def big_function():
+        x = 0
     """)
+    # Add 320 lines of assignment inside the function
     for i in range(320):
         content += f"    x = {i}\n"
 
@@ -42,5 +46,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path):
     # Score the file
     score, details = score_file(str(py_file), PROFILES["generic"])
 
-    assert "ACL" in details
+    # RESOLUTION: Verify the specific output format from scoring.py
+    # "ACL(big_function) ... (-5)"
+    assert "ACL(big_function)" in details
     assert "(-5)" in details

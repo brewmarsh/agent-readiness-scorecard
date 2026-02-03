@@ -1,3 +1,4 @@
+#agent_scorecard/main.py
 import os
 import sys
 import click
@@ -5,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Import common modules
+# Import common modules (Added auditor)
 from . import analyzer, report, auditor
 
 # Use the Modular Refactor (Beta Branch)
@@ -82,7 +83,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    # 3. Environment Health & Auditor Checks
+    # 3. Environment Health & Auditor Checks (From Auditor Branch)
     health_table = Table(title="Environment Health")
     health_table.add_column("Check", style="cyan")
     health_table.add_column("Status", justify="right")
@@ -101,7 +102,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     token_color = "red" if tokens["alert"] else "green"
     health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
 
-    # Dependency Analysis (Bonus from Beta)
+    # Dependency Analysis (Visual check for Health Table)
     import_graph = analyzer.get_import_graph(path)
     cycles = analyzer.detect_cycles(import_graph)
     if cycles:
@@ -110,8 +111,9 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
+    console.print("") # Spacing
 
-    # 4. Analyze & Score Files
+    # 4. Analyze & Score Files (Beta Logic)
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -119,19 +121,19 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     file_scores = []
     stats = []
-
+    
     for filepath in py_files:
         # Use the imported modular function for basic scoring
         s_score, notes = score_file(filepath, profile)
         file_scores.append(s_score)
-
+        
         # Gather detailed stats for the report
         if report_file:
             # RESOLUTION: Use Beta logic (Function-level stats)
             func_stats = analyzer.get_function_stats(filepath)
             # Identify functions that are too complex (ACL > 15)
             acl_violations = [f for f in func_stats if f['acl'] > 15]
-
+            
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": analyzer.get_loc(filepath),
@@ -146,7 +148,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     console.print(table)
 
-    # 4. Project Level Checks
+    # 5. Project Level Checks (Scoring/Penalty Calculation)
     project_penalty, project_issues = analyzer.get_project_issues(path, py_files, profile)
 
     for issue in project_issues:
@@ -155,13 +157,13 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     project_score = max(0, 100 - project_penalty)
 
-    # 5. Final Calculation
+    # 6. Final Calculation
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
-    # 6. Generate Badge
+    # 7. Generate Badge
     if badge:
         output_path = "agent_score.svg"
         svg_content = generate_badge(final_score)
@@ -170,7 +172,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
-    # 7. Generate Report
+    # 8. Generate Report
     if report_file:
         markdown_content = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
         with open(report_file, "w", encoding="utf-8") as f:
@@ -188,9 +190,9 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
 def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
-
+    
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-
+    
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]

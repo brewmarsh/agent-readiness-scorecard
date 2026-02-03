@@ -1,314 +1,164 @@
+#agent_scorecard/analyzer.py
+import pytest
+import textwrap
 import os
-import ast
-import mccabe
-from collections import Counter
+from pathlib import Path
 
-def get_loc(filepath):
-    """Returns lines of code excluding whitespace/comments roughly."""
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return sum(1 for line in f if line.strip() and not line.strip().startswith("#"))
-    except UnicodeDecodeError:
-        return 0
+# Imports from both branches
+from src.agent_scorecard import analyzer, report
+from src.agent_scorecard.constants import PROFILES
+from src.agent_scorecard.analyzer import (
+    calculate_acl, 
+    get_directory_entropy, 
+    get_import_graph, 
+    get_inbound_imports, 
+    detect_cycles
+)
+from src.agent_scorecard.report import generate_advisor_report
 
-def get_complexity_score(filepath):
-    """Returns average cyclomatic complexity."""
-    try:
-        code = open(filepath, "r", encoding="utf-8").read()
-        tree = ast.parse(code, filepath)
-    except (SyntaxError, UnicodeDecodeError):
-        return 0
+# ==========================================
+# BETA BRANCH TESTS (Unit Tests)
+# ==========================================
 
-    visitor = mccabe.PathGraphingAstVisitor()
-    visitor.preorder(tree, visitor)
+def test_calculate_acl():
+    """Unit test for the ACL math."""
+    # ACL = CC + (LOC / 20)
+    assert calculate_acl(10, 100) == 10 + (100 / 20) # 15.0
+    assert calculate_acl(0, 0) == 0
 
-    complexities = [graph.complexity() for graph in visitor.graphs.values()]
-    if not complexities:
-        return 0
+def test_get_directory_entropy(tmp_path):
+    """Unit test for directory entropy threshold."""
+    # Create 25 files in tmp_path
+    for i in range(25):
+        (tmp_path / f"file_{i}.txt").touch()
 
-    return sum(complexities) / len(complexities)
+    # Create subfolder with 5 files
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+    for i in range(5):
+        (subdir / f"sub_{i}.txt").touch()
 
-def check_type_hints(filepath):
-    """Returns type hint coverage percentage."""
-    try:
-        code = open(filepath, "r", encoding="utf-8").read()
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError):
-        return 0
+    # Use Beta threshold
+    entropy = get_directory_entropy(str(tmp_path), threshold=20)
+    base_name = tmp_path.name
 
-    functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
-    if not functions:
-        return 100
+    assert base_name in entropy
+    assert entropy[base_name] == 25 # only files in root
+    assert "subdir" not in entropy
 
-    typed_functions = 0
-    for func in functions:
-        has_return = func.returns is not None
-        has_args = any(arg.annotation is not None for arg in func.args.args)
-        if has_return or has_args:
-            typed_functions += 1
+def test_dependency_analysis(tmp_path):
+    """Unit test for graph building."""
+    (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
+    (tmp_path / "utils.py").write_text("import shared", encoding="utf-8")
+    (tmp_path / "shared.py").write_text("# no imports", encoding="utf-8")
 
-    return (typed_functions / len(functions)) * 100
+    graph = get_import_graph(str(tmp_path))
 
-def scan_project_docs(root_path, required_files):
-    """Checks for existence of agent-critical markdown files."""
-    missing = []
-    # Normalize checking logic to look in the root of the provided path
-    root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
+    assert "main.py" in graph
+    assert "utils.py" in graph["main.py"]
+    assert "utils.py" in graph
+    assert "shared.py" in graph["utils.py"]
 
-    for req in required_files:
-        if req.lower() not in root_files:
-            missing.append(req)
-    return missing
-
-# --- METRICS & GRAPH ANALYSIS (Resolved from Beta) ---
-
-def calculate_acl(complexity, loc):
-    """Calculates Agent Cognitive Load (ACL).
-    Formula: ACL = CC + (LLOC / 20)
-    """
-    return complexity + (loc / 20.0)
-
-def get_directory_entropy(root_path, threshold=50):
-    """Returns directories with file count > threshold."""
-    entropy_stats = {}
-    if os.path.isfile(root_path):
-        return entropy_stats
-
-    for root, dirs, files in os.walk(root_path):
-        # Ignore hidden directories like .git
-        if any(part.startswith(".") for part in root.split(os.sep)):
-            continue
-
-        count = len(files)
-        if count > threshold:
-            rel_path = os.path.relpath(root, start=root_path)
-            if rel_path == ".":
-                rel_path = os.path.basename(os.path.abspath(root_path))
-            entropy_stats[rel_path] = count
-    return entropy_stats
-
-def get_import_graph(root_path):
-    """
-    Builds a dependency graph of the project.
-    Returns: { file_path: { set of imported_file_paths } }
-    """
-    all_py_files = []
-    if os.path.isfile(root_path):
-        if root_path.endswith(".py"):
-             all_py_files.append(os.path.basename(root_path))
-             root_path = os.path.dirname(root_path) # Adjust root for single file
-    else:
-        for root, _, files in os.walk(root_path):
-            if any(part.startswith(".") for part in root.split(os.sep)):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, start=root_path)
-                    all_py_files.append(rel_path)
-
-    graph = {f: set() for f in all_py_files}
-
-    for rel_path in all_py_files:
-        full_path = os.path.join(root_path, rel_path)
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code, filename=full_path)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-            continue
-
-        imported_names = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imported_names.add(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imported_names.add(node.module)
-                # We could handle relative imports here, but let's stick to simple module matching first
-
-        # Try to match imported names to files
-        for name in imported_names:
-            # name e.g. "agent_scorecard.analyzer"
-            # We look for files that "end with" this module path structure
-
-            # Convert module dots to path separators
-            suffix = name.replace(".", os.sep)
-
-            for candidate in all_py_files:
-                if candidate == rel_path: continue
-
-                # Check if candidate ends with suffix + ".py"
-                # But we need to be careful. "analyzer" shouldn't match "some_analyzer.py" unless it's an exact component match.
-                # e.g. "os.path.join" -> "analyzer.py" matches "agent_scorecard/analyzer.py"
-
-                # Let's strip extension
-                candidate_no_ext = os.path.splitext(candidate)[0]
-                # candidate_no_ext: src/agent_scorecard/analyzer
-
-                # if candidate_no_ext ends with suffix, it's a potential match
-                # e.g. "src/agent_scorecard/analyzer".endswith("agent_scorecard/analyzer") -> True
-
-                # Check boundary: previous char must be sep or nothing
-                if candidate_no_ext.endswith(suffix):
-                    match_len = len(suffix)
-                    if len(candidate_no_ext) == match_len or candidate_no_ext[-(match_len+1)] == os.sep:
-                        graph[rel_path].add(candidate)
-
-    return graph
-
-def get_inbound_imports(graph):
-    """Returns {file: count} of inbound imports."""
-    inbound = {node: 0 for node in graph}
-    for source, targets in graph.items():
-        for target in targets:
-            if target in inbound:
-                inbound[target] += 1
-            else:
-                # Might be a target not in our scanned list
-                inbound[target] = 1
-    return inbound
-
-def detect_cycles(graph):
-    """Returns list of cycles (list of nodes in cycle)."""
-    cycles = []
-    visited_global = set()
-    path_set = set()
-
-    # Sort nodes to make cycle detection deterministic
-    nodes = sorted(graph.keys())
-
-    def visit(node, current_path):
-        visited_global.add(node)
-        path_set.add(node)
-        current_path.append(node)
-
-        # Sort neighbors for determinism
-        neighbors = sorted(list(graph.get(node, [])))
-
-        for neighbor in neighbors:
-            if neighbor in path_set:
-                # Cycle found
-                try:
-                    idx = current_path.index(neighbor)
-                    cycle = current_path[idx:]
-                    if cycle not in cycles:
-                         cycles.append(cycle[:])
-                except ValueError:
-                    pass
-            elif neighbor not in visited_global:
-                visit(neighbor, current_path)
-
-        path_set.remove(node)
-        current_path.pop()
-
-    for node in nodes:
-        if node not in visited_global:
-            visit(node, [])
-
-    unique_cycles = []
-    seen_cycle_sets = set()
-
-    for cycle in cycles:
-        if len(cycle) < 2: continue
-
-        # Canonical representation
-        min_node = min(cycle)
-        min_idx = cycle.index(min_node)
-        canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
-
-        if canonical not in seen_cycle_sets:
-            seen_cycle_sets.add(canonical)
-            unique_cycles.append(list(canonical))
-
-    return unique_cycles
-
-def get_function_stats(filepath):
-    """
-    Returns a list of statistics for each function in the file.
-    Each item is a dict: {name, lineno, complexity, loc, acl}
-    ACL = CC + (LOC / 20)
-    """
-    try:
-        code = open(filepath, "r", encoding="utf-8").read()
-        tree = ast.parse(code, filepath)
-    except (SyntaxError, UnicodeDecodeError):
-        return []
-
-    # Get complexities from mccabe
-    visitor = mccabe.PathGraphingAstVisitor()
-    visitor.preorder(tree, visitor)
-
-    # Map (lineno) -> complexity
-    complexity_map = {}
-    for graph in visitor.graphs.values():
-        complexity_map[graph.lineno] = graph.complexity()
-
-    stats = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            start_line = node.lineno
-            end_line = getattr(node, 'end_lineno', start_line) # Python 3.8+
-            loc = end_line - start_line + 1
-
-            complexity = complexity_map.get(start_line, 1) # Default to 1 if not found
-            acl = calculate_acl(complexity, loc)
-
-            stats.append({
-                "name": node.name,
-                "lineno": start_line,
-                "complexity": complexity,
-                "loc": loc,
-                "acl": acl
-            })
-    return stats
-
-def get_project_issues(path, py_files, profile):
-    """
-    Checks for project-level issues: Missing Docs, God Modules, Directory Entropy.
-    Returns (penalty_score, issues_list).
-    """
-    penalty = 0
-    issues = []
-
-    # 1. Missing Docs
-    missing_docs = scan_project_docs(path, profile.get("required_files", []))
-    if missing_docs:
-        msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
-        penalty += len(missing_docs) * 15
-        issues.append(msg)
-
-    # 2. God Modules (using beta's graph analysis)
-    # py_files arg is ignored in favor of get_import_graph(path)
-    # But wait, get_import_graph takes root_path.
-    graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
+    assert inbound.get("utils.py") == 1
+    assert inbound.get("shared.py") == 1
+    assert inbound.get("main.py") == 0
 
-    god_modules = [mod for mod, count in inbound.items() if count > 50]
-    if god_modules:
-        msg = f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}"
-        penalty += len(god_modules) * 10
-        issues.append(msg)
+def test_cycle_detection(tmp_path):
+    """Unit test for cycle detection logic."""
+    (tmp_path / "a.py").write_text("import b", encoding="utf-8")
+    (tmp_path / "b.py").write_text("import a", encoding="utf-8")
 
-    # 3. Directory Entropy
-    # Use beta's get_directory_entropy
-    entropy_stats = get_directory_entropy(path, threshold=50)
-    crowded_dirs = list(entropy_stats.keys())
-
-    if crowded_dirs:
-        msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
-        penalty += len(crowded_dirs) * 5
-        issues.append(msg)
-
-    # 4. Circular Dependencies (Bonus from beta)
+    graph = get_import_graph(str(tmp_path))
     cycles = detect_cycles(graph)
-    if cycles:
-        cycle_strs = ["->".join(c) for c in cycles]
-        msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
-        # Maybe add penalty? Spec said "Circular Dependencies: Cause infinite recursion".
-        # Let's add a penalty.
-        penalty += len(cycles) * 5
-        issues.append(msg)
 
-    return penalty, issues
+    assert len(cycles) > 0
+    flat_cycle = [item for sublist in cycles for item in sublist]
+    assert "a.py" in flat_cycle
+    assert "b.py" in flat_cycle
+
+def test_generate_advisor_report_standalone():
+    """Unit test for the qualitative report generator."""
+    stats = [
+        {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
+        {"file": "normal.py", "acl": 5.0, "complexity": 2, "loc": 60}
+    ]
+    dependency_stats = {"god.py": 55, "util.py": 5}
+    entropy_stats = {"large_dir": 30}
+    cycles = [["a.py", "b.py"]]
+
+    report_md = generate_advisor_report(stats, dependency_stats, entropy_stats, cycles)
+
+    assert "# 🧠 Agent Advisor Report" in report_md
+    assert "high_acl.py" in report_md
+    assert "Hallucination Zones" in report_md
+    assert "god.py" in report_md
+    assert "Circular Dependencies" in report_md
+
+# ==========================================
+# ADVISOR MODE TESTS (Integration Tests)
+# ==========================================
+
+def test_acl_file_integration(tmp_path):
+    """Integration test: parsing a file to get ACL stats."""
+    code = textwrap.dedent("""
+        def complex_function():
+            if True:
+                print("yes")
+            else:
+                print("no")
+            # padding lines to ensure LOC > 20
+            return 0
+    """)
+    code += "\n" * 20
+
+    p = tmp_path / "test_acl.py"
+    p.write_text(code, encoding="utf-8")
+
+    stats = analyzer.get_function_stats(str(p))
+    assert len(stats) == 1
+    func = stats[0]
+    assert func["name"] == "complex_function"
+    assert func["complexity"] >= 2
+    assert func["loc"] >= 20
+    assert func["acl"] > 2
+
+def test_circular_dependency_integration(tmp_path):
+    """Integration test: detecting cycles via analyze_project."""
+    (tmp_path / "a.py").write_text("import b", encoding="utf-8")
+    (tmp_path / "b.py").write_text("import c", encoding="utf-8")
+    (tmp_path / "c.py").write_text("import a", encoding="utf-8")
+
+    # Use the monolithic analyzer function
+    stats = analyzer.analyze_project(str(tmp_path))
+    deps = stats["dependencies"]
+    cycles = deps["cycles"]
+
+    assert len(cycles) > 0
+
+    found = False
+    for cycle in cycles:
+        if set(cycle) == {"a.py", "b.py", "c.py"}:
+            found = True
+            break
+    assert found
+
+def test_advisor_full_flow(tmp_path):
+    """Integration test: Full flow from file creation to report."""
+    # Setup a project that triggers advisor warnings
+    code = "def hallucinate():\n"
+    for _ in range(10):
+        code += "    if True: pass\n"
+    for i in range(120):
+        code += f"    x={i}\n"
+
+    (tmp_path / "hallucination.py").write_text(code, encoding="utf-8")
+
+    stats = analyzer.analyze_project(str(tmp_path))
+    
+    # We test the score-based report generation here
+    report_md = report.generate_markdown_report(stats, 50, str(tmp_path), PROFILES["generic"])
+
+    assert "Agent Scorecard Report" in report_md
+    # Check if our new sections appear
+    assert "hallucinate" in report_md

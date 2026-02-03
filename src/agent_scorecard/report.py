@@ -1,3 +1,4 @@
+# agent_scorecard/report.py
 import os
 from . import analyzer
 
@@ -68,16 +69,16 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
              for violation in file_stats['acl_violations']:
                  prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
                  prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
-
+        
         prompts += "\n"
 
     # --- 4. Agent Cognitive Load ---
     acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
-    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list,
-    # but 'generate_markdown_report' might rely on file-level summaries too.
+    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list, 
+    # but 'generate_markdown_report' might rely on file-level summaries too. 
     # Ensure this logic aligns with your stats structure.
     high_acl_files = [s for s in stats if s.get('acl_violations')]
-
+    
     if high_acl_files:
         acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
         acl_section += "| File Path        | ACL Score |\n"
@@ -157,6 +158,15 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     # --- 3. Context Economics ---
     report += "## 3. Context Economics\n"
     report += "Optimizing the retrieval and context window budget.\n\n"
+
+    # MERGE: Preserved Token Budget logic from Beta branch
+    high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
+    if high_token_files:
+        report += "### 🪙 Token Budget (> 32k tokens)\n"
+        report += "⚠ **Files exceeding token budget:**\n\n"
+        for f in high_token_files:
+             report += f"- `{f['file']}`: {f['tokens']} tokens\n"
+        report += "\n"
 
     if entropy_stats:
         # RESOLUTION: Accepted Beta branch logic (Threshold 50)
