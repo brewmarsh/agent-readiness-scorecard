@@ -62,6 +62,55 @@ class MyClass:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+def test_get_python_signatures_with_decorators():
+    code = """
+@deco1
+@deco2(x=1)
+def decorated_func(a, b):
+    pass
+
+class DecoratedClass:
+    @property
+    def my_prop(self):
+        return 1
+"""
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
+        tmp.write(code)
+        tmp_path = tmp.name
+
+    try:
+        sigs = auditor.get_python_signatures(tmp_path)
+        # It should contain the decorators and the function line
+        assert "@deco1" in sigs
+        assert "@deco2(x=1)" in sigs
+        assert "def decorated_func(a, b):" in sigs
+        assert "class DecoratedClass:" in sigs
+        assert "@property" in sigs
+        assert "def my_prop(self):" in sigs
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+def test_get_python_signatures_multiline():
+    code = """
+def multiline_func(
+    a: int,
+    b: str
+) -> bool:
+    return True
+"""
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
+        tmp.write(code)
+        tmp_path = tmp.name
+
+    try:
+        sigs = auditor.get_python_signatures(tmp_path)
+        # ast.unparse usually compacts it, but we want to make sure it's there
+        assert "def multiline_func(a: int, b: str) -> bool:" in sigs
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
 def test_check_critical_context_tokens():
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
@@ -73,6 +122,29 @@ def test_check_critical_context_tokens():
         result = auditor.check_critical_context_tokens(tmpdir)
         assert result["token_count"] > 0
         assert result["alert"] is False
+
+def test_check_critical_context_tokens_single_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        readme_path = os.path.join(tmpdir, "README.md")
+        with open(readme_path, "w") as f:
+            f.write("Global context")
+
+        py_path = os.path.join(tmpdir, "test.py")
+        with open(py_path, "w") as f:
+            f.write("def foo(): pass")
+
+        # Run on the file, it should still find README.md in the parent
+        result = auditor.check_critical_context_tokens(py_path)
+        assert result["token_count"] > 0
+        # It should have tokens from both README and the py signature
+        # We can't be 100% sure of the count without hardcoding, but it should be > tokens in just the signature
+
+        # Test just signature tokens
+        import tiktoken
+        enc = tiktoken.get_encoding("cl100k_base")
+        sig_tokens = len(enc.encode("def foo():"))
+
+        assert result["token_count"] > sig_tokens
 
 def test_check_environment_health():
     with tempfile.TemporaryDirectory() as tmpdir:
