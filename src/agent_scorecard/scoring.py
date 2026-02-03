@@ -1,6 +1,5 @@
 from typing import Dict, Any, Tuple
-from .checks import get_loc, get_complexity_score, check_type_hints
-from .analyzer import get_acl_score
+from .checks import get_loc, analyze_complexity, analyze_type_hints
 
 def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float]:
     """Calculates score based on the selected profile."""
@@ -33,13 +32,7 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
         score -= type_penalty
         details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
 
-    # 4. Agent Cognitive Load (ACL)
-    acl = get_acl_score(loc, avg_comp)
-    if acl > 15:
-        score -= 10
-        details.append(f"Hallucination Risk (ACL {acl:.1f} > 15) (-10)")
-
-    return max(score, 0), ", ".join(details)
+    return max(score, 0), ", ".join(details), loc, avg_comp, type_cov
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge for the agent score."""
