@@ -152,7 +152,7 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     report += "Optimizing the retrieval and context window budget.\n\n"
 
     if entropy_stats:
-        report += "### 📂 Directory Entropy (Files > 20)\n"
+        report += "### 📂 Directory Entropy (Files > 50)\n"
         report += "Large directories confuse retrieval tools.\n\n"
         report += "| Directory | File Count |\n"
         report += "|---|---|\n"

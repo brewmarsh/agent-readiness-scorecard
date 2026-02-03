@@ -29,20 +29,15 @@ def perform_analysis(path, agent_name):
     profile = PROFILES[agent_name]
 
     # 1. Project Level Check
-    project_score = 100
-    missing_docs = []
-    if os.path.isdir(path):
-        missing_docs = scan_project_docs(path, profile["required_files"])
-        penalty = len(missing_docs) * 15
-        project_score = max(0, 100 - penalty)
+    missing_docs = scan_project_docs(path, profile.get("required_files", []))
 
-    # 2. Gather Files
+    # NEW: Get other project issues from beta features
+    # Gather all python files for graph analysis
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
-            # Skip hidden directories like .git, but allow the current directory '.'
             parts = root.split(os.sep)
             if any(p.startswith(".") and p != "." for p in parts):
                 continue
@@ -50,7 +45,10 @@ def perform_analysis(path, agent_name):
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    # 3. File Level Check
+    penalty, project_issues = get_project_issues(path, py_files, profile)
+    project_score = max(0, 100 - penalty)
+
+    # 2. File Level Check
     file_results = []
     for filepath in py_files:
         score, issues, loc, complexity, type_cov, func_metrics = score_file(filepath, profile)
@@ -65,7 +63,7 @@ def perform_analysis(path, agent_name):
             "function_metrics": func_metrics
         })
 
-    # 4. Aggregation
+    # 3. Aggregation
     avg_file_score = sum(f["score"] for f in file_results) / len(file_results) if file_results else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
@@ -75,8 +73,11 @@ def perform_analysis(path, agent_name):
         "final_score": final_score,
         "project_score": project_score,
         "missing_docs": missing_docs,
+        "project_issues": project_issues,
         "file_results": file_results
     }
+
+# --- METRICS & GRAPH ANALYSIS (Resolved from Beta) ---
 
 def calculate_acl(complexity, loc):
     """Calculates Agent Cognitive Load (ACL).
@@ -84,7 +85,7 @@ def calculate_acl(complexity, loc):
     """
     return complexity + (loc / 20.0)
 
-def get_directory_entropy(root_path, threshold=20):
+def get_directory_entropy(root_path, threshold=50):
     """Returns directories with file count > threshold."""
     entropy_stats = {}
     if os.path.isfile(root_path):
@@ -224,3 +225,87 @@ def detect_cycles(graph):
             unique_cycles.append(list(canonical))
 
     return unique_cycles
+
+def get_function_stats(filepath):
+    """
+    Returns a list of statistics for each function in the file.
+    Each item is a dict: {name, lineno, complexity, loc, acl}
+    ACL = CC + (LOC / 20)
+    """
+    try:
+        code = open(filepath, "r", encoding="utf-8").read()
+        tree = ast.parse(code, filepath)
+    except (SyntaxError, UnicodeDecodeError):
+        return []
+
+    # Get complexities from mccabe
+    visitor = mccabe.PathGraphingAstVisitor()
+    visitor.preorder(tree, visitor)
+
+    # Map (lineno) -> complexity
+    complexity_map = {}
+    for graph in visitor.graphs.values():
+        complexity_map[graph.lineno] = graph.complexity()
+
+    stats = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            start_line = node.lineno
+            end_line = getattr(node, 'end_lineno', start_line) # Python 3.8+
+            loc = end_line - start_line + 1
+
+            complexity = complexity_map.get(start_line, 1) # Default to 1 if not found
+            acl = calculate_acl(complexity, loc)
+
+            stats.append({
+                "name": node.name,
+                "lineno": start_line,
+                "complexity": complexity,
+                "loc": loc,
+                "acl": acl
+            })
+    return stats
+
+def get_project_issues(path, py_files, profile):
+    """
+    Checks for project-level issues: Missing Docs, God Modules, Directory Entropy.
+    Returns (penalty_score, issues_list).
+    """
+    penalty = 0
+    issues = []
+
+    # 1. Missing Docs
+    missing_docs = scan_project_docs(path, profile.get("required_files", []))
+    if missing_docs:
+        msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
+        penalty += len(missing_docs) * 15
+        issues.append(msg)
+
+    # 2. God Modules (using beta's graph analysis)
+    graph = get_import_graph(path)
+    inbound = get_inbound_imports(graph)
+
+    god_modules = [mod for mod, count in inbound.items() if count > 50]
+    if god_modules:
+        msg = f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}"
+        penalty += len(god_modules) * 10
+        issues.append(msg)
+
+    # 3. Directory Entropy
+    entropy_stats = get_directory_entropy(path, threshold=50)
+    crowded_dirs = list(entropy_stats.keys())
+
+    if crowded_dirs:
+        msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
+        penalty += len(crowded_dirs) * 5
+        issues.append(msg)
+
+    # 4. Circular Dependencies (Bonus from beta)
+    cycles = detect_cycles(graph)
+    if cycles:
+        cycle_strs = ["->".join(c) for c in cycles]
+        msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
+        penalty += len(cycles) * 5
+        issues.append(msg)
+
+    return penalty, issues

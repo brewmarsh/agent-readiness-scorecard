@@ -48,6 +48,11 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         penalty = len(results["missing_docs"]) * 15
         console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
 
+    if results.get("project_issues"):
+        for issue in results["project_issues"]:
+            if "Missing Critical Agent Docs" not in issue:
+                console.print(f"[bold yellow]⚠ {issue}[/bold yellow]")
+
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -113,13 +118,14 @@ def advise(path, output_file):
 
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
 
-    # We re-implement the advisor logic here using analyzer's new tools
+    # Use Advisor logic
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
-            if any(part.startswith(".") for part in root.split(os.sep)):
+            parts = root.split(os.sep)
+            if any(p.startswith(".") and p != "." for p in parts):
                 continue
             for file in files:
                 if file.endswith(".py"):
@@ -128,8 +134,6 @@ def advise(path, output_file):
     stats = []
     with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
         for filepath in py_files:
-            # We can use the information from score_file for basic metrics
-            # But advisor needs ACL specifically
             from .checks import get_loc, analyze_complexity
             loc = get_loc(filepath)
             complexity = analyze_complexity(filepath)
