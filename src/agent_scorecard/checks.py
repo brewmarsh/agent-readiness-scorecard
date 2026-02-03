@@ -36,7 +36,7 @@ def analyze_type_hints(filepath: str) -> float:
     except (SyntaxError, UnicodeDecodeError):
         return 0.0
 
-    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+    functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
     if not functions:
         return 100.0
 
