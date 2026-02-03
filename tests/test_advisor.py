@@ -141,17 +141,11 @@ def test_generate_advisor_report():
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
-    code = textwrap.dedent("""
-        def complex_function():
-            if True:
-                print("yes")
-            else:
-                print("no")
-            # padding
-            return 0
-    """)
-    # Pad to ensure LOC > 20
-    code += "\n" * 20
+    code = "def complex_function():\n"
+    code += "    if True: pass\n"
+    for i in range(25):
+        code += f"    x = {i}\n"
+    code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")

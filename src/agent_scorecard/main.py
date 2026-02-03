@@ -68,12 +68,17 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
 
     entropy = auditor.check_directory_entropy(path)
     entropy_status = f"{entropy['avg_files']:.1f} files/dir"
-    entropy_color = "yellow" if entropy["warning"] else "green"
-    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+    if entropy["warning"]:
+        health_table.add_row("Directory Entropy", f"[yellow]WARN ({entropy_status})[/yellow]")
+    else:
+        health_table.add_row("Directory Entropy", f"[green]PASS ({entropy_status})[/green]")
 
     tokens = auditor.check_critical_context_tokens(path)
-    token_color = "red" if tokens["alert"] else "green"
-    health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
+    token_status = f"{tokens['token_count']:,} tokens"
+    if tokens["alert"]:
+        health_table.add_row("Critical Token Count", f"[red]ALERT ({token_status})[/red]")
+    else:
+        health_table.add_row("Critical Token Count", f"[green]PASS ({token_status})[/green]")
 
     # Dependency Analysis Cycle Check
     if results.get("dep_analysis", {}).get("cycles"):
