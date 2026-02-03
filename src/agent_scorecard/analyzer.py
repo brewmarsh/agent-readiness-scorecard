@@ -5,6 +5,7 @@ from collections import Counter
 from typing import List, Dict, Any, Tuple
 from .constants import PROFILES
 from .scoring import score_file
+from . import auditor
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -76,25 +77,6 @@ def count_tokens(filepath: str) -> int:
             return len(content) // 4
     except UnicodeDecodeError:
         return 0
-
-def get_directory_entropy(root_path, threshold=50):
-    """Returns directories with file count > threshold."""
-    entropy_stats = {}
-    if os.path.isfile(root_path):
-        return entropy_stats
-
-    for root, dirs, files in os.walk(root_path):
-        parts = root.split(os.sep)
-        if any(p.startswith(".") and p != "." for p in parts):
-            continue
-        
-        count = len(files)
-        if count > threshold:
-            rel_path = os.path.relpath(root, start=root_path)
-            if rel_path == ".":
-                rel_path = os.path.basename(os.path.abspath(root_path))
-            entropy_stats[rel_path] = count
-    return entropy_stats
 
 def get_import_graph(root_path):
     """Builds a dependency graph of the project."""
@@ -249,7 +231,8 @@ def get_project_issues(path, py_files, profile):
         penalty += len(god_modules) * 10
         issues.append(msg)
 
-    entropy_stats = get_directory_entropy(path, threshold=50)
+    # 3. Directory Entropy
+    entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
         msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
@@ -322,10 +305,19 @@ def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict
         "god_modules": god_modules
     }
 
+    directory_stats = []
+    entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
+    for p, count in entropy.items():
+        directory_stats.append({
+            "path": p,
+            "file_count": count
+        })
+
     return {
         "file_results": file_results,
         "final_score": final_score,
         "missing_docs": scan_project_docs(path, profile.get("required_files", [])),
         "project_issues": project_issues,
-        "dep_analysis": dep_analysis
+        "dep_analysis": dep_analysis,
+        "directory_stats": directory_stats
     }

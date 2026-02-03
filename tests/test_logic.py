@@ -128,7 +128,9 @@ def test_score_command_with_report(tmp_path: Path):
     assert result.exit_code == 0
     assert report_path.exists()
 
-    report_content = report_path.read_text()
+    report_content = report_path.read_text(encoding="utf-8")
+
+    
     assert "# Agent Scorecard Report" in report_content
     assert "Overall Score" in report_content
     # Check for the combined sections from our resolved report.py

@@ -1,28 +1,64 @@
 import os
 import ast
 import tiktoken
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
-    """Calculate the average number of files per folder. Warn if > 15."""
+    """Calculate directory entropy. Warn if avg files > 15 OR max files > 50."""
     if not os.path.isdir(path):
-        return {"avg_files": 0, "warning": False}
+        return {
+            "avg_files": 0,
+            "warning": False,
+            "max_files": 0,
+            "crowded_dirs": []
+        }
 
     total_files = 0
     total_folders = 0
+    max_files = 0
+    crowded_dirs = []
 
     for root, dirs, files in os.walk(path):
         # Filter out hidden directories and __pycache__
         dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
 
         total_folders += 1
-        total_files += len(files)
+        num_files = len(files)
+        total_files += num_files
+
+        if num_files > max_files:
+            max_files = num_files
+
+        if num_files > 50:
+            crowded_dirs.append(root)
 
     avg = total_files / total_folders if total_folders > 0 else 0
+
     return {
         "avg_files": avg,
-        "warning": avg > 15
+        "warning": avg > 15 or max_files > 50,
+        "max_files": max_files,
+        "crowded_dirs": crowded_dirs
     }
+
+def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
+    """Returns directories with file count > threshold."""
+    entropy_stats = {}
+    if os.path.isfile(root_path):
+        return entropy_stats
+
+    for root, dirs, files in os.walk(root_path):
+        # Ignore hidden directories like .git
+        if any(part.startswith(".") for part in root.split(os.sep)):
+            continue
+
+        count = len(files)
+        if count > threshold:
+            rel_path = os.path.relpath(root, start=root_path)
+            if rel_path == ".":
+                rel_path = os.path.basename(os.path.abspath(root_path))
+            entropy_stats[rel_path] = count
+    return entropy_stats
 
 def get_python_signatures(filepath: str) -> str:
     """Extracts function/method signatures from a python file."""

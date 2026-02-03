@@ -21,7 +21,7 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
         summary += "\n"
 
     # --- 2. Top Refactoring Targets (ACL) ---
-    targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load)\n\n"
+    targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
     targets += "ACL = Complexity + (Lines of Code / 20). Target: ACL <= 10.\n\n"
 
     all_functions = []

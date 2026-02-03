@@ -6,11 +6,11 @@ from src.agent_scorecard import analyzer, report
 from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.analyzer import (
     calculate_acl, 
-    get_directory_entropy, 
     get_import_graph, 
     get_inbound_imports, 
-    detect_cycles
+    detect_cycles,
 )
+from src.agent_scorecard.auditor import get_crowded_directories
 from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
@@ -32,7 +32,7 @@ def test_get_directory_entropy(tmp_path):
         (subdir / f"sub_{i}.txt").touch()
 
     # Use Beta threshold (matches resolved code)
-    entropy = get_directory_entropy(str(tmp_path), threshold=20)
+    entropy = get_crowded_directories(str(tmp_path), threshold=20)
     base_name = tmp_path.name
 
     assert base_name in entropy
@@ -97,10 +97,16 @@ def test_generate_advisor_report_standalone():
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
-    code = "def complex_function():\n"
-    code += "    if True: pass\n"
-    for i in range(25):
-        code += f"    x = {i}\n"
+    code = textwrap.dedent("""
+        def complex_function():
+            if True:
+                print("yes")
+            else:
+                print("no")
+    """)
+    # Pad to ensure LOC > 20
+    for _ in range(20):
+        code += "    # padding\n"
     code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
@@ -148,4 +154,4 @@ def test_unified_score_report_content(tmp_path):
     assert "Agent Scorecard Report" in report_md
     assert "hallucination.py" in report_md
     # Check if ACL section appeared
-    assert "Agent Cognitive Load" in report_md
+    assert "Agent Cognitive Load (ACL)" in report_md

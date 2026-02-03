@@ -1,9 +1,6 @@
 import os
 import pytest
 from pathlib import Path
-
-# RESOLUTION: Point to 'analyzer' instead of the deleted 'checks' module
-# and rename functions to match the resolved analyzer.py
 from src.agent_scorecard.analyzer import (
     get_loc,
     get_complexity_score,  # Renamed from analyze_complexity
@@ -52,15 +49,31 @@ def test_analyze_complexity(sample_file: Path) -> None:
     avg = get_complexity_score(str(sample_file))
     assert avg == 2.5
 
-def test_analyze_type_hints(sample_file: Path, typed_file: Path) -> None:
+    # Penalty Logic Simulation (threshold=10)
+    penalty = 10 if avg > 10 else 0
+    assert penalty == 0
+
+    # Penalty Logic Simulation (threshold=2)
+    penalty = 10 if avg > 2 else 0
+    assert penalty == 10
+
+def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
     # RESOLUTION: Use new function name
     cov = check_type_hints(str(sample_file))
     assert cov == 0
 
+    # Penalty Logic Simulation (threshold=50)
+    penalty = 20 if cov < 50 else 0
+    assert penalty == 20
+
     # typed_file: 1/1 typed -> 100%
     cov = check_type_hints(str(typed_file))
     assert cov == 100
+
+    # Penalty Logic Simulation (threshold=50)
+    penalty = 20 if cov < 50 else 0
+    assert penalty == 0
 
 def test_scan_project_docs(tmp_path: Path) -> None:
     required = ["agents.md", "instructions.md"]
