@@ -92,6 +92,20 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> No
     run_scoring(path, agent, fix, badge, report_path)
 
 
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use.")
+def fix(path, agent):
+    """Automatically fix common issues."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("[bold green]Fixes applied![/bold green]")
+
+
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")

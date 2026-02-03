@@ -47,7 +47,7 @@ def perform_analysis(path, agent_name):
     # 3. File Level Check
     file_results = []
     for filepath in py_files:
-        score, issues, loc, complexity, type_cov = score_file(filepath, profile)
+        score, issues, loc, complexity, type_cov, func_metrics = score_file(filepath, profile)
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
         file_results.append({
             "file": rel_path,
@@ -55,7 +55,8 @@ def perform_analysis(path, agent_name):
             "issues": issues,
             "loc": loc,
             "complexity": complexity,
-            "type_coverage": type_cov
+            "type_coverage": type_cov,
+            "function_metrics": func_metrics
         })
 
     # 4. Aggregation

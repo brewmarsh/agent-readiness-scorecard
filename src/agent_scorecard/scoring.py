@@ -1,38 +1,46 @@
-from typing import Dict, Any, Tuple
-from .checks import get_loc, analyze_complexity, analyze_type_hints
+from typing import Dict, Any, Tuple, List
+from .checks import get_loc, analyze_functions
 
-def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float]:
-    """Calculates score based on the selected profile."""
+def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+    """Calculates score based on the selected profile and new Agent Readiness spec."""
+    metrics = analyze_functions(filepath)
+    loc = get_loc(filepath)
+
+    if not metrics:
+        # If no functions, return default 100 score but still report LOC
+        return 100, "", loc, 0.0, 100.0, []
+
     score = 100
     details = []
 
-    # 1. Lines of Code
-    loc = get_loc(filepath)
-    limit = profile["max_loc"]
-    if loc > limit:
-        # -1 point per 10 lines over limit
-        excess = loc - limit
-        loc_penalty = (excess // 10)
-        score -= loc_penalty
-        details.append(f"LOC {loc} > {limit} (-{loc_penalty})")
+    # 1. ACL Scoring (Agent Cognitive Load)
+    # Thresholds: Green <= 10, Yellow 11-20, Red > 20
+    red_count = sum(1 for m in metrics if m["acl"] > 20)
+    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 20)
 
-    # 2. Complexity
-    avg_comp = analyze_complexity(filepath)
-    comp_penalty = 0
-    if avg_comp > profile["max_complexity"]:
-        comp_penalty = 10  # Fixed penalty for complexity
-        score -= comp_penalty
-        details.append(f"Complexity {avg_comp:.1f} > {profile['max_complexity']} (-{comp_penalty})")
+    if red_count > 0:
+        penalty = red_count * 15
+        score -= penalty
+        details.append(f"{red_count} Red ACL functions (-{penalty})")
 
-    # 3. Type Hints
-    type_cov = analyze_type_hints(filepath)
-    type_penalty = 0
-    if type_cov < profile["min_type_coverage"]:
-        type_penalty = 20 # Fixed penalty for types
-        score -= type_penalty
-        details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
+    if yellow_count > 0:
+        penalty = yellow_count * 5
+        score -= penalty
+        details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
-    return max(score, 0), ", ".join(details), loc, avg_comp, type_cov
+    # 2. Type Safety Index
+    # Target > 90% for a "Pass"
+    typed_count = sum(1 for m in metrics if m["is_typed"])
+    type_safety_index = (typed_count / len(metrics)) * 100
+
+    if type_safety_index < 90:
+        penalty = 20
+        score -= penalty
+        details.append(f"Type Safety Index {type_safety_index:.0f}% < 90% (-{penalty})")
+
+    avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
+
+    return max(score, 0), ", ".join(details), loc, avg_complexity, type_safety_index, metrics
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge for the agent score."""

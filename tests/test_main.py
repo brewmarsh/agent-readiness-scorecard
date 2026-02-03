@@ -1,14 +1,14 @@
 import os
 import pytest
 from pathlib import Path
-from agent_scorecard.analyzer import (
+from src.agent_scorecard.checks import (
     get_loc,
     analyze_complexity,
     analyze_type_hints,
     scan_project_docs,
 )
-from agent_scorecard.scoring import generate_badge
-from agent_scorecard.constants import PROFILES
+from src.agent_scorecard.scoring import generate_badge
+from src.agent_scorecard.constants import PROFILES
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:
@@ -38,19 +38,7 @@ def add(a: int, b: int) -> int:
     return p
 
 def test_get_loc(sample_file: Path) -> None:
-    # 2 defs, 1 print, 1 if, 1 if, 1 if, 1 return, 1 return = 8 lines?
-    # get_loc excludes whitespace/comments.
-    # The file has 9 lines of code (including defs and body).
-    # Let's count manually:
-    # 1. def hello():
-    # 2.     print("Hello")
-    # 3. def complex_func(n):
-    # 4.     if n > 1:
-    # 5.         if n > 2:
-    # 6.             if n > 3:
-    # 7.                 return 3
-    # 8.     return 1
-    # Total 8 lines.
+    # Manual count: 8 lines
     assert get_loc(str(sample_file)) == 8
 
 def test_analyze_complexity(sample_file: Path) -> None:

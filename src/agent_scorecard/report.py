@@ -1,8 +1,7 @@
 import os
-from . import analyzer
 
 def generate_markdown_report(results):
-    """Generates a Markdown report from the analysis results."""
+    """Generates a Markdown report from the analysis results based on the new Agent Readiness spec."""
     final_score = results["final_score"]
     file_results = results["file_results"]
     profile = results["profile"]
@@ -25,63 +24,72 @@ def generate_markdown_report(results):
             summary += f"- `{doc}` (-15 pts)\n"
         summary += "\n"
 
-    # --- 2. Refactoring Targets ---
-    targets = "## 🎯 Top Refactoring Targets\n\n"
+    # --- 2. Top Refactoring Targets (ACL) ---
+    targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load)\n\n"
+    targets += "ACL = Complexity + (Lines of Code / 20). Target: ACL <= 10.\n\n"
 
-    # Sort files by offender categories
-    top_complexity = sorted(file_results, key=lambda x: x['complexity'], reverse=True)[:3]
-    top_loc = sorted(file_results, key=lambda x: x['loc'], reverse=True)[:3]
-    top_types = sorted(file_results, key=lambda x: x['type_coverage'])[:3]
+    all_functions = []
+    for f_res in file_results:
+        for m in f_res.get("function_metrics", []):
+            all_functions.append({**m, "file": f_res["file"]})
 
-    targets += "| Category         | File Path        | Value      |\n"
-    targets += "|------------------|------------------|------------|\n"
+    # Sort by ACL descending
+    top_acl = sorted(all_functions, key=lambda x: x['acl'], reverse=True)[:10]
 
-    for s in top_complexity:
-        if s['complexity'] > profile['max_complexity']:
-            targets += f"| Complexity       | {s['file']}      | {s['complexity']:.1f}      |\n"
-    for s in top_loc:
-        if s['loc'] > profile['max_loc']:
-            targets += f"| Lines of Code    | {s['file']}      | {s['loc']}        |\n"
-    for s in top_types:
-        if s['type_coverage'] < profile['min_type_coverage']:
-            targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
-    targets += "\n"
+    if top_acl:
+        targets += "| Function | File | ACL | Status |\n"
+        targets += "|----------|------|-----|--------|\n"
+        for fn in top_acl:
+            if fn['acl'] > 10:
+                status = "🔴 Red" if fn['acl'] > 20 else "🟡 Yellow"
+                targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
+        targets += "\n"
+    else:
+        targets += "✅ No functions with high cognitive load found.\n\n"
 
-    # --- 3. Agent Prompts ---
-    prompts = "## 🤖 Agent Prompts\n\n"
-    unique_files = {s['file'] for s in top_complexity + top_loc + top_types}
+    # --- 3. Type Safety Index ---
+    types_section = "## 🛡️ Type Safety Index\n\n"
+    types_section += "Target: >90% of functions must have explicit type signatures.\n\n"
 
-    for file_path in sorted(unique_files):
-        file_stats = next(s for s in file_results if s['file'] == file_path)
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
+    for res in file_results:
+        status = "✅" if res["type_coverage"] >= 90 else "❌"
+        types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
+    types_section += "\n"
+
+    # --- 4. Agent Prompts ---
+    prompts = "## 🤖 Agent Prompts for Remediation\n\n"
+
+    problematic_files = [f for f in file_results if f["score"] < 90]
+
+    for f_res in problematic_files:
+        file_path = f_res["file"]
         file_issues = []
 
-        if file_stats['complexity'] > profile['max_complexity']:
-             file_issues.append(f"- **Complexity**: Score is {file_stats['complexity']:.1f}. Prompt: 'Refactor `{file_path}` to reduce cyclomatic complexity below {profile['max_complexity']}. Focus on splitting large functions.'")
+        red_functions = [m for m in f_res["function_metrics"] if m["acl"] > 20]
+        yellow_functions = [m for m in f_res["function_metrics"] if 10 < m["acl"] <= 20]
 
-        if file_stats['loc'] > profile['max_loc']:
-             file_issues.append(f"- **Length**: LOC is {file_stats['loc']}. Prompt: 'Reduce the lines of code in `{file_path}` below {profile['max_loc']}. Consider moving helper functions to other modules.'")
+        if red_functions:
+            fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
+            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below 10. Split complex logic and reduce function length.'")
 
-        if file_stats['type_coverage'] < profile['min_type_coverage']:
-             file_issues.append(f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'")
+        if f_res["type_coverage"] < 90:
+             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the 90% Type Safety Index requirement.'")
 
         if file_issues:
             prompts += f"### File: `{file_path}`\n"
             prompts += "\n".join(file_issues) + "\n\n"
 
-    # --- 4. Documentation Health ---
-    docs = "## 📚 Documentation Health\n\n"
-    if not results["missing_docs"]:
-        docs += "✅ All required documentation files found.\n"
-    else:
-        docs += "❌ Missing: " + ", ".join([f"`{d}`" for d in results["missing_docs"]]) + ". Recommended Action: Create these files to provide context for AI agents.\n"
+    if not problematic_files:
+        prompts += "✅ Codebase is optimized for AI Agents. No immediate prompts needed.\n\n"
 
     # --- 5. File Analysis Table ---
-    table = "### 📂 File Analysis\n\n"
+    table = "### 📂 Full File Analysis\n\n"
     table += "| File | Score | Issues |\n"
     table += "| :--- | :---: | :--- |\n"
     for res in file_results:
         status = "✅" if res["score"] >= 70 else "❌"
         table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
 
-    return summary + targets + prompts + docs + "\n" + table + "\n---
-*Generated by Agent-Scorecard*"
+    return summary + targets + types_section + prompts + "\n" + table + "\n---\n*Generated by Agent-Scorecard*"
