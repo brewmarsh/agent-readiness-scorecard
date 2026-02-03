@@ -103,11 +103,11 @@ def test_function_stats_parsing(tmp_path):
                 print("yes")
             else:
                 print("no")
-            # padding
-            return 0
     """)
     # Pad to ensure LOC > 20
-    code += "\n" * 20
+    for _ in range(20):
+        code += "    # padding\n"
+    code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")

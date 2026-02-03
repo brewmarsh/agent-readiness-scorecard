@@ -1,26 +1,45 @@
 import os
 import ast
 import tiktoken
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
-    """Calculate the average number of files per folder. Warn if > 15."""
+    """Calculate directory entropy. Warn if avg files > 15 OR max files > 50."""
     if not os.path.isdir(path):
-        return {"avg_files": 0, "warning": False}
+        return {
+            "avg_files": 0,
+            "warning": False,
+            "max_files": 0,
+            "crowded_dirs": []
+        }
 
     total_files = 0
     total_folders = 0
+    max_files = 0
+    crowded_dirs = []
 
     for root, dirs, files in os.walk(path):
+        # Skip hidden/system directories
         if ".git" in root or "__pycache__" in root:
             continue
+
         total_folders += 1
-        total_files += len(files)
+        num_files = len(files)
+        total_files += num_files
+
+        if num_files > max_files:
+            max_files = num_files
+
+        if num_files > 50:
+            crowded_dirs.append(root)
 
     avg = total_files / total_folders if total_folders > 0 else 0
+
     return {
         "avg_files": avg,
-        "warning": avg > 15
+        "warning": avg > 15 or max_files > 50,
+        "max_files": max_files,
+        "crowded_dirs": crowded_dirs
     }
 
 def get_python_signatures(filepath: str) -> str:
