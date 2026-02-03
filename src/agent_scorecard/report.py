@@ -1,12 +1,18 @@
 import os
 from . import analyzer
 
-def generate_markdown_report(stats, final_score, path, profile):
+def generate_markdown_report(stats, final_score, path, profile, project_issues=None):
     """Generates a Markdown report from the collected statistics."""
 
     # --- 1. Executive Summary ---
     summary = f"# Agent Scorecard Report\n\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+
+    if project_issues:
+        summary += "### ⚠ Project Issues\n"
+        for issue in project_issues:
+            summary += f"- {issue}\n"
+        summary += "\n"
 
     # --- 2. Refactoring Targets ---
     targets = "## 🎯 Top Refactoring Targets\n\n"
@@ -15,6 +21,11 @@ def generate_markdown_report(stats, final_score, path, profile):
     top_complexity = sorted(stats, key=lambda x: x['complexity'], reverse=True)[:3]
     top_loc = sorted(stats, key=lambda x: x['loc'], reverse=True)[:3]
     top_types = sorted(stats, key=lambda x: x['type_coverage'])[:3]
+
+    # Find top ACL offenders (files with highest max ACL in violations)
+    acl_offenders = [s for s in stats if s.get('acl_violations')]
+    acl_offenders.sort(key=lambda x: max((f['acl'] for f in x['acl_violations']), default=0), reverse=True)
+    top_acl = acl_offenders[:3]
 
     targets += "| Category         | File Path        | Value      |\n"
     targets += "|------------------|------------------|------------|\n"
@@ -28,10 +39,14 @@ def generate_markdown_report(stats, final_score, path, profile):
     if top_types:
         for s in top_types:
             targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
+    if top_acl:
+        for s in top_acl:
+            max_acl = max(f['acl'] for f in s['acl_violations'])
+            targets += f"| High ACL         | {s['file']}      | {max_acl:.1f}      |\n"
 
     # --- 3. Agent Prompts ---
     prompts = "\n## 🤖 Agent Prompts\n\n"
-    unique_files = {s['file'] for s in top_complexity + top_loc + top_types}
+    unique_files = {s['file'] for s in top_complexity + top_loc + top_types + top_acl}
 
     for file_path in unique_files:
         prompts += f"### File: `{file_path}`\n"
@@ -48,17 +63,29 @@ def generate_markdown_report(stats, final_score, path, profile):
         if file_stats['type_coverage'] < profile['min_type_coverage']:
              prompts += f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. "
              prompts += f"Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'\n"
+
+        if file_stats.get('acl_violations'):
+             for violation in file_stats['acl_violations']:
+                 prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
+                 prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
+        
         prompts += "\n"
 
     # --- 4. Agent Cognitive Load ---
     acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
-    high_acl_files = [s for s in stats if s.get('acl', 0) > 15]
+    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list, 
+    # but 'generate_markdown_report' might rely on file-level summaries too. 
+    # Ensure this logic aligns with your stats structure.
+    high_acl_files = [s for s in stats if s.get('acl_violations')]
+    
     if high_acl_files:
         acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
         acl_section += "| File Path        | ACL Score |\n"
         acl_section += "|------------------|-----------|\n"
         for s in high_acl_files:
-             acl_section += f"| {s['file']} | {s['acl']:.1f} |\n"
+             # Calculate max ACL for the file from its violations
+             max_acl = max((f['acl'] for f in s['acl_violations']), default=0)
+             acl_section += f"| {s['file']} | {max_acl:.1f} |\n"
     else:
         acl_section += "✅ No Hallucination Zones detected (ACL < 15).\n"
 
@@ -132,7 +159,8 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     report += "Optimizing the retrieval and context window budget.\n\n"
 
     if entropy_stats:
-        report += "### 📂 Directory Entropy (Files > 20)\n"
+        # RESOLUTION: Accepted Beta branch logic (Threshold 50)
+        report += "### 📂 Directory Entropy (Files > 50)\n"
         report += "Large directories confuse retrieval tools.\n\n"
         report += "| Directory | File Count |\n"
         report += "|---|---|\n"

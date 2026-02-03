@@ -1,6 +1,7 @@
 import os
 import ast
 import mccabe
+from collections import Counter
 
 def get_loc(filepath):
     """Returns lines of code excluding whitespace/comments roughly."""
@@ -59,20 +60,15 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
-def get_acl_score(loc, complexity):
+# --- METRICS & GRAPH ANALYSIS (Resolved from Beta) ---
+
+def calculate_acl(complexity, loc):
     """Calculates Agent Cognitive Load (ACL).
     Formula: ACL = CC + (LLOC / 20)
     """
     return complexity + (loc / 20.0)
 
-def calculate_acl(complexity, loc):
-    """Calculates Agent Cognitive Load (ACL).
-    Formula: ACL = CC + (LLOC / 20)
-    DEPRECATED: Use get_acl_score instead for consistency with other metrics.
-    """
-    return get_acl_score(loc, complexity)
-
-def get_directory_entropy(root_path, threshold=20):
+def get_directory_entropy(root_path, threshold=50):
     """Returns directories with file count > threshold."""
     entropy_stats = {}
     if os.path.isfile(root_path):
@@ -82,7 +78,7 @@ def get_directory_entropy(root_path, threshold=20):
         # Ignore hidden directories like .git
         if any(part.startswith(".") for part in root.split(os.sep)):
             continue
-
+        
         count = len(files)
         if count > threshold:
             rel_path = os.path.relpath(root, start=root_path)
@@ -131,35 +127,35 @@ def get_import_graph(root_path):
                 if node.module:
                     imported_names.add(node.module)
                 # We could handle relative imports here, but let's stick to simple module matching first
-
+        
         # Try to match imported names to files
         for name in imported_names:
             # name e.g. "agent_scorecard.analyzer"
             # We look for files that "end with" this module path structure
-
+            
             # Convert module dots to path separators
             suffix = name.replace(".", os.sep)
-
+            
             for candidate in all_py_files:
                 if candidate == rel_path: continue
-
+                
                 # Check if candidate ends with suffix + ".py"
                 # But we need to be careful. "analyzer" shouldn't match "some_analyzer.py" unless it's an exact component match.
                 # e.g. "os.path.join" -> "analyzer.py" matches "agent_scorecard/analyzer.py"
-
+                
                 # Let's strip extension
                 candidate_no_ext = os.path.splitext(candidate)[0]
                 # candidate_no_ext: src/agent_scorecard/analyzer
-
+                
                 # if candidate_no_ext ends with suffix, it's a potential match
                 # e.g. "src/agent_scorecard/analyzer".endswith("agent_scorecard/analyzer") -> True
-
+                
                 # Check boundary: previous char must be sep or nothing
                 if candidate_no_ext.endswith(suffix):
                     match_len = len(suffix)
                     if len(candidate_no_ext) == match_len or candidate_no_ext[-(match_len+1)] == os.sep:
                         graph[rel_path].add(candidate)
-
+                        
     return graph
 
 def get_inbound_imports(graph):
@@ -179,7 +175,7 @@ def detect_cycles(graph):
     cycles = []
     visited_global = set()
     path_set = set()
-
+    
     # Sort nodes to make cycle detection deterministic
     nodes = sorted(graph.keys())
 
@@ -216,14 +212,103 @@ def detect_cycles(graph):
 
     for cycle in cycles:
         if len(cycle) < 2: continue
-
+        
         # Canonical representation
         min_node = min(cycle)
         min_idx = cycle.index(min_node)
         canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
-
+        
         if canonical not in seen_cycle_sets:
             seen_cycle_sets.add(canonical)
             unique_cycles.append(list(canonical))
 
     return unique_cycles
+
+def get_function_stats(filepath):
+    """
+    Returns a list of statistics for each function in the file.
+    Each item is a dict: {name, lineno, complexity, loc, acl}
+    ACL = CC + (LOC / 20)
+    """
+    try:
+        code = open(filepath, "r", encoding="utf-8").read()
+        tree = ast.parse(code, filepath)
+    except (SyntaxError, UnicodeDecodeError):
+        return []
+    
+    # Get complexities from mccabe
+    visitor = mccabe.PathGraphingAstVisitor()
+    visitor.preorder(tree, visitor)
+    
+    # Map (lineno) -> complexity
+    complexity_map = {}
+    for graph in visitor.graphs.values():
+        complexity_map[graph.lineno] = graph.complexity()
+
+    stats = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            start_line = node.lineno
+            end_line = getattr(node, 'end_lineno', start_line) # Python 3.8+
+            loc = end_line - start_line + 1
+            
+            complexity = complexity_map.get(start_line, 1) # Default to 1 if not found
+            acl = calculate_acl(complexity, loc)
+
+            stats.append({
+                "name": node.name,
+                "lineno": start_line,
+                "complexity": complexity,
+                "loc": loc,
+                "acl": acl
+            })
+    return stats
+
+def get_project_issues(path, py_files, profile):
+    """
+    Checks for project-level issues: Missing Docs, God Modules, Directory Entropy.
+    Returns (penalty_score, issues_list).
+    """
+    penalty = 0
+    issues = []
+
+    # 1. Missing Docs
+    missing_docs = scan_project_docs(path, profile.get("required_files", []))
+    if missing_docs:
+        msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
+        penalty += len(missing_docs) * 15
+        issues.append(msg)
+    
+    # 2. God Modules (using beta's graph analysis)
+    # py_files arg is ignored in favor of get_import_graph(path)
+    # But wait, get_import_graph takes root_path.
+    graph = get_import_graph(path)
+    inbound = get_inbound_imports(graph)
+    
+    god_modules = [mod for mod, count in inbound.items() if count > 50]
+    if god_modules:
+        msg = f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}"
+        penalty += len(god_modules) * 10
+        issues.append(msg)
+
+    # 3. Directory Entropy
+    # Use beta's get_directory_entropy
+    entropy_stats = get_directory_entropy(path, threshold=50)
+    crowded_dirs = list(entropy_stats.keys())
+    
+    if crowded_dirs:
+        msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
+        penalty += len(crowded_dirs) * 5
+        issues.append(msg)
+
+    # 4. Circular Dependencies (Bonus from beta)
+    cycles = detect_cycles(graph)
+    if cycles:
+        cycle_strs = ["->".join(c) for c in cycles]
+        msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
+        # Maybe add penalty? Spec said "Circular Dependencies: Cause infinite recursion".
+        # Let's add a penalty.
+        penalty += len(cycles) * 5
+        issues.append(msg)
+        
+    return penalty, issues
