@@ -1,27 +1,23 @@
 import os
+from . import analyzer
 
-def generate_markdown_report(results):
-    """Generates a Markdown report from the analysis results based on the new Agent Readiness spec."""
-    final_score = results["final_score"]
-    file_results = results["file_results"]
-    profile = results["profile"]
-    agent_name = results["agent"]
-
+def generate_markdown_report(stats, final_score, path, profile, project_issues=None):
+    """Generates a Markdown report from the collected statistics."""
+    
     # --- 1. Executive Summary ---
     summary = f"# Agent Scorecard Report\n\n"
-    summary += f"**Target Agent Profile:** {agent_name.upper()}\n"
-    summary += f"**Description:** {profile['description']}\n\n"
-    summary += f"## Final Score: {final_score:.1f}/100\n\n"
+    summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
         summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
 
-    if results["missing_docs"]:
-        summary += "### ⚠️ Missing Critical Documentation\n"
-        for doc in results["missing_docs"]:
-            summary += f"- `{doc}` (-15 pts)\n"
+    if project_issues:
+        summary += "### ⚠️ Project Issues\n"
+        for issue in project_issues:
+            summary += f"- {issue}\n"
         summary += "\n"
 
     # --- 2. Top Refactoring Targets (ACL) ---
@@ -29,8 +25,15 @@ def generate_markdown_report(results):
     targets += "ACL = Complexity + (Lines of Code / 20). Target: ACL <= 10.\n\n"
 
     all_functions = []
-    for f_res in file_results:
-        for m in f_res.get("function_metrics", []):
+    # stats is the list of file_results dictionaries
+    for f_res in stats:
+        # Check if function_metrics exists (from Upgrade logic) or we need to derive it
+        metrics = f_res.get("function_metrics", [])
+        if not metrics and 'acl_violations' in f_res:
+             # Fallback if full metrics aren't passed, use violations
+             metrics = f_res['acl_violations']
+        
+        for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
     # Sort by ACL descending
@@ -53,7 +56,11 @@ def generate_markdown_report(results):
 
     types_section += "| File | Type Safety Index | Status |\n"
     types_section += "| :--- | :---------------: | :----- |\n"
-    for res in file_results:
+    
+    # Sort by lowest coverage first
+    sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
+    
+    for res in sorted_types:
         status = "✅" if res["type_coverage"] >= 90 else "❌"
         types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
     types_section += "\n"
@@ -61,14 +68,15 @@ def generate_markdown_report(results):
     # --- 4. Agent Prompts ---
     prompts = "## 🤖 Agent Prompts for Remediation\n\n"
 
-    problematic_files = [f for f in file_results if f["score"] < 90]
+    problematic_files = [f for f in stats if f["score"] < 90]
 
     for f_res in problematic_files:
         file_path = f_res["file"]
         file_issues = []
 
-        red_functions = [m for m in f_res["function_metrics"] if m["acl"] > 20]
-        yellow_functions = [m for m in f_res["function_metrics"] if 10 < m["acl"] <= 20]
+        # Function metrics might be inside the dict
+        metrics = f_res.get("function_metrics", [])
+        red_functions = [m for m in metrics if m["acl"] > 20]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
@@ -88,7 +96,7 @@ def generate_markdown_report(results):
     table = "### 📂 Full File Analysis\n\n"
     table += "| File | Score | Issues |\n"
     table += "| :--- | :---: | :--- |\n"
-    for res in file_results:
+    for res in stats:
         status = "✅" if res["score"] >= 70 else "❌"
         table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
 
@@ -163,3 +171,56 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
         report += "✅ Directory entropy is low.\n"
 
     return report
+
+def generate_recommendations_report(results):
+    """Generates a RECOMMENDATIONS.md content based on analysis results."""
+    recommendations = []
+
+    # 1. High ACL (> 20)
+    # Check if 'file_results' key exists, else assume results IS the list
+    file_list = results.get("file_results", []) if isinstance(results, dict) else results
+
+    for res in file_list:
+        if res["complexity"] > 20:
+            recommendations.append({
+                "Finding": f"High Complexity in {res['file']}",
+                "Agent Impact": "Context window overflow.",
+                "Recommendation": "Refactor into pure functions."
+            })
+
+    # 2. Missing AGENTS.md
+    if isinstance(results, dict) and results.get("missing_docs"):
+        if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
+            recommendations.append({
+                "Finding": "Missing AGENTS.md",
+                "Agent Impact": "Agent guesses commands.",
+                "Recommendation": "Create AGENTS.md with build steps."
+            })
+
+    # 3. Circular Dependency
+    for res in file_list:
+        if "circular" in str(res.get("issues", "")).lower():
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Use Dependency Injection."
+            })
+
+    # 4. Type Coverage < 90%
+    for res in file_list:
+        if res["type_coverage"] < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add PEP 484 hints."
+            })
+
+    if not recommendations:
+        return "# Recommendations\n\n✅ No recommendations at this time. Your codebase looks Agent-Ready!"
+
+    table = "| Finding | Agent Impact | Recommendation |\n"
+    table += "| :--- | :--- | :--- |\n"
+    for rec in recommendations:
+        table += f"| {rec['Finding']} | {rec['Agent Impact']} | {rec['Recommendation']} |\n"
+
+    return "# Recommendations\n\n" + table

@@ -13,7 +13,7 @@ def test_cli_happy_path():
         with open("README.md", "w") as f:
             f.write("# README")
 
-        # cli is a group that defaults to 'score'
+        # cli is a group, so we need to invoke 'score'
         result = runner.invoke(cli, ["score", "."])
         assert result.exit_code == 0
         assert "Running Agent Scorecard" in result.output
@@ -23,6 +23,7 @@ def test_cli_profiles_jules_fail_missing_agents_md():
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
+        # We need a python file to trigger scoring, or let it fail due to no files and missing docs
         result = runner.invoke(cli, ["score", ".", "--agent=jules"])
 
         # Should fail because missing agents.md and instructions.md
@@ -38,6 +39,7 @@ def test_cli_fix_flag():
 
         # Run with --fix and jules profile to ensure agents.md is created
         result = runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
+        # Exit code might be 0 or 1 depending on score, but we care about file creation
 
         assert os.path.exists("agents.md")
         with open("agents.md", "r") as f:
@@ -75,4 +77,5 @@ def test_cli_advise_command():
         assert os.path.exists("report.md")
         with open("report.md", "r") as f:
             content = f.read()
+            # RESOLUTION: Use Upgrade logic (Advisor Report header)
             assert "# 🧠 Agent Advisor Report" in content

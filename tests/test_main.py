@@ -1,10 +1,13 @@
 import os
 import pytest
 from pathlib import Path
-from src.agent_scorecard.checks import (
+
+# RESOLUTION: Point to 'analyzer' instead of the deleted 'checks' module
+# and rename functions to match the resolved analyzer.py
+from src.agent_scorecard.analyzer import (
     get_loc,
-    analyze_complexity,
-    analyze_type_hints,
+    get_complexity_score,  # Renamed from analyze_complexity
+    check_type_hints,      # Renamed from analyze_type_hints
     scan_project_docs,
 )
 from src.agent_scorecard.scoring import generate_badge
@@ -45,16 +48,18 @@ def test_analyze_complexity(sample_file: Path) -> None:
     # hello: 1
     # complex_func: 4 (1 + 3 ifs)
     # Avg: 2.5
-    avg = analyze_complexity(str(sample_file))
+    # RESOLUTION: Use new function name
+    avg = get_complexity_score(str(sample_file))
     assert avg == 2.5
 
 def test_analyze_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
-    cov = analyze_type_hints(str(sample_file))
+    # RESOLUTION: Use new function name
+    cov = check_type_hints(str(sample_file))
     assert cov == 0
 
     # typed_file: 1/1 typed -> 100%
-    cov = analyze_type_hints(str(typed_file))
+    cov = check_type_hints(str(typed_file))
     assert cov == 100
 
 def test_scan_project_docs(tmp_path: Path) -> None:
@@ -72,19 +77,19 @@ def test_generate_badge() -> None:
     # >= 90: Bright Green
     svg = generate_badge(95)
     assert "#4c1" in svg
-    assert "95/100" in svg
+    assert "95.0" in svg # float formatting in badge
 
     # >= 70 and < 90: Green
     svg = generate_badge(85)
     assert "#97ca00" in svg
-    assert "85/100" in svg
+    assert "85.0" in svg
 
     # >= 50 and < 70: Yellow
     svg = generate_badge(60)
     assert "#dfb317" in svg
-    assert "60/100" in svg
+    assert "60.0" in svg
 
     # < 50: Red
     svg = generate_badge(40)
     assert "#e05d44" in svg
-    assert "40/100" in svg
+    assert "40.0" in svg
