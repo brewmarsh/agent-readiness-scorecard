@@ -3,6 +3,8 @@ import textwrap
 from pathlib import Path
 from agent_scorecard.checks import get_loc, analyze_complexity, analyze_type_hints
 from agent_scorecard.constants import PROFILES
+from agent_scorecard.main import cli
+from click.testing import CliRunner
 
 def test_get_loc(tmp_path: Path):
     """Tests that get_loc correctly counts lines, ignoring comments and blank lines."""
@@ -63,3 +65,34 @@ def untyped_function(a, b):
 
     assert typed_coverage == 100
     assert untyped_coverage == 0
+
+def test_advise_command(tmp_path: Path):
+    """Tests the advise command."""
+    (tmp_path / "test.py").write_text("def f(a,b,c): pass")
+    (tmp_path / "README.md").write_text("# README")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["advise", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "Agent Scorecard Report" in result.output
+    assert "Top Refactoring Targets" in result.output
+    assert "Agent Prompts" in result.output
+    assert "Documentation Health" in result.output
+
+def test_score_command_with_report(tmp_path: Path):
+    """Tests the score command with the --report option."""
+    (tmp_path / "test.py").write_text("def f(a,b,c): pass")
+    (tmp_path / "README.md").write_text("# README")
+    report_path = tmp_path / "report.md"
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["score", str(tmp_path), "--report", str(report_path)])
+
+    assert result.exit_code == 0
+    assert report_path.exists()
+
+    report_content = report_path.read_text()
+    assert "# Agent Scorecard Report" in report_content
+    assert "Final Score" in report_content
+    assert "| File | Score | Issues |" in report_content

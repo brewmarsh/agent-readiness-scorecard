@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from agent_scorecard.report import generate_markdown_report
+from agent_scorecard.report import generate_markdown_report, generate_recommendations_report
 from agent_scorecard.constants import PROFILES
 
 def test_generate_markdown_report(tmp_path: Path):
@@ -33,3 +33,26 @@ def test_generate_markdown_report(tmp_path: Path):
     assert "Lines of Code" in report_content
     assert "Type Coverage" in report_content
     assert "Agent Prompts" in report_content
+
+def test_generate_recommendations_report():
+    """Tests the recommendations report generation."""
+    results = {
+        'file_results': [
+            {'file': 'heavy.py', 'complexity': 25, 'type_coverage': 95, 'issues': ''},
+            {'file': 'untyped.py', 'complexity': 5, 'type_coverage': 80, 'issues': ''},
+            {'file': 'circular.py', 'complexity': 5, 'type_coverage': 100, 'issues': 'Circular dependency detected'},
+        ],
+        'missing_docs': ['agents.md']
+    }
+
+    rec_content = generate_recommendations_report(results)
+
+    assert "High ACL in heavy.py" in rec_content
+    assert "Missing AGENTS.md" in rec_content
+    assert "Circular Dependency in circular.py" in rec_content
+    assert "Type Coverage < 90% in untyped.py" in rec_content
+
+    assert "Context window overflow." in rec_content
+    assert "Agent guesses commands." in rec_content
+    assert "Infinite recursion loops." in rec_content
+    assert "Hallucination of signatures." in rec_content

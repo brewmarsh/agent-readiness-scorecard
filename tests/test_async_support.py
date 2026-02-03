@@ -9,7 +9,7 @@ def test_async_function_support_checks(tmp_path: Path):
     p = tmp_path / "async_test.py"
     p.write_text("""
 async def fetch_data(url):
-    await some_lib.get(url)
+    return url
 """)
 
     # Should find 1 function, 0 typed -> 0% coverage.

@@ -80,3 +80,4 @@ def test_cli_advise_command():
             content = f.read()
             assert "# Agent Scorecard Report" in content
             assert "Final Score" in content
+            assert "File Analysis" in content

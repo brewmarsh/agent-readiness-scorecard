@@ -1,7 +1,14 @@
 import os
 import click
 from .constants import PROFILES
-from .checks import scan_project_docs
+from .checks import (
+    scan_project_docs,
+    get_loc,
+    analyze_complexity,
+    analyze_type_hints,
+    get_complexity_score,
+    check_type_hints
+)
 from .scoring import score_file
 from .graph import build_dependency_graph, analyze_graph
 

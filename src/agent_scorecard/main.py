@@ -98,7 +98,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
-    """Automatically fix common issues."""
+    """Automatically fix common issues in the codebase."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
@@ -135,6 +135,12 @@ def advise(path, output_file, agent):
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
         console.print("\n" + report_content)
+
+    # Automatically generate RECOMMENDATIONS.md
+    rec_content = report.generate_recommendations_report(results)
+    with open("RECOMMENDATIONS.md", "w", encoding="utf-8") as f:
+        f.write(rec_content)
+    console.print("[bold green]Recommendations saved to RECOMMENDATIONS.md[/bold green]")
 
 if __name__ == "__main__":
     cli()
