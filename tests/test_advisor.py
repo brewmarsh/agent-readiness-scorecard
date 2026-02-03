@@ -103,9 +103,16 @@ def test_function_stats_parsing(tmp_path):
                 print("yes")
             else:
                 print("no")
+<<<<<<< refactor-context-economics-auditor-1125501317532737038
             # padding
     """)
     code += "    x = 1\n" * 20
+=======
+    """)
+    # Pad to ensure LOC > 20
+    for _ in range(20):
+        code += "    # padding\n"
+>>>>>>> beta
     code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
