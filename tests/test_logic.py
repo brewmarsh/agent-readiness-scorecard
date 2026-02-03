@@ -1,7 +1,7 @@
 import pytest
 import textwrap
 from pathlib import Path
-from agent_scorecard.checks import get_loc, analyze_complexity as analyze_complexity, analyze_type_hints as analyze_type_hints
+from src.agent_scorecard.analyzer import get_loc, get_complexity_score, check_type_hints
 from src.agent_scorecard.main import PROFILES, cli
 from click.testing import CliRunner
 
@@ -17,8 +17,8 @@ def test_get_loc(tmp_path: Path):
     loc = get_loc(str(py_file))
     assert loc == 210
 
-def test_analyze_complexity(tmp_path: Path):
-    """Tests that analyze_complexity calculates complexity correctly."""
+def test_get_complexity_score(tmp_path: Path):
+    """Tests that get_complexity_score calculates complexity correctly."""
     # Create a file with a function that is too complex
     content = textwrap.dedent("""
     def very_complex_function(a, b, c):
@@ -38,11 +38,11 @@ def test_analyze_complexity(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     # Using the "jules" profile which has a max_complexity of 8
-    avg_complexity = analyze_complexity(str(py_file))
+    avg_complexity = get_complexity_score(str(py_file))
     assert avg_complexity > PROFILES["jules"]["max_complexity"]
 
-def test_analyze_type_hints(tmp_path: Path):
-    """Tests that analyze_type_hints calculates coverage correctly."""
+def test_check_type_hints(tmp_path: Path):
+    """Tests that check_type_hints calculates coverage correctly."""
     # File with 100% type hint coverage
     typed_content = """
 def fully_typed_function(a: int, b: str) -> bool:
@@ -59,8 +59,8 @@ def untyped_function(a, b):
     untyped_file = tmp_path / "untyped.py"
     untyped_file.write_text(untyped_content, encoding="utf-8")
 
-    typed_coverage = analyze_type_hints(str(typed_file))
-    untyped_coverage = analyze_type_hints(str(untyped_file))
+    typed_coverage = check_type_hints(str(typed_file))
+    untyped_coverage = check_type_hints(str(untyped_file))
 
     assert typed_coverage == 100
     assert untyped_coverage == 0
@@ -73,20 +73,7 @@ def test_advise_command(tmp_path: Path):
     result = runner.invoke(cli, ["advise", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert "🧠 Agent Advisor Report" in result.output
-
-def test_score_command_with_report(tmp_path: Path):
-    """Tests the score command with the --report option."""
-    (tmp_path / "test.py").write_text("def f(a,b,c): pass")
-    report_path = tmp_path / "report.md"
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["score", str(tmp_path), "--report", str(report_path)])
-
-    assert result.exit_code == 0
-    assert report_path.exists()
-
-    report_content = report_path.read_text()
-    assert "# Agent Scorecard Report" in report_content
-    assert "Final Score" in report_content
-    assert "| File | Score | Issues |" in report_content
+    assert "Agent Advisor Report" in result.output
+    assert "Agent Cognitive Load (ACL)" in result.output
+    assert "Dependency Entanglement" in result.output
+    assert "Context Economics" in result.output

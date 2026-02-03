@@ -64,3 +64,4 @@ class TestFixCommand:
         with runner.isolated_filesystem():
             result = runner.invoke(cli, ["fix", ".", "--agent", "invalid"])
             assert result.exit_code == 0 # It defaults to generic, so exit code 0
+            assert "Unknown agent profile: invalid. using generic." in result.output

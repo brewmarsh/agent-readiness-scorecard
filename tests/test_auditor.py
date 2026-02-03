@@ -59,7 +59,8 @@ class MyClass:
         assert "class MyClass:" in sigs
         assert "def method1(self):" in sigs
     finally:
-        os.remove(tmp_path)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 def test_check_critical_context_tokens():
     with tempfile.TemporaryDirectory() as tmpdir:

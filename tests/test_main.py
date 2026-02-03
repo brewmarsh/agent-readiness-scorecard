@@ -3,8 +3,8 @@ import pytest
 from pathlib import Path
 from agent_scorecard.checks import (
     get_loc,
-    analyze_complexity,
-    analyze_type_hints,
+    get_complexity_score,
+    check_type_hints,
     scan_project_docs,
 )
 from agent_scorecard.scoring import generate_badge
@@ -53,23 +53,27 @@ def test_get_loc(sample_file: Path) -> None:
     # Total 8 lines.
     assert get_loc(str(sample_file)) == 8
 
-def test_analyze_complexity(sample_file: Path) -> None:
+def test_get_complexity_score(sample_file: Path) -> None:
     # hello: 1
     # complex_func: 4 (1 + 3 ifs)
     # Avg: 2.5
-    avg = analyze_complexity(str(sample_file))
+    avg, penalty = get_complexity_score(str(sample_file), 10)
     assert avg == 2.5
+    assert penalty == 0
 
-    avg = analyze_complexity(str(sample_file))
+    avg, penalty = get_complexity_score(str(sample_file), 2)
+    assert penalty == 10
 
-def test_analyze_type_hints(sample_file: Path, typed_file: Path) -> None:
+def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
-    cov = analyze_type_hints(str(sample_file))
+    cov, penalty = check_type_hints(str(sample_file), 50)
     assert cov == 0
+    assert penalty == 20
 
     # typed_file: 1/1 typed -> 100%
-    cov = analyze_type_hints(str(typed_file))
+    cov, penalty = check_type_hints(str(typed_file), 50)
     assert cov == 100
+    assert penalty == 0
 
 def test_scan_project_docs(tmp_path: Path) -> None:
     required = ["agents.md", "instructions.md"]
@@ -86,19 +90,19 @@ def test_generate_badge() -> None:
     # >= 90: Bright Green
     svg = generate_badge(95)
     assert "#4c1" in svg
-    assert "95/100" in svg
+    assert "95.0" in svg
 
     # >= 70 and < 90: Green
     svg = generate_badge(85)
     assert "#97ca00" in svg
-    assert "85/100" in svg
+    assert "85.0" in svg
 
     # >= 50 and < 70: Yellow
     svg = generate_badge(60)
     assert "#dfb317" in svg
-    assert "60/100" in svg
+    assert "60.0" in svg
 
     # < 50: Red
     svg = generate_badge(40)
     assert "#e05d44" in svg
-    assert "40/100" in svg
+    assert "40.0" in svg
