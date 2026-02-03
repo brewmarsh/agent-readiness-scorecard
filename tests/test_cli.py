@@ -77,6 +77,4 @@ def test_cli_advise_command():
         assert os.path.exists("report.md")
         with open("report.md", "r") as f:
             content = f.read()
-            assert "# Agent Scorecard Report" in content
-            assert "Final Score" in content
-            assert "File Analysis" in content
+            assert "# 🧠 Agent Advisor Report" in content

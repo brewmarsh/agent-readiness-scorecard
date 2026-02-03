@@ -60,6 +60,8 @@ def test_analyze_complexity(sample_file: Path) -> None:
     avg = analyze_complexity(str(sample_file))
     assert avg == 2.5
 
+    avg = analyze_complexity(str(sample_file))
+
 def test_analyze_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
     cov = analyze_type_hints(str(sample_file))
@@ -84,19 +86,19 @@ def test_generate_badge() -> None:
     # >= 90: Bright Green
     svg = generate_badge(95)
     assert "#4c1" in svg
-    assert "95" in svg
+    assert "95/100" in svg
 
     # >= 70 and < 90: Green
     svg = generate_badge(85)
     assert "#97ca00" in svg
-    assert "85" in svg
+    assert "85/100" in svg
 
     # >= 50 and < 70: Yellow
     svg = generate_badge(60)
     assert "#dfb317" in svg
-    assert "60" in svg
+    assert "60/100" in svg
 
     # < 50: Red
     svg = generate_badge(40)
     assert "#e05d44" in svg
-    assert "40" in svg
+    assert "40/100" in svg

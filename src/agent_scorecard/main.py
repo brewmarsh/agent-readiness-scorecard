@@ -21,9 +21,6 @@ try:
 except PackageNotFoundError:
     __version__ = "0.0.0"
 
-# --- MERGED CLI DEFINITION ---
-# We use analyzer.DefaultGroup from the 'fix' branch to enable correct default behavior
-# We use version_option from the 'main' branch for standard --version support
 @click.group(cls=analyzer.DefaultGroup)
 @click.version_option(version=__version__)
 def cli() -> None:
@@ -68,16 +65,28 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     token_color = "red" if tokens["alert"] else "green"
     health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
 
+    if results["cycles"]:
+        health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(results['cycles'])})[/red]")
+    else:
+        health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
+
     console.print(health_table)
 
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
+    table.add_column("ACL", justify="right")
     table.add_column("Issues", style="magenta")
 
     for res in results["file_results"]:
         status_color = "green" if res["score"] >= 70 else "red"
-        table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
+        acl_color = "red" if res["acl"] > 15 else "green"
+        table.add_row(
+            res["file"],
+            f"[{status_color}]{res['score']}[/{status_color}]",
+            f"[{acl_color}]{res['acl']:.1f}[/{acl_color}]",
+            res["issues"]
+        )
 
     console.print(table)
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
@@ -102,6 +111,16 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
 
+@cli.command(name="score")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
+@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
+@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
+@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
+    """Scores a codebase based on AI-agent compatibility."""
+    run_scoring(path, agent, fix, badge, report_path)
+
 @cli.command(name="fix")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
@@ -114,34 +133,23 @@ def fix(path, agent):
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
 
-
-@cli.command(name="score")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
-@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
-def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
-    """Scores a codebase based on AI-agent compatibility."""
-    run_scoring(path, agent, fix, badge, report_path)
-
-
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
 @click.option("--agent", default="generic", help="Profile to use.")
 def advise(path, output_file, agent):
-    """Generates a Markdown report with actionable advice."""
+    """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     results = analyzer.perform_analysis(path, agent)
-    report_content = report.generate_markdown_report(results)
+    report_content = report.generate_advisor_report(results)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        console.print("\n" + report_content)
+        from rich.markdown import Markdown
+        console.print(Markdown(report_content))
 
 if __name__ == "__main__":
     cli()

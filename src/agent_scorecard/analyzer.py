@@ -3,7 +3,7 @@ import click
 from .constants import PROFILES
 from .checks import scan_project_docs
 from .scoring import score_file
-from . import auditor
+from . import auditor, graph
 
 class DefaultGroup(click.Group):
     """Click group that defaults to 'score' if no subcommand is provided."""
@@ -41,6 +41,8 @@ def perform_analysis(path, agent_name):
         py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
+            if ".git" in root or "__pycache__" in root:
+                continue
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
@@ -48,7 +50,7 @@ def perform_analysis(path, agent_name):
     # 3. File Level Check
     file_results = []
     for filepath in py_files:
-        score, issues, loc, complexity, type_cov = score_file(filepath, profile)
+        score, issues, loc, complexity, type_cov, acl = score_file(filepath, profile)
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
         file_results.append({
             "file": rel_path,
@@ -56,7 +58,8 @@ def perform_analysis(path, agent_name):
             "issues": issues,
             "loc": loc,
             "complexity": complexity,
-            "type_coverage": type_cov
+            "type_coverage": type_cov,
+            "acl": acl
         })
 
     # 4. Auditor checks
@@ -64,9 +67,18 @@ def perform_analysis(path, agent_name):
     tokens = auditor.check_critical_context_tokens(path)
     health = auditor.check_environment_health(path)
 
-    # 5. Aggregation
+    # 5. Graph Analysis (Beta)
+    import_graph = graph.get_import_graph(path)
+    inbound = graph.get_inbound_imports(import_graph)
+    cycles = graph.detect_cycles(import_graph)
+
+    # 6. Aggregation
     avg_file_score = sum(f["score"] for f in file_results) / len(file_results) if file_results else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
+
+    # Apply penalty for cycles
+    if cycles:
+        final_score = max(0, final_score - 30)
 
     return {
         "agent": agent_name,
@@ -77,5 +89,7 @@ def perform_analysis(path, agent_name):
         "file_results": file_results,
         "entropy": entropy,
         "tokens": tokens,
-        "health": health
+        "health": health,
+        "inbound": inbound,
+        "cycles": cycles
     }

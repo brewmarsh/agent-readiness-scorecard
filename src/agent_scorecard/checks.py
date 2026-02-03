@@ -59,3 +59,9 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
         if req.lower() not in root_files:
             missing.append(req)
     return missing
+
+def calculate_acl(complexity: float, loc: int) -> float:
+    """Calculates Agent Cognitive Load (ACL).
+    Formula: ACL = CC + (LLOC / 20)
+    """
+    return complexity + (loc / 20.0)
