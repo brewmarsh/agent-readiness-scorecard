@@ -98,11 +98,11 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         
         # Gather detailed stats for the report
         if report_file:
-            # Use Beta logic (Function-level stats)
+            # RESOLUTION: Use Beta logic (Function-level stats)
             func_stats = analyzer.get_function_stats(filepath)
             # Identify functions that are too complex (ACL > 15)
             acl_violations = [f for f in func_stats if f['acl'] > 15]
-
+            
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": analyzer.get_loc(filepath),
@@ -158,23 +158,57 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
 def advise(path, output_file):
-    """Generates a Markdown report with actionable advice."""
+    """Generates a Markdown report with actionable advice based on Agent Physics."""
     
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # Use the new comprehensive analysis function
-    stats = analyzer.analyze_project(path)
-    
-    # We use 0 as a placeholder score since Advisor Mode focuses on qualitative advice
-    final_score = 0
-    markdown_report = report.generate_markdown_report(stats, final_score, path, PROFILES['generic'])
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+
+    stats = []
+    with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
+        for filepath in py_files:
+            loc = analyzer.get_loc(filepath)
+            complexity = analyzer.get_complexity_score(filepath)
+
+            # RESOLUTION: Use Beta logic
+            # We calculate ACL at the function level and take the MAX to see how "dangerous" the file is.
+            func_stats = analyzer.get_function_stats(filepath)
+            max_acl = max((f['acl'] for f in func_stats), default=0)
+
+            stats.append({
+                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": loc,
+                "complexity": complexity,
+                "acl": max_acl
+            })
+
+        # Dependency Analysis
+        graph = analyzer.get_import_graph(path)
+        inbound = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+
+        # Entropy Analysis
+        entropy = analyzer.get_directory_entropy(path)
+
+    markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(markdown_report)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        console.print("\n" + markdown_report)
+        # Use rich Markdown for pretty printing
+        from rich.markdown import Markdown
+        console.print(Markdown(markdown_report))
 
 if __name__ == "__main__":
     cli()
