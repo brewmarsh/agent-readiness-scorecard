@@ -21,6 +21,23 @@ def cli():
     """Main entry point for the agent-scorecard CLI."""
     pass
 
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
+def fix(path: str, agent: str) -> None:
+    """Automatically fixes common issues."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+
+    profile = PROFILES[agent]
+
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("")  # Newline
+    console.print("[bold green]Fixes applied![/bold green]")
+
+
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
@@ -137,8 +154,8 @@ def advise(path, output_file):
         stats.append({
             "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
             "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath)[0], # Assuming returns tuple
-            "type_coverage": analyzer.check_type_hints(filepath)[0]   # Assuming returns tuple
+            "complexity": analyzer.get_complexity_score(filepath),
+            "type_coverage": analyzer.check_type_hints(filepath)
         })
 
     final_score = 0 # Placeholder if we don't recalculate
