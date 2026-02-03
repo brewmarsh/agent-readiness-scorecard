@@ -156,37 +156,13 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 def advise(path, output_file):
     """Generates a Markdown report with actionable advice."""
     
-    # We can reuse the logic here or delegate to report module
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # Simple re-implementation for advice using the report module
-    # Assuming report module handles the logic internally
-    # For now, we stub this to ensure it calls the imported report generator
+    # Use the new comprehensive analysis function
+    stats = analyzer.analyze_project(path)
     
-    # Re-gather stats for the report generator
-    # Note: In a full refactor, 'stats' generation should likely be its own function 
-    # in analyzer.py, but we will leave this inline logic for safety unless
-    # analyzer.get_project_stats() exists.
-    
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-
-    stats = []
-    for filepath in py_files:
-        stats.append({
-            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-            "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath),
-            "type_coverage": analyzer.check_type_hints(filepath)
-        })
-
-    final_score = 0 # Placeholder if we don't recalculate
+    # We use 0 as a placeholder score since Advisor Mode focuses on qualitative advice
+    final_score = 0
     markdown_report = report.generate_markdown_report(stats, final_score, path, PROFILES['generic'])
 
     if output_file:
