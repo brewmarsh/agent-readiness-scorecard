@@ -12,6 +12,7 @@ dependencies = [
     "mccabe",
     "rich",
     "click",
+    "tiktoken",
 ]
 requires-python = ">=3.8"
 

@@ -1,87 +1,183 @@
+# agent_scorecard/report.py
 import os
 from . import analyzer
 
-def generate_markdown_report(results):
-    """Generates a Markdown report from the analysis results."""
-    final_score = results["final_score"]
-    file_results = results["file_results"]
-    profile = results["profile"]
-    agent_name = results["agent"]
+def generate_markdown_report(stats, final_score, path, profile, project_issues=None):
+    """Generates a Markdown report from the collected statistics."""
 
     # --- 1. Executive Summary ---
     summary = f"# Agent Scorecard Report\n\n"
-    summary += f"**Target Agent Profile:** {agent_name.upper()}\n"
-    summary += f"**Description:** {profile['description']}\n\n"
-    summary += f"## Final Score: {final_score:.1f}/100\n\n"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 
-    if final_score >= 70:
-        summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
-    else:
-        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
-
-    if results["missing_docs"]:
-        summary += "### ⚠️ Missing Critical Documentation\n"
-        for doc in results["missing_docs"]:
-            summary += f"- `{doc}` (-15 pts)\n"
+    if project_issues:
+        summary += "### ⚠ Project Issues\n"
+        for issue in project_issues:
+            summary += f"- {issue}\n"
         summary += "\n"
 
     # --- 2. Refactoring Targets ---
     targets = "## 🎯 Top Refactoring Targets\n\n"
 
     # Sort files by offender categories
-    top_complexity = sorted(file_results, key=lambda x: x['complexity'], reverse=True)[:3]
-    top_loc = sorted(file_results, key=lambda x: x['loc'], reverse=True)[:3]
-    top_types = sorted(file_results, key=lambda x: x['type_coverage'])[:3]
+    top_complexity = sorted(stats, key=lambda x: x['complexity'], reverse=True)[:3]
+    top_loc = sorted(stats, key=lambda x: x['loc'], reverse=True)[:3]
+    top_types = sorted(stats, key=lambda x: x['type_coverage'])[:3]
+
+    # Find top ACL offenders (files with highest max ACL in violations)
+    acl_offenders = [s for s in stats if s.get('acl_violations')]
+    acl_offenders.sort(key=lambda x: max((f['acl'] for f in x['acl_violations']), default=0), reverse=True)
+    top_acl = acl_offenders[:3]
 
     targets += "| Category         | File Path        | Value      |\n"
     targets += "|------------------|------------------|------------|\n"
 
-    for s in top_complexity:
-        if s['complexity'] > profile['max_complexity']:
+    if top_complexity:
+        for s in top_complexity:
             targets += f"| Complexity       | {s['file']}      | {s['complexity']:.1f}      |\n"
-    for s in top_loc:
-        if s['loc'] > profile['max_loc']:
+    if top_loc:
+        for s in top_loc:
             targets += f"| Lines of Code    | {s['file']}      | {s['loc']}        |\n"
-    for s in top_types:
-        if s['type_coverage'] < profile['min_type_coverage']:
+    if top_types:
+        for s in top_types:
             targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
-    targets += "\n"
+    if top_acl:
+        for s in top_acl:
+            max_acl = max(f['acl'] for f in s['acl_violations'])
+            targets += f"| High ACL         | {s['file']}      | {max_acl:.1f}      |\n"
 
     # --- 3. Agent Prompts ---
-    prompts = "## 🤖 Agent Prompts\n\n"
-    unique_files = {s['file'] for s in top_complexity + top_loc + top_types}
+    prompts = "\n## 🤖 Agent Prompts\n\n"
+    unique_files = {s['file'] for s in top_complexity + top_loc + top_types + top_acl}
 
-    for file_path in sorted(unique_files):
-        file_stats = next(s for s in file_results if s['file'] == file_path)
-        file_issues = []
+    for file_path in unique_files:
+        prompts += f"### File: `{file_path}`\n"
+        file_stats = next(s for s in stats if s['file'] == file_path)
 
         if file_stats['complexity'] > profile['max_complexity']:
-             file_issues.append(f"- **Complexity**: Score is {file_stats['complexity']:.1f}. Prompt: 'Refactor `{file_path}` to reduce cyclomatic complexity below {profile['max_complexity']}. Focus on splitting large functions.'")
+             prompts += f"- **Complexity**: Score is {file_stats['complexity']:.1f}. "
+             prompts += f"Prompt: 'Refactor `{file_path}` to reduce cyclomatic complexity below {profile['max_complexity']}. Focus on splitting large functions.'\n"
 
         if file_stats['loc'] > profile['max_loc']:
-             file_issues.append(f"- **Length**: LOC is {file_stats['loc']}. Prompt: 'Reduce the lines of code in `{file_path}` below {profile['max_loc']}. Consider moving helper functions to other modules.'")
+             prompts += f"- **Length**: LOC is {file_stats['loc']}. "
+             prompts += f"Prompt: 'Reduce the lines of code in `{file_path}` below {profile['max_loc']}. Consider moving helper functions to other modules.'\n"
 
         if file_stats['type_coverage'] < profile['min_type_coverage']:
-             file_issues.append(f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'")
+             prompts += f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. "
+             prompts += f"Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'\n"
 
-        if file_issues:
-            prompts += f"### File: `{file_path}`\n"
-            prompts += "\n".join(file_issues) + "\n\n"
+        if file_stats.get('acl_violations'):
+             for violation in file_stats['acl_violations']:
+                 prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
+                 prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
+        
+        prompts += "\n"
 
-    # --- 4. Documentation Health ---
-    docs = "## 📚 Documentation Health\n\n"
-    if not results["missing_docs"]:
-        docs += "✅ All required documentation files found.\n"
+    # --- 4. Agent Cognitive Load ---
+    acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
+    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list, 
+    # but 'generate_markdown_report' might rely on file-level summaries too. 
+    # Ensure this logic aligns with your stats structure.
+    high_acl_files = [s for s in stats if s.get('acl_violations')]
+    
+    if high_acl_files:
+        acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
+        acl_section += "| File Path        | ACL Score |\n"
+        acl_section += "|------------------|-----------|\n"
+        for s in high_acl_files:
+             # Calculate max ACL for the file from its violations
+             max_acl = max((f['acl'] for f in s['acl_violations']), default=0)
+             acl_section += f"| {s['file']} | {max_acl:.1f} |\n"
     else:
-        docs += "❌ Missing: " + ", ".join([f"`{d}`" for d in results["missing_docs"]]) + ". Recommended Action: Create these files to provide context for AI agents.\n"
+        acl_section += "✅ No Hallucination Zones detected (ACL < 15).\n"
 
-    # --- 5. File Analysis Table ---
-    table = "### 📂 File Analysis\n\n"
-    table += "| File | Score | Issues |\n"
-    table += "| :--- | :---: | :--- |\n"
-    for res in file_results:
-        status = "✅" if res["score"] >= 70 else "❌"
-        table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+    acl_section += "\n"
 
-    return summary + targets + prompts + docs + "\n" + table + "\n---
-*Generated by Agent-Scorecard*"
+    # --- 5. Documentation Health ---
+    docs = "## 📚 Documentation Health\n\n"
+    missing_docs = analyzer.scan_project_docs(path, ["agents.md"])
+    if not missing_docs:
+        docs += "✅ `agents.md` found.\n"
+    else:
+        docs += "❌ `agents.md` not found. Recommended Action: Create an `agents.md` to provide context for AI agents.\n"
+
+    return summary + targets + prompts + acl_section + docs
+
+def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
+    """Generates a detailed Advisor Report based on Agent Physics."""
+
+    report = "# 🧠 Agent Advisor Report\n\n"
+    report += "Analysis based on the **Physics of Agent-Code Interaction**.\n\n"
+
+    # --- 1. Agent Cognitive Load (ACL) ---
+    report += "## 1. Agent Cognitive Load (ACL)\n"
+    report += "Agents have a limited reasoning budget. High ACL burns tokens on logic instead of task execution.\n"
+    report += "*Formula: ACL = Complexity + (LOC / 20)*\n\n"
+
+    high_acl_files = [s for s in stats if s.get('acl', 0) > 15]
+    high_acl_files.sort(key=lambda x: x.get('acl', 0), reverse=True)
+
+    if high_acl_files:
+        report += "### 🚨 Hallucination Zones (ACL > 15)\n"
+        report += "These files are too complex for reliable agent reasoning.\n\n"
+        report += "| File | ACL | Complexity | LOC |\n"
+        report += "|---|---|---|---|\n"
+        for s in high_acl_files:
+            report += f"| `{s['file']}` | **{s['acl']:.1f}** | {s['complexity']:.1f} | {s['loc']} |\n"
+    else:
+        report += "✅ No Hallucination Zones detected. Code is within reasoning limits.\n"
+    report += "\n"
+
+    # --- 2. Dependency Entanglement ---
+    report += "## 2. Dependency Entanglement\n"
+    report += "Complex graphs confuse agent planning capabilities.\n\n"
+
+    # God Modules
+    god_modules = {k: v for k, v in dependency_stats.items() if v > 50}
+    if god_modules:
+        report += "### 🕸 God Modules (Inbound Imports > 50)\n"
+        report += "These files appear too often in the context window.\n\n"
+        report += "| File | Inbound Refs |\n"
+        report += "|---|---|\n"
+        sorted_gods = sorted(god_modules.items(), key=lambda x: x[1], reverse=True)
+        for k, v in sorted_gods:
+             report += f"| `{k}` | {v} |\n"
+    else:
+         report += "✅ No God Modules detected.\n"
+    report += "\n"
+
+    # Circular Dependencies
+    if cycles:
+        report += "### 🔄 Circular Dependencies\n"
+        report += "Infinite recursion risks during planning.\n\n"
+        for cycle in cycles:
+             report += f"- {' -> '.join(cycle)} -> {cycle[0]}\n"
+    else:
+        report += "✅ No Circular Dependencies detected.\n"
+    report += "\n"
+
+    # --- 3. Context Economics ---
+    report += "## 3. Context Economics\n"
+    report += "Optimizing the retrieval and context window budget.\n\n"
+
+    # MERGE: Preserved Token Budget logic from Beta branch
+    high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
+    if high_token_files:
+        report += "### 🪙 Token Budget (> 32k tokens)\n"
+        report += "⚠ **Files exceeding token budget:**\n\n"
+        for f in high_token_files:
+             report += f"- `{f['file']}`: {f['tokens']} tokens\n"
+        report += "\n"
+
+    if entropy_stats:
+        # RESOLUTION: Accepted Beta branch logic (Threshold 50)
+        report += "### 📂 Directory Entropy (Files > 50)\n"
+        report += "Large directories confuse retrieval tools.\n\n"
+        report += "| Directory | File Count |\n"
+        report += "|---|---|\n"
+        sorted_entropy = sorted(entropy_stats.items(), key=lambda x: x[1], reverse=True)
+        for k, v in sorted_entropy:
+            report += f"| `{k}/` | {v} |\n"
+    else:
+        report += "✅ Directory entropy is low.\n"
+
+    return report

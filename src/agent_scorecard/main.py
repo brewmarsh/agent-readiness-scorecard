@@ -5,12 +5,11 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Import common modules
-from . import analyzer, report
+# Import common modules (Added auditor)
+from . import analyzer, report, auditor
 
 # Use the Modular Refactor (Beta Branch)
 from .constants import PROFILES
-from .checks import scan_project_docs
 from .fix import apply_fixes
 from .scoring import score_file, generate_badge
 
@@ -83,7 +82,38 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    # 3. Analyze & Score Files
+    # 3. Environment Health & Auditor Checks (From Auditor Branch)
+    health_table = Table(title="Environment Health")
+    health_table.add_column("Check", style="cyan")
+    health_table.add_column("Status", justify="right")
+
+    # Use the auditor module for environment checks
+    health = auditor.check_environment_health(path)
+    health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
+    health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
+    health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
+
+    entropy = auditor.check_directory_entropy(path)
+    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    entropy_color = "yellow" if entropy["warning"] else "green"
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+
+    tokens = auditor.check_critical_context_tokens(path)
+    token_color = "red" if tokens["alert"] else "green"
+    health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
+
+    # Dependency Analysis (Visual check for Health Table)
+    import_graph = analyzer.get_import_graph(path)
+    cycles = analyzer.detect_cycles(import_graph)
+    if cycles:
+        health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(cycles)})[/red]")
+    else:
+        health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
+
+    console.print(health_table)
+    console.print("") # Spacing
+
+    # 4. Analyze & Score Files (Beta Logic)
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -93,16 +123,23 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     stats = []
     
     for filepath in py_files:
-        # Use the imported modular function
+        # Use the imported modular function for basic scoring
         s_score, notes = score_file(filepath, profile)
         file_scores.append(s_score)
         
+        # Gather detailed stats for the report
         if report_file:
+            # RESOLUTION: Use Beta logic (Function-level stats)
+            func_stats = analyzer.get_function_stats(filepath)
+            # Identify functions that are too complex (ACL > 15)
+            acl_violations = [f for f in func_stats if f['acl'] > 15]
+            
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": analyzer.get_loc(filepath),
                 "complexity": analyzer.get_complexity_score(filepath),
-                "type_coverage": analyzer.check_type_hints(filepath)
+                "type_coverage": analyzer.check_type_hints(filepath),
+                "acl_violations": acl_violations
             })
 
         status_color = "green" if s_score >= 70 else "red"
@@ -111,35 +148,33 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     console.print(table)
 
-    # 4. Project Level Checks
-    # Use the imported modular function
-    missing_docs = scan_project_docs(path, profile["required_files"])
-    if missing_docs:
-        console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)}")
-        project_penalty = len(missing_docs) * 15
-        project_score = max(0, 100 - project_penalty)
-    else:
-        project_score = 100
+    # 5. Project Level Checks (Scoring/Penalty Calculation)
+    project_penalty, project_issues = analyzer.get_project_issues(path, py_files, profile)
 
-    # 5. Final Calculation
+    for issue in project_issues:
+        color = "red" if "God Modules" in issue else "yellow"
+        console.print(f"\n[bold {color}]⚠ {issue}[/bold {color}]")
+
+    project_score = max(0, 100 - project_penalty)
+
+    # 6. Final Calculation
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
-    # 6. Generate Badge
+    # 7. Generate Badge
     if badge:
         output_path = "agent_score.svg"
-        # Use the imported modular function
         svg_content = generate_badge(final_score)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
-    # 7. Generate Report
+    # 8. Generate Report
     if report_file:
-        markdown_content = report.generate_markdown_report(stats, final_score, path, profile)
+        markdown_content = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
         with open(report_file, "w", encoding="utf-8") as f:
             f.write(markdown_content)
         console.print(f"\n[bold green]Report saved to {report_file}[/bold green]")
@@ -154,47 +189,57 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
 def advise(path, output_file):
-    """Generates a Markdown report with actionable advice."""
+    """Generates a Markdown report with actionable advice based on Agent Physics."""
     
-    # We can reuse the logic here or delegate to report module
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-    
-    # Simple re-implementation for advice using the report module
-    # Assuming report module handles the logic internally
-    # For now, we stub this to ensure it calls the imported report generator
-    
-    # Re-gather stats for the report generator
-    # Note: In a full refactor, 'stats' generation should likely be its own function 
-    # in analyzer.py, but we will leave this inline logic for safety unless
-    # analyzer.get_project_stats() exists.
     
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
     stats = []
-    for filepath in py_files:
-        stats.append({
-            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-            "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath),
-            "type_coverage": analyzer.check_type_hints(filepath)
-        })
+    with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
+        for filepath in py_files:
+            loc = analyzer.get_loc(filepath)
+            complexity = analyzer.get_complexity_score(filepath)
 
-    final_score = 0 # Placeholder if we don't recalculate
-    markdown_report = report.generate_markdown_report(stats, final_score, path, PROFILES['generic'])
+            # RESOLUTION: Use Beta logic
+            # We calculate ACL at the function level and take the MAX to see how "dangerous" the file is.
+            func_stats = analyzer.get_function_stats(filepath)
+            max_acl = max((f['acl'] for f in func_stats), default=0)
+
+            stats.append({
+                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": loc,
+                "complexity": complexity,
+                "acl": max_acl
+            })
+
+        # Dependency Analysis
+        graph = analyzer.get_import_graph(path)
+        inbound = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+
+        # Entropy Analysis
+        entropy = analyzer.get_directory_entropy(path)
+
+    markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(markdown_report)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        console.print("\n" + markdown_report)
+        # Use rich Markdown for pretty printing
+        from rich.markdown import Markdown
+        console.print(Markdown(markdown_report))
 
 if __name__ == "__main__":
     cli()
