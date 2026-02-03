@@ -228,7 +228,7 @@ def advise(path, output_file):
         cycles = analyzer.detect_cycles(graph)
 
         # Entropy Analysis
-        entropy = analyzer.get_directory_entropy(path)
+        entropy = auditor.get_crowded_directories(path)
 
     markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 
