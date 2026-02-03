@@ -31,15 +31,15 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
         details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
 
     # 4. Agent Cognitive Load (ACL)
-    # RESOLUTION: Use Beta logic (Function-level analysis)
-    # This penalizes specific functions that are too hard for an agent to read,
-    # rather than just averaging the whole file (which hides bad code).
+    # We penalize specific functions that are too hard for an agent to read,
+    # rather than just averaging the whole file.
     func_stats = analyzer.get_function_stats(filepath)
     acl_penalty = 0
     for func in func_stats:
         if func['acl'] > 15:
             penalty = 5
             acl_penalty += penalty
+            # Use concise Beta format for CLI table readability
             details.append(f"ACL({func['name']}) {func['acl']:.1f} > 15 (-{penalty})")
 
     score -= acl_penalty

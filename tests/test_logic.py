@@ -73,6 +73,7 @@ def test_advise_command(tmp_path: Path):
     result = runner.invoke(cli, ["advise", str(tmp_path)])
 
     assert result.exit_code == 0
+    # RESOLUTION: Use Beta string matches resolved report.py
     assert "Agent Advisor Report" in result.output
     assert "Agent Cognitive Load (ACL)" in result.output
     assert "Dependency Entanglement" in result.output

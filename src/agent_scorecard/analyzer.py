@@ -2,6 +2,9 @@ import os
 import ast
 import mccabe
 from collections import Counter
+from typing import List, Dict, Any, Tuple
+
+# --- Basic Metrics ---
 
 def get_loc(filepath):
     """Returns lines of code excluding whitespace/comments roughly."""
@@ -60,13 +63,22 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
-# --- METRICS & GRAPH ANALYSIS (Resolved from Beta) ---
+# --- METRICS & GRAPH ANALYSIS ---
 
 def calculate_acl(complexity, loc):
     """Calculates Agent Cognitive Load (ACL).
     Formula: ACL = CC + (LLOC / 20)
     """
     return complexity + (loc / 20.0)
+
+def count_tokens(filepath: str) -> int:
+    """Estimates the number of tokens in a file (approx 4 chars/token)."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+            return len(content) // 4
+    except UnicodeDecodeError:
+        return 0
 
 def get_directory_entropy(root_path, threshold=50):
     """Returns directories with file count > threshold."""
@@ -126,33 +138,21 @@ def get_import_graph(root_path):
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imported_names.add(node.module)
-                # We could handle relative imports here, but let's stick to simple module matching first
         
         # Try to match imported names to files
         for name in imported_names:
-            # name e.g. "agent_scorecard.analyzer"
-            # We look for files that "end with" this module path structure
-            
             # Convert module dots to path separators
             suffix = name.replace(".", os.sep)
             
             for candidate in all_py_files:
                 if candidate == rel_path: continue
                 
-                # Check if candidate ends with suffix + ".py"
-                # But we need to be careful. "analyzer" shouldn't match "some_analyzer.py" unless it's an exact component match.
-                # e.g. "os.path.join" -> "analyzer.py" matches "agent_scorecard/analyzer.py"
-                
-                # Let's strip extension
+                # Check if candidate ends with suffix + ".py" (or matches module path)
                 candidate_no_ext = os.path.splitext(candidate)[0]
-                # candidate_no_ext: src/agent_scorecard/analyzer
                 
-                # if candidate_no_ext ends with suffix, it's a potential match
-                # e.g. "src/agent_scorecard/analyzer".endswith("agent_scorecard/analyzer") -> True
-                
-                # Check boundary: previous char must be sep or nothing
                 if candidate_no_ext.endswith(suffix):
                     match_len = len(suffix)
+                    # Check boundary to avoid partial matches
                     if len(candidate_no_ext) == match_len or candidate_no_ext[-(match_len+1)] == os.sep:
                         graph[rel_path].add(candidate)
                         
@@ -166,7 +166,6 @@ def get_inbound_imports(graph):
             if target in inbound:
                 inbound[target] += 1
             else:
-                # Might be a target not in our scanned list
                 inbound[target] = 1
     return inbound
 
@@ -176,7 +175,6 @@ def detect_cycles(graph):
     visited_global = set()
     path_set = set()
     
-    # Sort nodes to make cycle detection deterministic
     nodes = sorted(graph.keys())
 
     def visit(node, current_path):
@@ -184,7 +182,6 @@ def detect_cycles(graph):
         path_set.add(node)
         current_path.append(node)
 
-        # Sort neighbors for determinism
         neighbors = sorted(list(graph.get(node, [])))
 
         for neighbor in neighbors:
@@ -279,9 +276,7 @@ def get_project_issues(path, py_files, profile):
         penalty += len(missing_docs) * 15
         issues.append(msg)
     
-    # 2. God Modules (using beta's graph analysis)
-    # py_files arg is ignored in favor of get_import_graph(path)
-    # But wait, get_import_graph takes root_path.
+    # 2. God Modules (using graph analysis)
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     
@@ -292,7 +287,6 @@ def get_project_issues(path, py_files, profile):
         issues.append(msg)
 
     # 3. Directory Entropy
-    # Use beta's get_directory_entropy
     entropy_stats = get_directory_entropy(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     
@@ -301,14 +295,66 @@ def get_project_issues(path, py_files, profile):
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
-    # 4. Circular Dependencies (Bonus from beta)
+    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
         msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
-        # Maybe add penalty? Spec said "Circular Dependencies: Cause infinite recursion".
-        # Let's add a penalty.
         penalty += len(cycles) * 5
         issues.append(msg)
         
     return penalty, issues
+
+def analyze_project(root_path: str) -> Dict[str, Any]:
+    """Orchestrates the full project analysis (Advisor Mode)."""
+
+    py_files = []
+    if os.path.isfile(root_path) and root_path.endswith(".py"):
+        py_files = [root_path]
+    elif os.path.isdir(root_path):
+        for root, _, files in os.walk(root_path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+
+    file_stats = []
+    for fp in py_files:
+        rel_path = os.path.relpath(fp, start=root_path if os.path.isdir(root_path) else os.path.dirname(root_path))
+        file_stats.append({
+            "file": rel_path,
+            "loc": get_loc(fp),
+            "complexity": get_complexity_score(fp),
+            "type_coverage": check_type_hints(fp),
+            "tokens": count_tokens(fp),
+            "functions": get_function_stats(fp)
+        })
+
+    # Use Helper functions
+    graph = get_import_graph(root_path if os.path.isdir(root_path) else os.path.dirname(root_path))
+    inbound_counts = get_inbound_imports(graph)
+    cycles = detect_cycles(graph)
+
+    god_modules = {f: count for f, count in inbound_counts.items() if count > 50}
+
+    dependency_stats = {
+        "graph": {k: list(v) for k, v in graph.items()},
+        "inbound_counts": inbound_counts,
+        "god_modules": god_modules,
+        "cycles": cycles
+    }
+
+    directory_stats = []
+    entropy = get_directory_entropy(root_path if os.path.isdir(root_path) else os.path.dirname(root_path), threshold=50)
+    for path, count in entropy.items():
+        directory_stats.append({
+            "path": path,
+            "file_count": count
+        })
+
+    return {
+        "files": file_stats,
+        "dependencies": dependency_stats,
+        "directories": directory_stats
+    }

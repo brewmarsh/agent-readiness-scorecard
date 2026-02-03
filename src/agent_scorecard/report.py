@@ -158,6 +158,15 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     report += "## 3. Context Economics\n"
     report += "Optimizing the retrieval and context window budget.\n\n"
 
+    # MERGE: Added Token Budget logic from Advisor branch
+    high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
+    if high_token_files:
+        report += "### 🪙 Token Budget (> 32k tokens)\n"
+        report += "⚠ **Files exceeding token budget:**\n\n"
+        for f in high_token_files:
+             report += f"- `{f['file']}`: {f['tokens']} tokens\n"
+        report += "\n"
+
     if entropy_stats:
         # RESOLUTION: Accepted Beta branch logic (Threshold 50)
         report += "### 📂 Directory Entropy (Files > 50)\n"
