@@ -1,6 +1,6 @@
 import os
 import ast
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Union
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE, DOCSTRING_TEXT, TYPE_HINT_STUB
 
@@ -10,7 +10,7 @@ def get_indentation(line: str) -> str:
     """Returns the indentation string of a line."""
     return line[:len(line) - len(line.lstrip())]
 
-def check_missing_docstring(node: ast.FunctionDef, lines: List[str], insertions: List[Tuple[int, str]]) -> None:
+def check_missing_docstring(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
     """Checks for missing docstring and adds insertion if needed."""
     if not ast.get_docstring(node):
         # Insert after the function definition line (handling decorators)
@@ -32,7 +32,7 @@ def check_missing_docstring(node: ast.FunctionDef, lines: List[str], insertions:
             if node.body[0].lineno > node.lineno:
                     insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
 
-def check_missing_type_hints(node: ast.FunctionDef, lines: List[str], insertions: List[Tuple[int, str]]) -> None:
+def check_missing_type_hints(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
     """Checks for missing type hints and adds insertion if needed."""
     has_return = node.returns is not None
     has_args = any(arg.annotation is not None for arg in node.args.args)
@@ -66,7 +66,7 @@ def fix_file_issues(filepath: str) -> None:
     insertions: List[Tuple[int, str]] = []
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             check_missing_docstring(node, lines, insertions)
             check_missing_type_hints(node, lines, insertions)
 
