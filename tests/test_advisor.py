@@ -6,10 +6,10 @@ from src.agent_scorecard import analyzer, report
 from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.analyzer import (
     calculate_acl, 
-    get_directory_entropy, 
     get_import_graph, 
     get_inbound_imports, 
-    detect_cycles
+    detect_cycles,
+    get_directory_entropy
 )
 from src.agent_scorecard.report import generate_advisor_report
 
@@ -97,17 +97,17 @@ def test_generate_advisor_report_standalone():
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
-    # Indent 12 spaces to align with the function body inside the dedented string (base indent 8 + 4)
-    padding = "\n".join([f"            x_{i} = {i}" for i in range(20)])
-    code = textwrap.dedent(f"""
+    code = textwrap.dedent("""
         def complex_function():
             if True:
                 print("yes")
             else:
                 print("no")
-{padding}
-            return 0
     """)
+    # Pad to ensure LOC > 20
+    for _ in range(20):
+        code += "    # padding\n"
+    code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
