@@ -60,6 +60,168 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
+def calculate_acl(complexity, loc):
+    """Calculates Agent Cognitive Load (ACL).
+    Formula: ACL = CC + (LLOC / 20)
+    """
+    return complexity + (loc / 20.0)
+
+def get_directory_entropy(root_path, threshold=50):
+    """Returns directories with file count > threshold."""
+    entropy_stats = {}
+    if os.path.isfile(root_path):
+        return entropy_stats
+
+    for root, dirs, files in os.walk(root_path):
+        # Ignore hidden directories like .git
+        if any(part.startswith(".") for part in root.split(os.sep)):
+            continue
+
+        count = len(files)
+        if count > threshold:
+            rel_path = os.path.relpath(root, start=root_path)
+            if rel_path == ".":
+                rel_path = os.path.basename(os.path.abspath(root_path))
+            entropy_stats[rel_path] = count
+    return entropy_stats
+
+def get_import_graph(root_path):
+    """
+    Builds a dependency graph of the project.
+    Returns: { file_path: { set of imported_file_paths } }
+    """
+    all_py_files = []
+    if os.path.isfile(root_path):
+        if root_path.endswith(".py"):
+             all_py_files.append(os.path.basename(root_path))
+             root_path = os.path.dirname(root_path) # Adjust root for single file
+    else:
+        for root, _, files in os.walk(root_path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
+            for file in files:
+                if file.endswith(".py"):
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, start=root_path)
+                    all_py_files.append(rel_path)
+
+    graph = {f: set() for f in all_py_files}
+
+    for rel_path in all_py_files:
+        full_path = os.path.join(root_path, rel_path)
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                code = f.read()
+            tree = ast.parse(code, filename=full_path)
+        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+            continue
+
+        imported_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imported_names.add(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    imported_names.add(node.module)
+                # We could handle relative imports here, but let's stick to simple module matching first
+
+        # Try to match imported names to files
+        for name in imported_names:
+            # name e.g. "agent_scorecard.analyzer"
+            # We look for files that "end with" this module path structure
+
+            # Convert module dots to path separators
+            suffix = name.replace(".", os.sep)
+
+            for candidate in all_py_files:
+                if candidate == rel_path: continue
+
+                # Check if candidate ends with suffix + ".py"
+                # But we need to be careful. "analyzer" shouldn't match "some_analyzer.py" unless it's an exact component match.
+                # e.g. "os.path.join" -> "analyzer.py" matches "agent_scorecard/analyzer.py"
+
+                # Let's strip extension
+                candidate_no_ext = os.path.splitext(candidate)[0]
+                # candidate_no_ext: src/agent_scorecard/analyzer
+
+                # if candidate_no_ext ends with suffix, it's a potential match
+                # e.g. "src/agent_scorecard/analyzer".endswith("agent_scorecard/analyzer") -> True
+
+                # Check boundary: previous char must be sep or nothing
+                if candidate_no_ext.endswith(suffix):
+                    match_len = len(suffix)
+                    if len(candidate_no_ext) == match_len or candidate_no_ext[-(match_len+1)] == os.sep:
+                        graph[rel_path].add(candidate)
+
+    return graph
+
+def get_inbound_imports(graph):
+    """Returns {file: count} of inbound imports."""
+    inbound = {node: 0 for node in graph}
+    for source, targets in graph.items():
+        for target in targets:
+            if target in inbound:
+                inbound[target] += 1
+            else:
+                # Might be a target not in our scanned list
+                inbound[target] = 1
+    return inbound
+
+def detect_cycles(graph):
+    """Returns list of cycles (list of nodes in cycle)."""
+    cycles = []
+    visited_global = set()
+    path_set = set()
+
+    # Sort nodes to make cycle detection deterministic
+    nodes = sorted(graph.keys())
+
+    def visit(node, current_path):
+        visited_global.add(node)
+        path_set.add(node)
+        current_path.append(node)
+
+        # Sort neighbors for determinism
+        neighbors = sorted(list(graph.get(node, [])))
+
+        for neighbor in neighbors:
+            if neighbor in path_set:
+                # Cycle found
+                try:
+                    idx = current_path.index(neighbor)
+                    cycle = current_path[idx:]
+                    if cycle not in cycles:
+                         cycles.append(cycle[:])
+                except ValueError:
+                    pass
+            elif neighbor not in visited_global:
+                visit(neighbor, current_path)
+
+        path_set.remove(node)
+        current_path.pop()
+
+    for node in nodes:
+        if node not in visited_global:
+            visit(node, [])
+
+    unique_cycles = []
+    seen_cycle_sets = set()
+
+    for cycle in cycles:
+        if len(cycle) < 2: continue
+
+        # Canonical representation
+        min_node = min(cycle)
+        min_idx = cycle.index(min_node)
+        canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
+
+        if canonical not in seen_cycle_sets:
+            seen_cycle_sets.add(canonical)
+            unique_cycles.append(list(canonical))
+
+    return unique_cycles
+
 def get_function_stats(filepath):
     """
     Returns a list of statistics for each function in the file.
@@ -89,7 +251,7 @@ def get_function_stats(filepath):
             loc = end_line - start_line + 1
 
             complexity = complexity_map.get(start_line, 1) # Default to 1 if not found
-            acl = complexity + (loc / 20.0)
+            acl = calculate_acl(complexity, loc)
 
             stats.append({
                 "name": node.name,
@@ -99,45 +261,6 @@ def get_function_stats(filepath):
                 "acl": acl
             })
     return stats
-
-def count_directory_files(directory):
-    """Returns the number of files in the directory."""
-    try:
-        return len([f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))])
-    except FileNotFoundError:
-        return 0
-
-def analyze_imports(file_list):
-    """
-    Analyzes imports across the given files to detect potential 'God Modules'.
-    Only considers internal modules (heuristically matched against file names).
-    Returns a Counter mapping imported module names to import counts.
-    """
-    import_counts = Counter()
-
-    # Heuristic: Internal modules match filenames (without extension)
-    internal_modules = {os.path.splitext(os.path.basename(f))[0] for f in file_list}
-
-    for filepath in file_list:
-        try:
-            code = open(filepath, "r", encoding="utf-8").read()
-            tree = ast.parse(code, filepath)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-            continue
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    base_mod = alias.name.split('.')[0]
-                    if base_mod in internal_modules:
-                        import_counts[base_mod] += 1
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    base_mod = node.module.split('.')[0]
-                    if base_mod in internal_modules:
-                        import_counts[base_mod] += 1
-
-    return import_counts
 
 def get_project_issues(path, py_files, profile):
     """
@@ -154,25 +277,36 @@ def get_project_issues(path, py_files, profile):
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
-    # 2. God Modules
-    import_counts = analyze_imports(py_files)
-    god_modules = [mod for mod, count in import_counts.items() if count > 50]
+    # 2. God Modules (using beta's graph analysis)
+    # py_files arg is ignored in favor of get_import_graph(path)
+    # But wait, get_import_graph takes root_path.
+    graph = get_import_graph(path)
+    inbound = get_inbound_imports(graph)
+
+    god_modules = [mod for mod, count in inbound.items() if count > 50]
     if god_modules:
         msg = f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}"
         penalty += len(god_modules) * 10
         issues.append(msg)
 
     # 3. Directory Entropy
-    if os.path.isdir(path):
-        dirs = set(os.path.dirname(f) for f in py_files)
-        crowded_dirs = []
-        for d in dirs:
-            if count_directory_files(d) > 50:
-                 crowded_dirs.append(os.path.relpath(d, start=path) if d != path else ".")
+    # Use beta's get_directory_entropy
+    entropy_stats = get_directory_entropy(path, threshold=50)
+    crowded_dirs = list(entropy_stats.keys())
 
-        if crowded_dirs:
-            msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
-            penalty += len(crowded_dirs) * 5
-            issues.append(msg)
+    if crowded_dirs:
+        msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
+        penalty += len(crowded_dirs) * 5
+        issues.append(msg)
+
+    # 4. Circular Dependencies (Bonus from beta)
+    cycles = detect_cycles(graph)
+    if cycles:
+        cycle_strs = ["->".join(c) for c in cycles]
+        msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
+        # Maybe add penalty? Spec said "Circular Dependencies: Cause infinite recursion".
+        # Let's add a penalty.
+        penalty += len(cycles) * 5
+        issues.append(msg)
 
     return penalty, issues

@@ -156,45 +156,58 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
 def advise(path, output_file):
-    """Generates a Markdown report with actionable advice."""
+    """Generates a Markdown report with actionable advice based on Agent Physics."""
     
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-    
-    profile = PROFILES['generic'] # Default for advise
     
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
     stats = []
-    for filepath in py_files:
-        func_stats = analyzer.get_function_stats(filepath)
-        acl_violations = [f for f in func_stats if f['acl'] > 15]
-        stats.append({
-            "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-            "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath),
-            "type_coverage": analyzer.check_type_hints(filepath),
-            "acl_violations": acl_violations
-        })
+    with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
+        for filepath in py_files:
+            loc = analyzer.get_loc(filepath)
+            complexity = analyzer.get_complexity_score(filepath)
 
-    # Recalculate project issues
-    _, project_issues = analyzer.get_project_issues(path, py_files, profile)
+            # ACL Calculation using function stats
+            func_stats = analyzer.get_function_stats(filepath)
+            # We take the MAX ACL of any function in the file to represent the file's "Danger Level"
+            # This aligns with Beta's file-based report but uses accurate function-level ACL
+            max_acl = max((f['acl'] for f in func_stats), default=0)
 
-    final_score = 0 # Placeholder as advise doesn't necessarily output a score
-    markdown_report = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
+            stats.append({
+                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": loc,
+                "complexity": complexity,
+                "acl": max_acl
+            })
+
+        # Dependency Analysis
+        graph = analyzer.get_import_graph(path)
+        inbound = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+
+        # Entropy Analysis
+        entropy = analyzer.get_directory_entropy(path)
+
+    markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(markdown_report)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        console.print("\n" + markdown_report)
+        # Use rich Markdown for pretty printing
+        from rich.markdown import Markdown
+        console.print(Markdown(markdown_report))
 
 if __name__ == "__main__":
     cli()

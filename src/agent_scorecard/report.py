@@ -82,3 +82,73 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
         docs += "❌ `agents.md` not found. Recommended Action: Create an `agents.md` to provide context for AI agents.\n"
 
     return summary + targets + prompts + docs
+
+def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
+    """Generates a detailed Advisor Report based on Agent Physics."""
+
+    report = "# 🧠 Agent Advisor Report\n\n"
+    report += "Analysis based on the **Physics of Agent-Code Interaction**.\n\n"
+
+    # --- 1. Agent Cognitive Load (ACL) ---
+    report += "## 1. Agent Cognitive Load (ACL)\n"
+    report += "Agents have a limited reasoning budget. High ACL burns tokens on logic instead of task execution.\n"
+    report += "*Formula: ACL = Complexity + (LOC / 20)*\n\n"
+
+    high_acl_files = [s for s in stats if s.get('acl', 0) > 15]
+    high_acl_files.sort(key=lambda x: x.get('acl', 0), reverse=True)
+
+    if high_acl_files:
+        report += "### 🚨 Hallucination Zones (ACL > 15)\n"
+        report += "These files are too complex for reliable agent reasoning.\n\n"
+        report += "| File | ACL | Complexity | LOC |\n"
+        report += "|---|---|---|---|\n"
+        for s in high_acl_files:
+            report += f"| `{s['file']}` | **{s['acl']:.1f}** | {s['complexity']:.1f} | {s['loc']} |\n"
+    else:
+        report += "✅ No Hallucination Zones detected. Code is within reasoning limits.\n"
+    report += "\n"
+
+    # --- 2. Dependency Entanglement ---
+    report += "## 2. Dependency Entanglement\n"
+    report += "Complex graphs confuse agent planning capabilities.\n\n"
+
+    # God Modules
+    god_modules = {k: v for k, v in dependency_stats.items() if v > 50}
+    if god_modules:
+        report += "### 🕸 God Modules (Inbound Imports > 50)\n"
+        report += "These files appear too often in the context window.\n\n"
+        report += "| File | Inbound Refs |\n"
+        report += "|---|---|\n"
+        sorted_gods = sorted(god_modules.items(), key=lambda x: x[1], reverse=True)
+        for k, v in sorted_gods:
+             report += f"| `{k}` | {v} |\n"
+    else:
+         report += "✅ No God Modules detected.\n"
+    report += "\n"
+
+    # Circular Dependencies
+    if cycles:
+        report += "### 🔄 Circular Dependencies\n"
+        report += "Infinite recursion risks during planning.\n\n"
+        for cycle in cycles:
+             report += f"- {' -> '.join(cycle)} -> {cycle[0]}\n"
+    else:
+        report += "✅ No Circular Dependencies detected.\n"
+    report += "\n"
+
+    # --- 3. Context Economics ---
+    report += "## 3. Context Economics\n"
+    report += "Optimizing the retrieval and context window budget.\n\n"
+
+    if entropy_stats:
+        report += "### 📂 Directory Entropy (Files > 50)\n"
+        report += "Large directories confuse retrieval tools.\n\n"
+        report += "| Directory | File Count |\n"
+        report += "|---|---|\n"
+        sorted_entropy = sorted(entropy_stats.items(), key=lambda x: x[1], reverse=True)
+        for k, v in sorted_entropy:
+            report += f"| `{k}/` | {v} |\n"
+    else:
+        report += "✅ Directory entropy is low.\n"
+
+    return report
