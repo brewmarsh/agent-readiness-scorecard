@@ -10,6 +10,7 @@ from .checks import (
     check_type_hints
 )
 from .scoring import score_file
+from .graph import build_dependency_graph, analyze_graph
 
 class DefaultGroup(click.Group):
     """Click group that defaults to 'score' if no subcommand is provided."""
@@ -65,9 +66,20 @@ def perform_analysis(path, agent_name):
             "type_coverage": type_cov
         })
 
-    # 4. Aggregation
+    # 4. Dependency Analysis
+    dep_graph = build_dependency_graph(path)
+    dep_analysis = analyze_graph(dep_graph)
+
+    # 5. Aggregation
     avg_file_score = sum(f["score"] for f in file_results) / len(file_results) if file_results else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
+
+    # Apply penalties for dependency entanglement
+    if dep_analysis["cycles"]:
+        final_score = max(0, final_score - 30)  # Heavy penalty for circular dependencies
+
+    for _ in dep_analysis["god_modules"]:
+        final_score = max(0, final_score - 10)  # Penalty per god module
 
     return {
         "agent": agent_name,
@@ -75,5 +87,6 @@ def perform_analysis(path, agent_name):
         "final_score": final_score,
         "project_score": project_score,
         "missing_docs": missing_docs,
-        "file_results": file_results
+        "file_results": file_results,
+        "dep_analysis": dep_analysis
     }

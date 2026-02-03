@@ -1,9 +1,9 @@
 import pytest
 import textwrap
 from pathlib import Path
-from src.agent_scorecard.checks import get_loc, analyze_complexity, analyze_type_hints
-from src.agent_scorecard.constants import PROFILES
-from src.agent_scorecard.main import cli
+from agent_scorecard.checks import get_loc, analyze_complexity, analyze_type_hints
+from agent_scorecard.constants import PROFILES
+from agent_scorecard.main import cli
 from click.testing import CliRunner
 
 def test_get_loc(tmp_path: Path):

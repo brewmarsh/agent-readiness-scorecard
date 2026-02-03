@@ -1,3 +1,4 @@
+import os
 import sys
 import click
 from importlib.metadata import version, PackageNotFoundError
@@ -49,6 +50,18 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         penalty = len(results["missing_docs"]) * 15
         console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
 
+    dep = results.get("dep_analysis", {})
+    if dep.get("cycles"):
+        console.print(f"\n[bold red]⚠ Circular Dependencies Detected:[/bold red] {len(dep['cycles'])} cycles found (-30 pts)")
+        for cycle in dep['cycles']:
+            cycle_str = " -> ".join([os.path.basename(f) for f in cycle])
+            console.print(f"  - {cycle_str} -> {os.path.basename(cycle[0])}")
+
+    if dep.get("god_modules"):
+        console.print(f"\n[bold red]⚠ God Modules Detected (In-Degree > 50):[/bold red] {len(dep['god_modules'])} found")
+        for god in dep['god_modules']:
+            console.print(f"  - {os.path.basename(god['file'])} (In-Degree: {god['in_degree']})")
+
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -90,6 +103,7 @@ def fix(path: str, agent: str) -> None:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     profile = PROFILES[agent]
+
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")

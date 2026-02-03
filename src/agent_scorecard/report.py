@@ -25,6 +25,15 @@ def generate_markdown_report(results):
             summary += f"- `{doc}` (-15 pts)\n"
         summary += "\n"
 
+    dep = results.get("dep_analysis", {})
+    if dep.get("cycles") or dep.get("god_modules"):
+        summary += "### 🕸 Dependency Entanglement\n"
+        if dep.get("cycles"):
+            summary += f"- ❌ **Circular Dependencies**: {len(dep['cycles'])} cycles found (-30 pts)\n"
+        if dep.get("god_modules"):
+            summary += f"- ❌ **God Modules**: {len(dep['god_modules'])} modules with in-degree > 50\n"
+        summary += "\n"
+
     # --- 2. Refactoring Targets ---
     targets = "## 🎯 Top Refactoring Targets\n\n"
 
