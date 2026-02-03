@@ -1,4 +1,3 @@
-# agent_scorecard/report.py
 import os
 from . import analyzer
 
@@ -33,7 +32,7 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
         if not metrics and 'acl_violations' in f_res:
              # Fallback if full metrics aren't passed, use violations
              metrics = f_res['acl_violations']
-
+        
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
@@ -57,10 +56,10 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
 
     types_section += "| File | Type Safety Index | Status |\n"
     types_section += "| :--- | :---------------: | :----- |\n"
-
+    
     # Sort by lowest coverage first
     sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
-
+    
     for res in sorted_types:
         status = "✅" if res["type_coverage"] >= 90 else "❌"
         types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
