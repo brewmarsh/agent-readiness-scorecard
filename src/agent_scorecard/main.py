@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 import click
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
@@ -40,7 +41,16 @@ def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
     pass
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
+def get_changed_files(base_ref: str = "origin/main") -> list:
+    """Uses git diff to return a list of changed Python files."""
+    try:
+        cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return [f for f in result.stdout.splitlines() if f.endswith(".py") and os.path.exists(f)]
+    except Exception:
+        return []
+
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
     """Helper to run the scoring logic."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
@@ -53,7 +63,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         console.print("")
 
     # Run Analysis
-    results = analyzer.perform_analysis(path, agent)
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
     # 1. Environment Health & Auditor Checks (Preserved from Beta Branch)
@@ -93,6 +103,14 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     if results["missing_docs"]:
         penalty = len(results["missing_docs"]) * 15
         console.print(f"[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)\n")
+
+    # Project Issues (God Modules, High Entropy, etc.)
+    for issue in results.get("project_issues", []):
+        if "Missing Critical Agent Docs" in issue:
+            continue
+        console.print(f"[bold yellow]⚠ {issue}[/bold yellow]")
+    if results.get("project_issues"):
+        console.print("") # Spacing
 
     # 3. File Table
     table = Table(title="File Analysis")
@@ -155,9 +173,16 @@ def fix(path: str, agent: str) -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
 @click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
-def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
+@click.option("--diff", "diff_base", help="Only score files changed vs this git ref.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
-    run_scoring(path, agent, fix, badge, report_path)
+    limit_to_files = None
+    if diff_base:
+        limit_to_files = get_changed_files(diff_base)
+        if not limit_to_files:
+            console.print(f"[bold yellow]No changed Python files found against {diff_base}. Scoring all files.[/bold yellow]")
+
+    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
