@@ -104,6 +104,19 @@ def score(path: str, agent: str, fix: bool, badge: bool) -> None:
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
 
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
+def fix(path: str, agent: str) -> None:
+    """Automatically fixes common issues in the codebase."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
@@ -137,8 +150,8 @@ def advise(path, output_file):
         stats.append({
             "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
             "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath)[0], # Assuming returns tuple
-            "type_coverage": analyzer.check_type_hints(filepath)[0]   # Assuming returns tuple
+            "complexity": analyzer.get_complexity_score(filepath),
+            "type_coverage": analyzer.check_type_hints(filepath)
         })
 
     final_score = 0 # Placeholder if we don't recalculate
