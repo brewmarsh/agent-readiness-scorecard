@@ -81,6 +81,19 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
 
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use.")
+def fix(path: str, agent: str) -> None:
+    """Automatically fix common issues in the codebase."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("[bold green]Fixes applied![/bold green]")
+
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
@@ -108,6 +121,12 @@ def advise(path, output_file, agent):
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
         console.print("\n" + report_content)
+
+    # Automatically generate RECOMMENDATIONS.md
+    rec_content = report.generate_recommendations_report(results)
+    with open("RECOMMENDATIONS.md", "w", encoding="utf-8") as f:
+        f.write(rec_content)
+    console.print("[bold green]Recommendations saved to RECOMMENDATIONS.md[/bold green]")
 
 if __name__ == "__main__":
     cli()

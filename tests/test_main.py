@@ -1,7 +1,7 @@
 import os
 import pytest
 from pathlib import Path
-from agent_scorecard.analyzer import (
+from agent_scorecard.checks import (
     get_loc,
     analyze_complexity,
     analyze_type_hints,
