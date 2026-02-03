@@ -13,6 +13,7 @@ dependencies = [
     "rich",
     "click",
     "tiktoken",
+    "networkx",
 ]
 requires-python = ">=3.8"
 

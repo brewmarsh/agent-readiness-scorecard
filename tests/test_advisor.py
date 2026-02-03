@@ -1,4 +1,5 @@
 import pytest
+<<<<<<< HEAD
 import textwrap
 import os
 from pathlib import Path
@@ -15,6 +16,14 @@ from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
 
+=======
+from pathlib import Path
+import textwrap
+import os
+from src.agent_scorecard.analyzer import calculate_acl, get_directory_entropy, get_import_graph, get_inbound_imports, detect_cycles
+from src.agent_scorecard.report import generate_advisor_report
+
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
 def test_calculate_acl():
     # ACL = CC + (LOC / 20)
     assert calculate_acl(10, 100) == 10 + (100 / 20) # 15.0
@@ -31,16 +40,36 @@ def test_get_directory_entropy(tmp_path):
     for i in range(5):
         (subdir / f"sub_{i}.txt").touch()
 
+<<<<<<< HEAD
     # Use Beta threshold (matches resolved code)
     entropy = get_directory_entropy(str(tmp_path), threshold=20)
     base_name = tmp_path.name
 
+=======
+    entropy = get_directory_entropy(str(tmp_path), threshold=20)
+
+    # Check if root is flagged (rel path is usually base dir name or ".")
+    # The function returns basename of root if rel_path is "."
+    base_name = tmp_path.name
+
+    # Depending on implementation, it might return '.' or basename.
+    # My implementation: if rel_path == ".": rel_path = basename
+
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
     assert base_name in entropy
     assert entropy[base_name] == 25 # only files in root
     assert "subdir" not in entropy
 
 def test_dependency_analysis(tmp_path):
+<<<<<<< HEAD
     # main.py imports utils, utils imports shared
+=======
+    # Create files
+    # main.py imports utils
+    # utils.py imports shared
+    # shared.py
+
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
     (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
     (tmp_path / "utils.py").write_text("import shared", encoding="utf-8")
     (tmp_path / "shared.py").write_text("# no imports", encoding="utf-8")
@@ -58,7 +87,13 @@ def test_dependency_analysis(tmp_path):
     assert inbound.get("main.py") == 0
 
 def test_cycle_detection(tmp_path):
+<<<<<<< HEAD
     # a.py <-> b.py
+=======
+    # a.py imports b
+    # b.py imports a
+
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
     (tmp_path / "b.py").write_text("import a", encoding="utf-8")
 
@@ -66,12 +101,20 @@ def test_cycle_detection(tmp_path):
     cycles = detect_cycles(graph)
 
     assert len(cycles) > 0
+<<<<<<< HEAD
+=======
+    # Cycle should involve a.py and b.py
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
     flat_cycle = [item for sublist in cycles for item in sublist]
     assert "a.py" in flat_cycle
     assert "b.py" in flat_cycle
 
+<<<<<<< HEAD
 def test_generate_advisor_report_standalone():
     """Tests the standalone Advisor Report used in 'agent-score advise' command."""
+=======
+def test_generate_advisor_report():
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252
     stats = [
         {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
         {"file": "normal.py", "acl": 5.0, "complexity": 2, "loc": 60}
@@ -80,6 +123,7 @@ def test_generate_advisor_report_standalone():
     entropy_stats = {"large_dir": 30}
     cycles = [["a.py", "b.py"]]
 
+<<<<<<< HEAD
     # Test the standalone advisor function
     report_md = generate_advisor_report(stats, dependency_stats, entropy_stats, cycles)
 
@@ -165,3 +209,16 @@ def test_unified_score_report_content(tmp_path):
     assert "hallucination.py" in report_md
     # Check if ACL section appeared
     assert "Agent Cognitive Load (ACL)" in report_md
+=======
+    report = generate_advisor_report(stats, dependency_stats, entropy_stats, cycles)
+
+    assert "# 🧠 Agent Advisor Report" in report
+    assert "high_acl.py" in report
+    assert "Hallucination Zones" in report
+    assert "god.py" in report
+    assert "God Modules" in report
+    assert "a.py" in report
+    assert "Circular Dependencies" in report
+    assert "large_dir" in report
+    assert "Directory Entropy" in report
+>>>>>>> origin/upgrade-scoring-logic-4412913730962226252

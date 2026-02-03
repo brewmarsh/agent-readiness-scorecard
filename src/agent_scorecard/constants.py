@@ -29,23 +29,17 @@ DOCSTRING_TEXT = '"""TODO: Add docstring for AI context."""'
 # --- AGENT PROFILES ---
 PROFILES = {
     "generic": {
-        "max_loc": 200,
-        "max_complexity": 10,
-        "min_type_coverage": 50,
+        "min_type_coverage": 90,
         "required_files": ["README.md"],
-        "description": "Standard cleanliness checks."
+        "description": "Standard Agent Readiness checks (ACL & Type Safety)."
     },
     "jules": {
-        "max_loc": 150,  # Stricter LOC for autonomy
-        "max_complexity": 8,
-        "min_type_coverage": 80,  # High typing requirement
+        "min_type_coverage": 90,
         "required_files": ["agents.md", "instructions.md"],
-        "description": "Strict typing and autonomy instructions."
+        "description": "High autonomy profile with strict requirements."
     },
     "copilot": {
-        "max_loc": 100,  # Very small chunks preferred
-        "max_complexity": 15, # Lenient on logic, strict on size
-        "min_type_coverage": 40,
+        "min_type_coverage": 90,
         "required_files": [],
         "description": "Optimized for small context completion."
     }
