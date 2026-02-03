@@ -10,7 +10,6 @@ from . import analyzer, report
 
 # Use the Modular Refactor (Beta Branch)
 from .constants import PROFILES
-from .analyzer import scan_project_docs
 from .fix import apply_fixes
 from .scoring import score_file, generate_badge
 
@@ -93,13 +92,17 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     stats = []
     
     for filepath in py_files:
-        # Use the imported modular function
+        # Use the imported modular function for basic scoring
         s_score, notes = score_file(filepath, profile)
         file_scores.append(s_score)
         
+        # Gather detailed stats for the report
         if report_file:
+            # RESOLUTION: Use Beta logic (Function-level stats)
             func_stats = analyzer.get_function_stats(filepath)
+            # Identify functions that are too complex (ACL > 15)
             acl_violations = [f for f in func_stats if f['acl'] > 15]
+            
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
                 "loc": analyzer.get_loc(filepath),
@@ -132,7 +135,6 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     # 6. Generate Badge
     if badge:
         output_path = "agent_score.svg"
-        # Use the imported modular function
         svg_content = generate_badge(final_score)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
@@ -177,10 +179,9 @@ def advise(path, output_file):
             loc = analyzer.get_loc(filepath)
             complexity = analyzer.get_complexity_score(filepath)
 
-            # ACL Calculation using function stats
+            # RESOLUTION: Use Beta logic
+            # We calculate ACL at the function level and take the MAX to see how "dangerous" the file is.
             func_stats = analyzer.get_function_stats(filepath)
-            # We take the MAX ACL of any function in the file to represent the file's "Danger Level"
-            # This aligns with Beta's file-based report but uses accurate function-level ACL
             max_acl = max((f['acl'] for f in func_stats), default=0)
 
             stats.append({

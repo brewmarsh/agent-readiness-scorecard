@@ -22,10 +22,8 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
     top_loc = sorted(stats, key=lambda x: x['loc'], reverse=True)[:3]
     top_types = sorted(stats, key=lambda x: x['type_coverage'])[:3]
 
-    # Find top ACL offenders (files with highest max ACL or count?)
-    # Let's say files with any ACL violation
+    # Find top ACL offenders (files with highest max ACL in violations)
     acl_offenders = [s for s in stats if s.get('acl_violations')]
-    # Sort by max ACL in the file
     acl_offenders.sort(key=lambda x: max((f['acl'] for f in x['acl_violations']), default=0), reverse=True)
     top_acl = acl_offenders[:3]
 
@@ -70,10 +68,30 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
              for violation in file_stats['acl_violations']:
                  prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
                  prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
-
+        
         prompts += "\n"
 
-    # --- 4. Documentation Health ---
+    # --- 4. Agent Cognitive Load ---
+    acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
+    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list, 
+    # but 'generate_markdown_report' might rely on file-level summaries too. 
+    # Ensure this logic aligns with your stats structure.
+    high_acl_files = [s for s in stats if s.get('acl_violations')]
+    
+    if high_acl_files:
+        acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
+        acl_section += "| File Path        | ACL Score |\n"
+        acl_section += "|------------------|-----------|\n"
+        for s in high_acl_files:
+             # Calculate max ACL for the file from its violations
+             max_acl = max((f['acl'] for f in s['acl_violations']), default=0)
+             acl_section += f"| {s['file']} | {max_acl:.1f} |\n"
+    else:
+        acl_section += "✅ No Hallucination Zones detected (ACL < 15).\n"
+
+    acl_section += "\n"
+
+    # --- 5. Documentation Health ---
     docs = "## 📚 Documentation Health\n\n"
     missing_docs = analyzer.scan_project_docs(path, ["agents.md"])
     if not missing_docs:
@@ -81,7 +99,7 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
     else:
         docs += "❌ `agents.md` not found. Recommended Action: Create an `agents.md` to provide context for AI agents.\n"
 
-    return summary + targets + prompts + docs
+    return summary + targets + prompts + acl_section + docs
 
 def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     """Generates a detailed Advisor Report based on Agent Physics."""
@@ -141,6 +159,7 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     report += "Optimizing the retrieval and context window budget.\n\n"
 
     if entropy_stats:
+        # RESOLUTION: Accepted Beta branch logic (Threshold 50)
         report += "### 📂 Directory Entropy (Files > 50)\n"
         report += "Large directories confuse retrieval tools.\n\n"
         report += "| Directory | File Count |\n"
