@@ -13,12 +13,8 @@ def test_cli_happy_path():
         with open("README.md", "w") as f:
             f.write("# README")
 
-<<<<<<< HEAD
         # cli is now a group, so we need to invoke 'score'
         result = runner.invoke(cli, ["score", "."])
-=======
-        result = runner.invoke(cli, ["."])
->>>>>>> main
         assert result.exit_code == 0
         assert "Running Agent Scorecard" in result.output
         assert "Final Agent Score" in result.output
@@ -28,11 +24,7 @@ def test_cli_profiles_jules_fail_missing_agents_md():
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
         # We need a python file to trigger scoring, or let it fail due to no files and missing docs
-<<<<<<< HEAD
         result = runner.invoke(cli, ["score", ".", "--agent=jules"])
-=======
-        result = runner.invoke(cli, [".", "--agent=jules"])
->>>>>>> main
 
         # Should fail because missing agents.md and instructions.md
         # And no python files means avg_file_score is 0.
@@ -47,11 +39,7 @@ def test_cli_fix_flag():
             f.write("def test():\n    pass\n")
 
         # Run with --fix and jules profile to ensure agents.md is created
-<<<<<<< HEAD
         result = runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
-=======
-        result = runner.invoke(cli, [".", "--agent=jules", "--fix"])
->>>>>>> main
         # Exit code might be 0 or 1 depending on score, but we care about file creation
 
         assert os.path.exists("agents.md")
@@ -70,11 +58,7 @@ def test_cli_badge_generation():
         with open("README.md", "w") as f:
             f.write("# README")
 
-<<<<<<< HEAD
         result = runner.invoke(cli, ["score", ".", "--badge"])
-=======
-        result = runner.invoke(cli, [".", "--badge"])
->>>>>>> main
         assert result.exit_code == 0
         assert os.path.exists("agent_score.svg")
         assert "Badge saved" in result.output
@@ -94,13 +78,5 @@ def test_cli_advise_command():
         assert os.path.exists("report.md")
         with open("report.md", "r") as f:
             content = f.read()
-<<<<<<< HEAD
-            assert "# 🕵️ Agent Scorecard Report" in content # Updated expected string
-            assert "Final Score" in content
-            # "File Analysis" is not in the new report format, it lists issues under "Critical Issues" or "Recommendations"
-            # assert "File Analysis" in content
-=======
             assert "# Agent Scorecard Report" in content
             assert "Final Score" in content
-            assert "File Analysis" in content
->>>>>>> main
