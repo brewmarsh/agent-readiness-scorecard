@@ -1,164 +1,113 @@
-import os
 import sys
 import click
+from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
+# Import common modules
+from . import analyzer, report
+
+# Use the Modular Refactor imports
 from .constants import PROFILES
-from .analyzer import scan_project_docs, get_loc, analyze_complexity, analyze_type_hints
 from .fix import apply_fixes
-from .scoring import score_file, generate_badge
-from .report import generate_report
+from .scoring import generate_badge
 
 console = Console()
 
-@click.group()
-def cli():
-    """Agent Scorecard: AI-readiness analyzer."""
+# --- MERGED VERSION SETUP ---
+try:
+    __version__ = version("agent-scorecard")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
+# --- MERGED CLI DEFINITION ---
+# We use analyzer.DefaultGroup from the 'fix' branch to enable correct default behavior
+# We use version_option from the 'main' branch for standard --version support
+@click.group(cls=analyzer.DefaultGroup)
+@click.version_option(version=__version__)
+def cli() -> None:
+    """Main entry point for the agent-scorecard CLI."""
     pass
 
-@cli.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
-@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def score(path: str, agent: str, fix: bool, badge: bool):
-    """Analyze code compatibility for specific AI Agents."""
-
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
+    """Helper to run the scoring logic."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
-
     profile = PROFILES[agent]
 
     if fix:
         console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         apply_fixes(path, profile)
-        console.print("") # Newline
+        console.print("")
 
+    results = analyzer.perform_analysis(path, agent)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
-    # 1. Project Level Check
-    project_score = 100
-    missing_docs = []
+    if results["missing_docs"]:
+        penalty = len(results["missing_docs"]) * 15
+        console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
 
-    if os.path.isdir(path):
-        missing_docs = scan_project_docs(path, profile["required_files"])
-        if missing_docs:
-            penalty = len(missing_docs) * 15
-            project_score -= penalty
-            console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(missing_docs)} (-{penalty} pts)")
-
-    # 2. File Level Check
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
     table.add_column("Issues", style="magenta")
 
-    py_files = []
-    if os.path.isfile(path):
-        if path.endswith(".py"): py_files = [path]
-    else:
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-
-    file_scores = []
-    for filepath in py_files:
-        s, notes = score_file(filepath, profile)
-        file_scores.append(s)
-
-        status_color = "green" if s >= 70 else "red"
-        rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        table.add_row(rel_path, f"[{status_color}]{s}[/{status_color}]", notes)
+    for res in results["file_results"]:
+        status_color = "green" if res["score"] >= 70 else "red"
+        table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
 
     console.print(table)
-
-    # 3. Final Aggregation
-    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
-    # Weighted average: 80% file quality, 20% project structure
-    final_score = (avg_file_score * 0.8) + (project_score * 0.2)
-
-    console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
+    console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
 
     if badge:
         output_path = "agent_score.svg"
-        svg_content = generate_badge(final_score)
+        svg_content = generate_badge(results["final_score"])
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
-    if final_score < 70:
+    if report_path:
+        report_content = report.generate_markdown_report(results)
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report_content)
+        console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
+
+    if results["final_score"] < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
 
-@cli.command()
+@cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-@click.option("--output", default="agent_advisor.md", help="Output file for the report.")
-def advise(path: str, agent: str, output: str):
-    """Generate a detailed Advisor Report."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
+@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
+@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
+@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: str) -> None:
+    """Scores a codebase based on AI-agent compatibility."""
+    run_scoring(path, agent, fix, badge, report_path)
 
-    profile = PROFILES[agent]
-    console.print(Panel(f"[bold cyan]Running Agent Advisor[/bold cyan]\nProfile: {agent.upper()}", expand=False))
 
-    # Collect data
-    missing_docs = []
-    project_score = 100
-    if os.path.isdir(path):
-        missing_docs = scan_project_docs(path, profile["required_files"])
-        if missing_docs:
-            project_score -= (len(missing_docs) * 15)
+@cli.command(name="advise")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
+@click.option("--agent", default="generic", help="Profile to use.")
+def advise(path, output_file, agent):
+    """Generates a Markdown report with actionable advice."""
+    console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
+    results = analyzer.perform_analysis(path, agent)
+    report_content = report.generate_markdown_report(results)
 
-    py_files = []
-    if os.path.isfile(path):
-        if path.endswith(".py"): py_files = [path]
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_content)
+        console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-
-    file_results = []
-    file_scores = []
-
-    with console.status("[bold green]Analyzing files..."):
-        for filepath in py_files:
-            # We need raw metrics + score
-            loc = get_loc(filepath)
-            complexity = analyze_complexity(filepath)
-            type_cov = analyze_type_hints(filepath)
-
-            # Calculate score using score_file logic (or calling it)
-            # Since score_file calculates penalties internally, we can call it to get the score.
-            s, _ = score_file(filepath, profile)
-            file_scores.append(s)
-
-            file_results.append({
-                "filepath": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-                "loc": loc,
-                "complexity": complexity,
-                "type_coverage": type_cov,
-                "score": s
-            })
-
-    avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
-    final_score = (avg_file_score * 0.8) + (project_score * 0.2)
-
-    report = generate_report(final_score, file_results, missing_docs, profile)
-
-    with open(output, "w", encoding="utf-8") as f:
-        f.write(report)
-
-    console.print(f"[bold green]Report generated at {output}[/bold green]")
+        console.print("\n" + report_content)
 
 if __name__ == "__main__":
     cli()

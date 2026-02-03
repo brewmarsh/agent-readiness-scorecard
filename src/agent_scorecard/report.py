@@ -1,56 +1,87 @@
-from typing import List, Dict, Any
+import os
+from . import analyzer
 
-def generate_report(
-    project_score: float,
-    file_results: List[Dict[str, Any]],
-    missing_docs: List[str],
-    profile: Dict[str, Any]
-) -> str:
-    """Generates a Markdown report with actionable advice."""
+def generate_markdown_report(results):
+    """Generates a Markdown report from the analysis results."""
+    final_score = results["final_score"]
+    file_results = results["file_results"]
+    profile = results["profile"]
+    agent_name = results["agent"]
 
-    report = [
-        "# 🕵️ Agent Scorecard Report",
-        f"\n**Final Score:** {project_score:.1f}/100",
-        f"**Profile:** {profile.get('description', 'Custom')}",
-        "\n## 🚨 Critical Issues",
-    ]
+    # --- 1. Executive Summary ---
+    summary = f"# Agent Scorecard Report\n\n"
+    summary += f"**Target Agent Profile:** {agent_name.upper()}\n"
+    summary += f"**Description:** {profile['description']}\n\n"
+    summary += f"## Final Score: {final_score:.1f}/100\n\n"
 
-    if missing_docs:
-        report.append("\n### ❌ Missing Documentation")
-        report.append("Agents rely on these files to understand your project context.")
-        for doc in missing_docs:
-            report.append(f"- `root/{doc}`: Missing.")
-        report.append("\n**Fix:** Run `agent-score --fix` to generate these files.")
+    if final_score >= 70:
+        summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
+    else:
+        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
 
-    # Identify problematic files
-    bloated_files = [f for f in file_results if f['loc'] > profile['max_loc']]
-    complex_files = [f for f in file_results if f['complexity'] > profile['max_complexity']]
-    untyped_files = [f for f in file_results if f['type_coverage'] < profile['min_type_coverage']]
+    if results["missing_docs"]:
+        summary += "### ⚠️ Missing Critical Documentation\n"
+        for doc in results["missing_docs"]:
+            summary += f"- `{doc}` (-15 pts)\n"
+        summary += "\n"
 
-    if bloated_files:
-        report.append("\n### 📉 Bloated Files (Too Large)")
-        report.append(f"Files larger than {profile['max_loc']} lines confuse agents.")
-        for f in bloated_files:
-            report.append(f"- `{f['filepath']}`: **{f['loc']} lines**")
+    # --- 2. Refactoring Targets ---
+    targets = "## 🎯 Top Refactoring Targets\n\n"
 
-    if complex_files:
-        report.append("\n### 🌀 Complex Logic")
-        report.append(f"Cyclomatic complexity > {profile['max_complexity']} makes reasoning hard.")
-        for f in complex_files:
-            report.append(f"- `{f['filepath']}`: **{f['complexity']:.1f} avg complexity**")
+    # Sort files by offender categories
+    top_complexity = sorted(file_results, key=lambda x: x['complexity'], reverse=True)[:3]
+    top_loc = sorted(file_results, key=lambda x: x['loc'], reverse=True)[:3]
+    top_types = sorted(file_results, key=lambda x: x['type_coverage'])[:3]
 
-    if untyped_files:
-        report.append("\n### ❓ Missing Type Hints")
-        report.append(f"Type coverage < {profile['min_type_coverage']}% leads to hallucinations.")
-        for f in untyped_files:
-            report.append(f"- `{f['filepath']}`: **{f['type_coverage']:.0f}% covered**")
+    targets += "| Category         | File Path        | Value      |\n"
+    targets += "|------------------|------------------|------------|\n"
 
-    if not (missing_docs or bloated_files or complex_files or untyped_files):
-        report.append("\n✅ No critical issues found! Your codebase is agent-ready.")
+    for s in top_complexity:
+        if s['complexity'] > profile['max_complexity']:
+            targets += f"| Complexity       | {s['file']}      | {s['complexity']:.1f}      |\n"
+    for s in top_loc:
+        if s['loc'] > profile['max_loc']:
+            targets += f"| Lines of Code    | {s['file']}      | {s['loc']}        |\n"
+    for s in top_types:
+        if s['type_coverage'] < profile['min_type_coverage']:
+            targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
+    targets += "\n"
 
-    report.append("\n## 💡 Recommendations")
-    report.append("1. **Refactor large files**: Break them into smaller modules.")
-    report.append("2. **Add Type Hints**: Use `agent-score --fix` to add TODOs.")
-    report.append("3. **Simplify Logic**: Reduce nesting and split complex functions.")
+    # --- 3. Agent Prompts ---
+    prompts = "## 🤖 Agent Prompts\n\n"
+    unique_files = {s['file'] for s in top_complexity + top_loc + top_types}
 
-    return "\n".join(report)
+    for file_path in sorted(unique_files):
+        file_stats = next(s for s in file_results if s['file'] == file_path)
+        file_issues = []
+
+        if file_stats['complexity'] > profile['max_complexity']:
+             file_issues.append(f"- **Complexity**: Score is {file_stats['complexity']:.1f}. Prompt: 'Refactor `{file_path}` to reduce cyclomatic complexity below {profile['max_complexity']}. Focus on splitting large functions.'")
+
+        if file_stats['loc'] > profile['max_loc']:
+             file_issues.append(f"- **Length**: LOC is {file_stats['loc']}. Prompt: 'Reduce the lines of code in `{file_path}` below {profile['max_loc']}. Consider moving helper functions to other modules.'")
+
+        if file_stats['type_coverage'] < profile['min_type_coverage']:
+             file_issues.append(f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'")
+
+        if file_issues:
+            prompts += f"### File: `{file_path}`\n"
+            prompts += "\n".join(file_issues) + "\n\n"
+
+    # --- 4. Documentation Health ---
+    docs = "## 📚 Documentation Health\n\n"
+    if not results["missing_docs"]:
+        docs += "✅ All required documentation files found.\n"
+    else:
+        docs += "❌ Missing: " + ", ".join([f"`{d}`" for d in results["missing_docs"]]) + ". Recommended Action: Create these files to provide context for AI agents.\n"
+
+    # --- 5. File Analysis Table ---
+    table = "### 📂 File Analysis\n\n"
+    table += "| File | Score | Issues |\n"
+    table += "| :--- | :---: | :--- |\n"
+    for res in file_results:
+        status = "✅" if res["score"] >= 70 else "❌"
+        table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+
+    return summary + targets + prompts + docs + "\n" + table + "\n---
+*Generated by Agent-Scorecard*"
