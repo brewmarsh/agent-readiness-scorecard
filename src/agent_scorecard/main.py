@@ -16,7 +16,19 @@ from .scoring import score_file, generate_badge
 
 console = Console()
 
-@click.group()
+class DefaultGroup(click.Group):
+    """
+    Invokes a default command if a subcommand is not found.
+    """
+    def parse_args(self, ctx, args):
+        if not args:
+            args.insert(0, "score")
+        elif args[0] not in self.commands and args[0] not in ["--help", "--version", "-h"]:
+            args.insert(0, "score")
+        return super().parse_args(ctx, args)
+
+@click.group(cls=DefaultGroup, invoke_without_command=True)
+@click.version_option(package_name="agent-scorecard")
 def cli():
     """Main entry point for the agent-scorecard CLI."""
     pass
@@ -43,7 +55,8 @@ def fix(path: str, agent: str) -> None:
 @click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
 @click.option("--fix", is_flag=True, help="Automatically fix common issues.")
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-def score(path: str, agent: str, fix: bool, badge: bool) -> None:
+@click.option("--report", "report_file", default=None, help="Generate a Markdown report to the specified file.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
 
     if agent not in PROFILES:
@@ -77,12 +90,21 @@ def score(path: str, agent: str, fix: bool, badge: bool) -> None:
     table.add_column("Issues", style="magenta")
 
     file_scores = []
+    stats = []
     
     for filepath in py_files:
         # Use the imported modular function
         s_score, notes = score_file(filepath, profile)
         file_scores.append(s_score)
         
+        if report_file:
+            stats.append({
+                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": analyzer.get_loc(filepath),
+                "complexity": analyzer.get_complexity_score(filepath),
+                "type_coverage": analyzer.check_type_hints(filepath)
+            })
+
         status_color = "green" if s_score >= 70 else "red"
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
         table.add_row(rel_path, f"[{status_color}]{s_score}[/{status_color}]", notes)
@@ -115,25 +137,18 @@ def score(path: str, agent: str, fix: bool, badge: bool) -> None:
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
+    # 7. Generate Report
+    if report_file:
+        markdown_content = report.generate_markdown_report(stats, final_score, path, profile)
+        with open(report_file, "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+        console.print(f"\n[bold green]Report saved to {report_file}[/bold green]")
+
     if final_score < 70:
         console.print("[bold red]FAILED: Not Agent-Ready[/bold red]")
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
-
-@cli.command(name="fix")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-def fix(path: str, agent: str) -> None:
-    """Automatically fixes common issues in the codebase."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-
-    profile = PROFILES[agent]
-    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-    apply_fixes(path, profile)
-
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
