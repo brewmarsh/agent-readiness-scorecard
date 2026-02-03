@@ -1,5 +1,4 @@
 import pytest
-import textwrap
 import os
 from pathlib import Path
 from src.agent_scorecard import analyzer, report
@@ -97,17 +96,13 @@ def test_generate_advisor_report_standalone():
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
-    code = textwrap.dedent("""
-        def complex_function():
-            if True:
-                print("yes")
-            else:
-                print("no")
-            # padding
-            return 0
-    """)
-    # Pad to ensure LOC > 20
-    code += "\n" * 20
+    code = "def complex_function():\n"
+    code += "    if True:\n"
+    code += "        print('yes')\n"
+    code += "    else:\n"
+    code += "        print('no')\n"
+    code += ("    # padding\n" * 20)
+    code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
