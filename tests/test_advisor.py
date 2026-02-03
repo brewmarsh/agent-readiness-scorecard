@@ -6,11 +6,11 @@ from src.agent_scorecard import analyzer, report
 from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.analyzer import (
     calculate_acl, 
-    get_directory_entropy, 
     get_import_graph, 
     get_inbound_imports, 
     detect_cycles
 )
+from src.agent_scorecard.auditor import get_crowded_directories
 from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
@@ -20,7 +20,7 @@ def test_calculate_acl():
     assert calculate_acl(10, 100) == 10 + (100 / 20) # 15.0
     assert calculate_acl(0, 0) == 0
 
-def test_get_directory_entropy(tmp_path):
+def test_get_crowded_directories(tmp_path):
     # Create 25 files in tmp_path
     for i in range(25):
         (tmp_path / f"file_{i}.txt").touch()
@@ -32,7 +32,7 @@ def test_get_directory_entropy(tmp_path):
         (subdir / f"sub_{i}.txt").touch()
 
     # Use Beta threshold (matches resolved code)
-    entropy = get_directory_entropy(str(tmp_path), threshold=20)
+    entropy = get_crowded_directories(str(tmp_path), threshold=20)
     base_name = tmp_path.name
 
     assert base_name in entropy
@@ -103,10 +103,16 @@ def test_function_stats_parsing(tmp_path):
                 print("yes")
             else:
                 print("no")
+<<<<<<< refactor-context-economics-auditor-1125501317532737038
+            # padding
+    """)
+    code += "    x = 1\n" * 20
+=======
     """)
     # Pad to ensure LOC > 20
     for _ in range(20):
         code += "    # padding\n"
+>>>>>>> beta
     code += "    return 0\n"
 
     p = tmp_path / "test_acl.py"

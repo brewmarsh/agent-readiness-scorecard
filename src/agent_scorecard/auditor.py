@@ -42,6 +42,25 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
         "crowded_dirs": crowded_dirs
     }
 
+def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
+    """Returns directories with file count > threshold."""
+    entropy_stats = {}
+    if os.path.isfile(root_path):
+        return entropy_stats
+
+    for root, dirs, files in os.walk(root_path):
+        # Ignore hidden directories like .git
+        if any(part.startswith(".") for part in root.split(os.sep)):
+            continue
+
+        count = len(files)
+        if count > threshold:
+            rel_path = os.path.relpath(root, start=root_path)
+            if rel_path == ".":
+                rel_path = os.path.basename(os.path.abspath(root_path))
+            entropy_stats[rel_path] = count
+    return entropy_stats
+
 def get_python_signatures(filepath: str) -> str:
     """Extracts function/method signatures from a python file."""
     try:

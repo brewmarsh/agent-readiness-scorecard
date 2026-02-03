@@ -3,6 +3,7 @@ import ast
 import mccabe
 from collections import Counter
 from typing import List, Dict, Any, Tuple
+from . import auditor
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -77,25 +78,6 @@ def count_tokens(filepath: str) -> int:
             return len(content) // 4
     except UnicodeDecodeError:
         return 0
-
-def get_directory_entropy(root_path, threshold=50):
-    """Returns directories with file count > threshold."""
-    entropy_stats = {}
-    if os.path.isfile(root_path):
-        return entropy_stats
-
-    for root, dirs, files in os.walk(root_path):
-        # Ignore hidden directories like .git
-        if any(part.startswith(".") for part in root.split(os.sep)):
-            continue
-        
-        count = len(files)
-        if count > threshold:
-            rel_path = os.path.relpath(root, start=root_path)
-            if rel_path == ".":
-                rel_path = os.path.basename(os.path.abspath(root_path))
-            entropy_stats[rel_path] = count
-    return entropy_stats
 
 def get_import_graph(root_path):
     """
@@ -285,7 +267,7 @@ def get_project_issues(path, py_files, profile):
         issues.append(msg)
 
     # 3. Directory Entropy
-    entropy_stats = get_directory_entropy(path, threshold=50)
+    entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     
     if crowded_dirs:
@@ -344,7 +326,7 @@ def analyze_project(root_path: str) -> Dict[str, Any]:
     }
 
     directory_stats = []
-    entropy = get_directory_entropy(root_path if os.path.isdir(root_path) else os.path.dirname(root_path), threshold=50)
+    entropy = auditor.get_crowded_directories(root_path if os.path.isdir(root_path) else os.path.dirname(root_path), threshold=50)
     for path, count in entropy.items():
         directory_stats.append({
             "path": path,
