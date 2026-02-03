@@ -1,12 +1,18 @@
 import os
 from . import analyzer
 
-def generate_markdown_report(stats, final_score, path, profile):
+def generate_markdown_report(stats, final_score, path, profile, project_issues=None):
     """Generates a Markdown report from the collected statistics."""
 
     # --- 1. Executive Summary ---
     summary = f"# Agent Scorecard Report\n\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+
+    if project_issues:
+        summary += "### ⚠ Project Issues\n"
+        for issue in project_issues:
+            summary += f"- {issue}\n"
+        summary += "\n"
 
     # --- 2. Refactoring Targets ---
     targets = "## 🎯 Top Refactoring Targets\n\n"
@@ -15,6 +21,13 @@ def generate_markdown_report(stats, final_score, path, profile):
     top_complexity = sorted(stats, key=lambda x: x['complexity'], reverse=True)[:3]
     top_loc = sorted(stats, key=lambda x: x['loc'], reverse=True)[:3]
     top_types = sorted(stats, key=lambda x: x['type_coverage'])[:3]
+
+    # Find top ACL offenders (files with highest max ACL or count?)
+    # Let's say files with any ACL violation
+    acl_offenders = [s for s in stats if s.get('acl_violations')]
+    # Sort by max ACL in the file
+    acl_offenders.sort(key=lambda x: max((f['acl'] for f in x['acl_violations']), default=0), reverse=True)
+    top_acl = acl_offenders[:3]
 
     targets += "| Category         | File Path        | Value      |\n"
     targets += "|------------------|------------------|------------|\n"
@@ -28,10 +41,14 @@ def generate_markdown_report(stats, final_score, path, profile):
     if top_types:
         for s in top_types:
             targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
+    if top_acl:
+        for s in top_acl:
+            max_acl = max(f['acl'] for f in s['acl_violations'])
+            targets += f"| High ACL         | {s['file']}      | {max_acl:.1f}      |\n"
 
     # --- 3. Agent Prompts ---
     prompts = "\n## 🤖 Agent Prompts\n\n"
-    unique_files = {s['file'] for s in top_complexity + top_loc + top_types}
+    unique_files = {s['file'] for s in top_complexity + top_loc + top_types + top_acl}
 
     for file_path in unique_files:
         prompts += f"### File: `{file_path}`\n"
@@ -48,6 +65,12 @@ def generate_markdown_report(stats, final_score, path, profile):
         if file_stats['type_coverage'] < profile['min_type_coverage']:
              prompts += f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. "
              prompts += f"Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'\n"
+
+        if file_stats.get('acl_violations'):
+             for violation in file_stats['acl_violations']:
+                 prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
+                 prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
+
         prompts += "\n"
 
     # --- 4. Documentation Health ---
@@ -118,7 +141,7 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     report += "Optimizing the retrieval and context window budget.\n\n"
 
     if entropy_stats:
-        report += "### 📂 Directory Entropy (Files > 20)\n"
+        report += "### 📂 Directory Entropy (Files > 50)\n"
         report += "Large directories confuse retrieval tools.\n\n"
         report += "| Directory | File Count |\n"
         report += "|---|---|\n"
