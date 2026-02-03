@@ -73,7 +73,7 @@ def test_advise_command(tmp_path: Path):
     result = runner.invoke(cli, ["advise", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert "Agent Scorecard Report" in result.output
-    assert "Top Refactoring Targets" in result.output
-    assert "Agent Prompts" in result.output
-    assert "Documentation Health" in result.output
+    assert "Agent Advisor Report" in result.output
+    assert "Agent Cognitive Load (ACL)" in result.output
+    assert "Dependency Entanglement" in result.output
+    assert "Context Economics" in result.output
