@@ -49,6 +49,27 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         penalty = len(results["missing_docs"]) * 15
         console.print(f"\n[bold yellow]⚠ Missing Critical Agent Docs:[/bold yellow] {', '.join(results['missing_docs'])} (-{penalty} pts)")
 
+    # Environment Health Section
+    health_table = Table(title="Environment Health")
+    health_table.add_column("Check", style="cyan")
+    health_table.add_column("Status", justify="right")
+
+    health = results["health"]
+    health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
+    health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
+    health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
+
+    entropy = results["entropy"]
+    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    entropy_color = "yellow" if entropy["warning"] else "green"
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+
+    tokens = results["tokens"]
+    token_color = "red" if tokens["alert"] else "green"
+    health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
+
+    console.print(health_table)
+
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -80,6 +101,19 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str)
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
+
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use.")
+def fix(path, agent):
+    """Automatically fix common issues."""
+    if agent not in PROFILES:
+        agent = "generic"
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("[bold green]Fixes applied![/bold green]")
+
 
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
