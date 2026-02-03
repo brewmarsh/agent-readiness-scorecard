@@ -36,10 +36,6 @@ def test_scoring_with_acl_penalty(tmp_path: Path):
     # If LOC = 300, contribution is 15. Complexity >= 1. Total >= 16.
 
     content = "x = 1\n" * 320
-    # Simple assignments have complexity 0 usually? Or 1? mccabe usually counts functions?
-    # Analyzer uses mccabe.PathGraphingAstVisitor.
-    # If there are no functions, complexity is 0?
-    # analyzer.get_complexity_score returns 0 if no complexities found.
 
     # So let's add a function.
     content += textwrap.dedent("""
