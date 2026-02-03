@@ -1,6 +1,7 @@
 import os
 import sys
 import click
+from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -98,7 +99,13 @@ def generate_markdown_report(results):
     return md
 
 
+try:
+    __version__ = version("agent-scorecard")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
 @click.group()
+@click.version_option(version=__version__)
 def cli():
     """Main entry point for the agent-scorecard CLI."""
     pass
