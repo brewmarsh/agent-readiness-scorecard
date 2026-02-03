@@ -63,3 +63,16 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Install Agent Scorecard
+        if: success() && steps.jules.outputs.branch_name != ''
+        run: pip install .
+
+      - name: Self-Score
+        if: success() && steps.jules.outputs.branch_name != ''
+        run: agent-score src/ --agent=jules --report agent_report.md
+        continue-on-error: true
+
+      - name: Publish Report
+        if: always() && steps.jules.outputs.branch_name != ''
+        run: cat agent_report.md >> $GITHUB_STEP_SUMMARY
