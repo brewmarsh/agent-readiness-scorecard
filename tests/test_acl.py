@@ -1,7 +1,6 @@
 import pytest
 import textwrap
 from pathlib import Path
-# RESOLUTION: Updated import to match analyzer.py's function name
 from src.agent_scorecard.analyzer import calculate_acl, get_loc, get_complexity_score
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES

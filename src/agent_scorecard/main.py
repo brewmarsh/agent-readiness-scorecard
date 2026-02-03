@@ -1,3 +1,4 @@
+#agent_scorecard/main.py
 import os
 import sys
 import click
@@ -5,8 +6,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Import common modules
-from . import analyzer, report
+# Import common modules (Added auditor)
+from . import analyzer, report, auditor
 
 # Use the Modular Refactor (Beta Branch)
 from .constants import PROFILES
@@ -82,7 +83,37 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
 
-    # 3. Analyze & Score Files
+    # 3. Environment Health & Auditor Checks (From Auditor Branch)
+    health_table = Table(title="Environment Health")
+    health_table.add_column("Check", style="cyan")
+    health_table.add_column("Status", justify="right")
+
+    health = auditor.check_environment_health(path)
+    health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
+    health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
+    health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
+
+    entropy = auditor.check_directory_entropy(path)
+    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    entropy_color = "yellow" if entropy["warning"] else "green"
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+
+    tokens = auditor.check_critical_context_tokens(path)
+    token_color = "red" if tokens["alert"] else "green"
+    health_table.add_row("Critical Token Count", f"[{token_color}]{tokens['token_count']:,}[/{token_color}]")
+
+    # Dependency Analysis (Visual check for Health Table)
+    import_graph = analyzer.get_import_graph(path)
+    cycles = analyzer.detect_cycles(import_graph)
+    if cycles:
+        health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(cycles)})[/red]")
+    else:
+        health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
+
+    console.print(health_table)
+    console.print("") # Spacing
+
+    # 4. Analyze & Score Files (Beta Logic)
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
@@ -117,7 +148,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     console.print(table)
 
-    # 4. Project Level Checks
+    # 5. Project Level Checks (Scoring/Penalty Calculation)
     project_penalty, project_issues = analyzer.get_project_issues(path, py_files, profile)
 
     for issue in project_issues:
@@ -126,13 +157,13 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
 
     project_score = max(0, 100 - project_penalty)
 
-    # 5. Final Calculation
+    # 6. Final Calculation
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
     console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
-    # 6. Generate Badge
+    # 7. Generate Badge
     if badge:
         output_path = "agent_score.svg"
         svg_content = generate_badge(final_score)
@@ -141,7 +172,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
         console.print(f"\nMarkdown Snippet:\n[![Agent Score]({output_path})](./{output_path})")
 
-    # 7. Generate Report
+    # 8. Generate Report
     if report_file:
         markdown_content = report.generate_markdown_report(stats, final_score, path, profile, project_issues=project_issues)
         with open(report_file, "w", encoding="utf-8") as f:
