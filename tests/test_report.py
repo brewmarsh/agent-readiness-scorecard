@@ -45,7 +45,8 @@ def test_generate_markdown_report():
     assert "PASSED" in report_content
 
     # Verify Upgrade Branch Features (ACL & Type Safety)
-    assert "Top Refactoring Targets (Agent Cognitive Load)" in report_content
+    assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in report_content
+    
     assert "complex_untyped" in report_content
     assert "25.0" in report_content
     assert "🔴 Red" in report_content

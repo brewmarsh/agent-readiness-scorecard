@@ -77,11 +77,13 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
     entropy = auditor.check_directory_entropy(path)
-    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
-    if entropy["warning"]:
-        health_table.add_row("Directory Entropy", f"[yellow]WARN ({entropy_status})[/yellow]")
+    if entropy["warning"] and entropy.get("max_files", 0) > 50:
+        entropy_status = f"Max {entropy['max_files']} files/dir"
     else:
-        health_table.add_row("Directory Entropy", f"[green]PASS ({entropy_status})[/green]")
+        entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+
+    entropy_color = "yellow" if entropy["warning"] else "green"
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
 
     tokens = auditor.check_critical_context_tokens(path)
     token_status = f"{tokens['token_count']:,} tokens"
@@ -227,7 +229,7 @@ def advise(path, output_file):
         cycles = analyzer.detect_cycles(graph)
 
         # Entropy Analysis
-        entropy = analyzer.get_directory_entropy(path)
+        entropy = auditor.get_crowded_directories(path)
 
     markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 

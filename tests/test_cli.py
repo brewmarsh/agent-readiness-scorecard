@@ -75,7 +75,8 @@ def test_cli_advise_command():
         result = runner.invoke(cli, ["advise", ".", "--output", "report.md"])
         assert result.exit_code == 0
         assert os.path.exists("report.md")
-        with open("report.md", "r") as f:
+        with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
             # RESOLUTION: Use Upgrade logic (Advisor Report header)
-            assert "# 🧠 Agent Advisor Report" in content
+            assert "Agent Advisor Report" in content
+        

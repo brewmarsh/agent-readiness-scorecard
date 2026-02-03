@@ -36,6 +36,26 @@ def test_check_directory_entropy_warning():
         assert result["avg_files"] == 20.0
         assert result["warning"] is True
 
+def test_check_directory_entropy_max_files():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a "God Directory" with 60 files
+        god_dir = os.path.join(tmpdir, "god_dir")
+        os.makedirs(god_dir)
+        for i in range(60):
+            with open(os.path.join(god_dir, f"file{i}.txt"), "w") as f:
+                f.write(".")
+
+        # Create 10 empty folders to dilute the average
+        for i in range(10):
+            os.makedirs(os.path.join(tmpdir, f"empty{i}"))
+
+        result = auditor.check_directory_entropy(tmpdir)
+        # Avg = 60 / 12 = 5.0, but Warning should be True
+        assert result["avg_files"] == 5.0
+        assert result["warning"] is True
+        assert result["max_files"] == 60
+        assert god_dir in result["crowded_dirs"]
+
 def test_get_python_signatures():
     code = """
 def func1(a: int) -> str:
