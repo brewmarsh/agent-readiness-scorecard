@@ -1,7 +1,7 @@
 from typing import Dict, Any, Tuple
 from .checks import get_loc, get_complexity_score, check_type_hints
 
-def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
+def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float]:
     """Calculates score based on the selected profile."""
     score = 100
     details = []
@@ -28,7 +28,7 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str]:
     if type_penalty:
         details.append(f"Types {type_cov:.0f}% < {profile['min_type_coverage']}% (-{type_penalty})")
 
-    return max(score, 0), ", ".join(details)
+    return max(score, 0), ", ".join(details), loc, avg_comp, type_cov
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge for the agent score."""

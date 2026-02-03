@@ -1,7 +1,7 @@
 import pytest
 import textwrap
 from pathlib import Path
-from src.agent_scorecard.analyzer import get_loc, get_complexity_score, check_type_hints
+from src.agent_scorecard.checks import get_loc, get_complexity_score, check_type_hints
 from src.agent_scorecard.main import PROFILES, cli
 from click.testing import CliRunner
 
@@ -38,7 +38,7 @@ def test_get_complexity_score(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     # Using the "jules" profile which has a max_complexity of 8
-    avg_complexity = get_complexity_score(str(py_file))
+    avg_complexity, penalty = get_complexity_score(str(py_file), 8)
     assert avg_complexity > PROFILES["jules"]["max_complexity"]
 
 def test_check_type_hints(tmp_path: Path):
@@ -59,8 +59,8 @@ def untyped_function(a, b):
     untyped_file = tmp_path / "untyped.py"
     untyped_file.write_text(untyped_content, encoding="utf-8")
 
-    typed_coverage = check_type_hints(str(typed_file))
-    untyped_coverage = check_type_hints(str(untyped_file))
+    typed_coverage, typed_penalty = check_type_hints(str(typed_file), 50)
+    untyped_coverage, untyped_penalty = check_type_hints(str(untyped_file), 50)
 
     assert typed_coverage == 100
     assert untyped_coverage == 0

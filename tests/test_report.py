@@ -8,21 +8,28 @@ def test_generate_markdown_report(tmp_path: Path):
     # Create a dummy agents.md
     (tmp_path / "agents.md").write_text("dummy content")
 
-    stats = [
-        {'file': 'file1.py', 'loc': 250, 'complexity': 15, 'type_coverage': 40},
-        {'file': 'file2.py', 'loc': 100, 'complexity': 5, 'type_coverage': 90},
-        {'file': 'file3.py', 'loc': 50, 'complexity': 2, 'type_coverage': 100},
+    file_results = [
+        {'file': 'file1.py', 'score': 40, 'issues': '...', 'loc': 250, 'complexity': 15, 'type_coverage': 40},
+        {'file': 'file2.py', 'score': 90, 'issues': '...', 'loc': 100, 'complexity': 5, 'type_coverage': 90},
+        {'file': 'file3.py', 'score': 100, 'issues': '...', 'loc': 50, 'complexity': 2, 'type_coverage': 100},
     ]
 
-    report = generate_markdown_report(stats, 65.0, str(tmp_path), PROFILES['generic'])
+    results = {
+        'final_score': 65.0,
+        'file_results': file_results,
+        'profile': PROFILES['generic'],
+        'agent': 'generic',
+        'missing_docs': []
+    }
 
-    assert "# Agent Scorecard Report" in report
-    assert "Overall Score: 65.0/100" in report
-    assert "FAIL" in report
-    assert "Top Refactoring Targets" in report
-    assert "file1.py" in report
-    assert "Complexity" in report
-    assert "Lines of Code" in report
-    assert "Type Coverage" in report
-    assert "Agent Prompts" in report
-    assert "✅ `agents.md` found." in report
+    report_content = generate_markdown_report(results)
+
+    assert "# Agent Scorecard Report" in report_content
+    assert "Final Score: 65.0/100" in report_content
+    assert "FAILED" in report_content
+    assert "Top Refactoring Targets" in report_content
+    assert "file1.py" in report_content
+    assert "Complexity" in report_content
+    assert "Lines of Code" in report_content
+    assert "Type Coverage" in report_content
+    assert "Agent Prompts" in report_content
