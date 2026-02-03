@@ -1,4 +1,5 @@
 import sys
+import os
 import click
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
@@ -22,8 +23,6 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 # --- MERGED CLI DEFINITION ---
-# We use analyzer.DefaultGroup from the 'fix' branch to enable correct default behavior
-# We use version_option from the 'main' branch for standard --version support
 @click.group(cls=analyzer.DefaultGroup)
 @click.version_option(version=__version__)
 def cli() -> None:
@@ -109,19 +108,58 @@ def fix(path, agent):
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
-@click.option("--agent", default="generic", help="Profile to use.")
-def advise(path, output_file, agent):
-    """Generates a Markdown report with actionable advice."""
+def advise(path, output_file):
+    """Generates a Markdown report with actionable advice based on Agent Physics."""
+
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-    results = analyzer.perform_analysis(path, agent)
-    report_content = report.generate_markdown_report(results)
+
+    # We re-implement the advisor logic here using analyzer's new tools
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
+            if any(part.startswith(".") for part in root.split(os.sep)):
+                continue
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+
+    stats = []
+    with console.status("[bold green]Analyzing Code Physics...[/bold green]"):
+        for filepath in py_files:
+            # We can use the information from score_file for basic metrics
+            # But advisor needs ACL specifically
+            from .checks import get_loc, analyze_complexity
+            loc = get_loc(filepath)
+            complexity = analyze_complexity(filepath)
+            acl = analyzer.calculate_acl(complexity, loc)
+
+            stats.append({
+                "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
+                "loc": loc,
+                "complexity": complexity,
+                "acl": acl
+            })
+
+        # Dependency Analysis
+        graph = analyzer.get_import_graph(path)
+        inbound = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+
+        # Entropy Analysis
+        entropy = analyzer.get_directory_entropy(path)
+
+    markdown_report = report.generate_advisor_report(stats, inbound, entropy, cycles)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write(report_content)
+            f.write(markdown_report)
         console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
     else:
-        console.print("\n" + report_content)
+        # Use rich Markdown for pretty printing
+        from rich.markdown import Markdown
+        console.print(Markdown(markdown_report))
 
 if __name__ == "__main__":
     cli()

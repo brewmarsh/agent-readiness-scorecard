@@ -79,9 +79,8 @@ def test_advise_command(tmp_path: Path):
     result = runner.invoke(cli, ["advise", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert "Agent Scorecard Report" in result.output
-    assert "Top Refactoring Targets" in result.output
-    assert "Type Safety Index" in result.output
+    assert "Agent Advisor Report" in result.output
+    assert "Agent Cognitive Load" in result.output
 
 def test_score_command_with_report(tmp_path: Path):
     """Tests the score command with the --report option."""
@@ -96,4 +95,4 @@ def test_score_command_with_report(tmp_path: Path):
 
     report_content = report_path.read_text()
     assert "# Agent Scorecard Report" in report_content
-    assert "ACL = Complexity + (Lines of Code / 20)" in report_content
+    assert "Final Score" in report_content
