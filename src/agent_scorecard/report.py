@@ -7,100 +7,101 @@ def generate_markdown_report(stats, final_score, path, profile, project_issues=N
 
     # --- 1. Executive Summary ---
     summary = f"# Agent Scorecard Report\n\n"
+    summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 
+    if final_score >= 70:
+        summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
+    else:
+        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+
     if project_issues:
-        summary += "### ⚠ Project Issues\n"
+        summary += "### ⚠️ Project Issues\n"
         for issue in project_issues:
             summary += f"- {issue}\n"
         summary += "\n"
 
-    # --- 2. Refactoring Targets ---
-    targets = "## 🎯 Top Refactoring Targets\n\n"
+    # --- 2. Top Refactoring Targets (ACL) ---
+    targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load)\n\n"
+    targets += "ACL = Complexity + (Lines of Code / 20). Target: ACL <= 10.\n\n"
 
-    # Sort files by offender categories
-    top_complexity = sorted(stats, key=lambda x: x['complexity'], reverse=True)[:3]
-    top_loc = sorted(stats, key=lambda x: x['loc'], reverse=True)[:3]
-    top_types = sorted(stats, key=lambda x: x['type_coverage'])[:3]
+    all_functions = []
+    # stats is the list of file_results dictionaries
+    for f_res in stats:
+        # Check if function_metrics exists (from Upgrade logic) or we need to derive it
+        metrics = f_res.get("function_metrics", [])
+        if not metrics and 'acl_violations' in f_res:
+             # Fallback if full metrics aren't passed, use violations
+             metrics = f_res['acl_violations']
 
-    # Find top ACL offenders (files with highest max ACL in violations)
-    acl_offenders = [s for s in stats if s.get('acl_violations')]
-    acl_offenders.sort(key=lambda x: max((f['acl'] for f in x['acl_violations']), default=0), reverse=True)
-    top_acl = acl_offenders[:3]
+        for m in metrics:
+            all_functions.append({**m, "file": f_res["file"]})
 
-    targets += "| Category         | File Path        | Value      |\n"
-    targets += "|------------------|------------------|------------|\n"
+    # Sort by ACL descending
+    top_acl = sorted(all_functions, key=lambda x: x['acl'], reverse=True)[:10]
 
-    if top_complexity:
-        for s in top_complexity:
-            targets += f"| Complexity       | {s['file']}      | {s['complexity']:.1f}      |\n"
-    if top_loc:
-        for s in top_loc:
-            targets += f"| Lines of Code    | {s['file']}      | {s['loc']}        |\n"
-    if top_types:
-        for s in top_types:
-            targets += f"| Type Coverage    | {s['file']}      | {s['type_coverage']:.0f}%      |\n"
     if top_acl:
-        for s in top_acl:
-            max_acl = max(f['acl'] for f in s['acl_violations'])
-            targets += f"| High ACL         | {s['file']}      | {max_acl:.1f}      |\n"
-
-    # --- 3. Agent Prompts ---
-    prompts = "\n## 🤖 Agent Prompts\n\n"
-    unique_files = {s['file'] for s in top_complexity + top_loc + top_types + top_acl}
-
-    for file_path in unique_files:
-        prompts += f"### File: `{file_path}`\n"
-        file_stats = next(s for s in stats if s['file'] == file_path)
-
-        if file_stats['complexity'] > profile['max_complexity']:
-             prompts += f"- **Complexity**: Score is {file_stats['complexity']:.1f}. "
-             prompts += f"Prompt: 'Refactor `{file_path}` to reduce cyclomatic complexity below {profile['max_complexity']}. Focus on splitting large functions.'\n"
-
-        if file_stats['loc'] > profile['max_loc']:
-             prompts += f"- **Length**: LOC is {file_stats['loc']}. "
-             prompts += f"Prompt: 'Reduce the lines of code in `{file_path}` below {profile['max_loc']}. Consider moving helper functions to other modules.'\n"
-
-        if file_stats['type_coverage'] < profile['min_type_coverage']:
-             prompts += f"- **Typing**: Coverage is {file_stats['type_coverage']:.0f}%. "
-             prompts += f"Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'\n"
-
-        if file_stats.get('acl_violations'):
-             for violation in file_stats['acl_violations']:
-                 prompts += f"- **ACL**: Function `{violation['name']}` has ACL {violation['acl']:.1f} (High Cognitive Load). "
-                 prompts += f"Prompt: 'Refactor function `{violation['name']}` in `{file_path}` to reduce complexity and length. ACL {violation['acl']:.1f} > 15.'\n"
-        
-        prompts += "\n"
-
-    # --- 4. Agent Cognitive Load ---
-    acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
-    # Note: In Beta main.py, we calculate 'acl_violations' for the detailed list, 
-    # but 'generate_markdown_report' might rely on file-level summaries too. 
-    # Ensure this logic aligns with your stats structure.
-    high_acl_files = [s for s in stats if s.get('acl_violations')]
-    
-    if high_acl_files:
-        acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
-        acl_section += "| File Path        | ACL Score |\n"
-        acl_section += "|------------------|-----------|\n"
-        for s in high_acl_files:
-             # Calculate max ACL for the file from its violations
-             max_acl = max((f['acl'] for f in s['acl_violations']), default=0)
-             acl_section += f"| {s['file']} | {max_acl:.1f} |\n"
+        targets += "| Function | File | ACL | Status |\n"
+        targets += "|----------|------|-----|--------|\n"
+        for fn in top_acl:
+            if fn['acl'] > 10:
+                status = "🔴 Red" if fn['acl'] > 20 else "🟡 Yellow"
+                targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
+        targets += "\n"
     else:
-        acl_section += "✅ No Hallucination Zones detected (ACL < 15).\n"
+        targets += "✅ No functions with high cognitive load found.\n\n"
 
-    acl_section += "\n"
+    # --- 3. Type Safety Index ---
+    types_section = "## 🛡️ Type Safety Index\n\n"
+    types_section += "Target: >90% of functions must have explicit type signatures.\n\n"
 
-    # --- 5. Documentation Health ---
-    docs = "## 📚 Documentation Health\n\n"
-    missing_docs = analyzer.scan_project_docs(path, ["agents.md"])
-    if not missing_docs:
-        docs += "✅ `agents.md` found.\n"
-    else:
-        docs += "❌ `agents.md` not found. Recommended Action: Create an `agents.md` to provide context for AI agents.\n"
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
 
-    return summary + targets + prompts + acl_section + docs
+    # Sort by lowest coverage first
+    sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
+
+    for res in sorted_types:
+        status = "✅" if res["type_coverage"] >= 90 else "❌"
+        types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
+    types_section += "\n"
+
+    # --- 4. Agent Prompts ---
+    prompts = "## 🤖 Agent Prompts for Remediation\n\n"
+
+    problematic_files = [f for f in stats if f["score"] < 90]
+
+    for f_res in problematic_files:
+        file_path = f_res["file"]
+        file_issues = []
+
+        # Function metrics might be inside the dict
+        metrics = f_res.get("function_metrics", [])
+        red_functions = [m for m in metrics if m["acl"] > 20]
+
+        if red_functions:
+            fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
+            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below 10. Split complex logic and reduce function length.'")
+
+        if f_res["type_coverage"] < 90:
+             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the 90% Type Safety Index requirement.'")
+
+        if file_issues:
+            prompts += f"### File: `{file_path}`\n"
+            prompts += "\n".join(file_issues) + "\n\n"
+
+    if not problematic_files:
+        prompts += "✅ Codebase is optimized for AI Agents. No immediate prompts needed.\n\n"
+
+    # --- 5. File Analysis Table ---
+    table = "### 📂 Full File Analysis\n\n"
+    table += "| File | Score | Issues |\n"
+    table += "| :--- | :---: | :--- |\n"
+    for res in stats:
+        status = "✅" if res["score"] >= 70 else "❌"
+        table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+
+    return summary + targets + types_section + prompts + "\n" + table + "\n---\n*Generated by Agent-Scorecard*"
 
 def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
     """Generates a detailed Advisor Report based on Agent Physics."""
@@ -169,7 +170,6 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
         report += "\n"
 
     if entropy_stats:
-        # RESOLUTION: Accepted Beta branch logic (Threshold 50)
         report += "### 📂 Directory Entropy (Files > 50)\n"
         report += "Large directories confuse retrieval tools.\n\n"
         report += "| Directory | File Count |\n"
@@ -181,3 +181,56 @@ def generate_advisor_report(stats, dependency_stats, entropy_stats, cycles):
         report += "✅ Directory entropy is low.\n"
 
     return report
+
+def generate_recommendations_report(results):
+    """Generates a RECOMMENDATIONS.md content based on analysis results."""
+    recommendations = []
+
+    # 1. High ACL (> 20)
+    # Check if 'file_results' key exists, else assume results IS the list
+    file_list = results.get("file_results", []) if isinstance(results, dict) else results
+
+    for res in file_list:
+        if res["complexity"] > 20:
+            recommendations.append({
+                "Finding": f"High Complexity in {res['file']}",
+                "Agent Impact": "Context window overflow.",
+                "Recommendation": "Refactor into pure functions."
+            })
+
+    # 2. Missing AGENTS.md
+    if isinstance(results, dict) and results.get("missing_docs"):
+        if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
+            recommendations.append({
+                "Finding": "Missing AGENTS.md",
+                "Agent Impact": "Agent guesses commands.",
+                "Recommendation": "Create AGENTS.md with build steps."
+            })
+
+    # 3. Circular Dependency
+    for res in file_list:
+        if "circular" in str(res.get("issues", "")).lower():
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Use Dependency Injection."
+            })
+
+    # 4. Type Coverage < 90%
+    for res in file_list:
+        if res["type_coverage"] < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add PEP 484 hints."
+            })
+
+    if not recommendations:
+        return "# Recommendations\n\n✅ No recommendations at this time. Your codebase looks Agent-Ready!"
+
+    table = "| Finding | Agent Impact | Recommendation |\n"
+    table += "| :--- | :--- | :--- |\n"
+    for rec in recommendations:
+        table += f"| {rec['Finding']} | {rec['Agent Impact']} | {rec['Recommendation']} |\n"
+
+    return "# Recommendations\n\n" + table
