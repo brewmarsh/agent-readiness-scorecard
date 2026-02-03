@@ -94,7 +94,11 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
     health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
     entropy = auditor.check_directory_entropy(path)
-    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    if entropy["warning"] and entropy.get("max_files", 0) > 50:
+        entropy_status = f"Max {entropy['max_files']} files/dir"
+    else:
+        entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+
     entropy_color = "yellow" if entropy["warning"] else "green"
     health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
 
