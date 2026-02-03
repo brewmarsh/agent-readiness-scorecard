@@ -50,7 +50,21 @@ def generate_markdown_report(stats, final_score, path, profile):
              prompts += f"Prompt: 'Increase type hint coverage in `{file_path}` to over {profile['min_type_coverage']}%. Ensure all function arguments and return values are typed.'\n"
         prompts += "\n"
 
-    # --- 4. Documentation Health ---
+    # --- 4. Agent Cognitive Load ---
+    acl_section = "## 🧠 Agent Cognitive Load (ACL)\n\n"
+    high_acl_files = [s for s in stats if s.get('acl', 0) > 15]
+    if high_acl_files:
+        acl_section += "⚠ **High Hallucination Risk Detected**\n\n"
+        acl_section += "| File Path        | ACL Score |\n"
+        acl_section += "|------------------|-----------|\n"
+        for s in high_acl_files:
+             acl_section += f"| {s['file']} | {s['acl']:.1f} |\n"
+    else:
+        acl_section += "✅ No Hallucination Zones detected (ACL < 15).\n"
+
+    acl_section += "\n"
+
+    # --- 5. Documentation Health ---
     docs = "## 📚 Documentation Health\n\n"
     missing_docs = analyzer.scan_project_docs(path, ["agents.md"])
     if not missing_docs:
@@ -58,4 +72,4 @@ def generate_markdown_report(stats, final_score, path, profile):
     else:
         docs += "❌ `agents.md` not found. Recommended Action: Create an `agents.md` to provide context for AI agents.\n"
 
-    return summary + targets + prompts + docs
+    return summary + targets + prompts + acl_section + docs

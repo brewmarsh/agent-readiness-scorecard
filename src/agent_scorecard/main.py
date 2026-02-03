@@ -98,11 +98,14 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_file: str) -> No
         file_scores.append(s_score)
         
         if report_file:
+            loc = analyzer.get_loc(filepath)
+            complexity = analyzer.get_complexity_score(filepath)
             stats.append({
                 "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-                "loc": analyzer.get_loc(filepath),
-                "complexity": analyzer.get_complexity_score(filepath),
-                "type_coverage": analyzer.check_type_hints(filepath)
+                "loc": loc,
+                "complexity": complexity,
+                "type_coverage": analyzer.check_type_hints(filepath),
+                "acl": analyzer.get_acl_score(loc, complexity)
             })
 
         status_color = "green" if s_score >= 70 else "red"
@@ -179,11 +182,14 @@ def advise(path, output_file):
 
     stats = []
     for filepath in py_files:
+        loc = analyzer.get_loc(filepath)
+        complexity = analyzer.get_complexity_score(filepath)
         stats.append({
             "file": os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path)),
-            "loc": analyzer.get_loc(filepath),
-            "complexity": analyzer.get_complexity_score(filepath),
-            "type_coverage": analyzer.check_type_hints(filepath)
+            "loc": loc,
+            "complexity": complexity,
+            "type_coverage": analyzer.check_type_hints(filepath),
+            "acl": analyzer.get_acl_score(loc, complexity)
         })
 
     final_score = 0 # Placeholder if we don't recalculate

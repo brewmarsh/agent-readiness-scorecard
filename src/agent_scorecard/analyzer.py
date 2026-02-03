@@ -48,6 +48,10 @@ def check_type_hints(filepath):
 
     return (typed_functions / len(functions)) * 100
 
+def get_acl_score(loc, complexity):
+    """Calculates Agent Cognitive Load (ACL)."""
+    return complexity + (loc / 20)
+
 def scan_project_docs(root_path, required_files):
     """Checks for existence of agent-critical markdown files."""
     missing = []
