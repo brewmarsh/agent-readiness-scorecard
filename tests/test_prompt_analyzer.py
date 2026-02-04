@@ -1,5 +1,6 @@
 from src.agent_scorecard.prompt_analyzer import PromptAnalyzer
 
+
 def test_prompt_analyzer_perfect():
     analyzer = PromptAnalyzer()
     text = """
@@ -18,8 +19,11 @@ def test_prompt_analyzer_perfect():
     assert results["results"]["cognitive_scaffolding"] is True
     assert results["results"]["delimiter_hygiene"] is True
     assert results["results"]["few_shot"] is True
-    assert results["results"]["negative_constraints"] is True # No negative constraints found
+    assert (
+        results["results"]["negative_constraints"] is True
+    )  # No negative constraints found
     assert len(results["improvements"]) == 0
+
 
 def test_prompt_analyzer_low_score():
     analyzer = PromptAnalyzer()
@@ -30,7 +34,8 @@ def test_prompt_analyzer_low_score():
     assert results["score"] == 0
     assert results["results"]["role_definition"] is False
     assert results["results"]["negative_constraints"] is False
-    assert len(results["improvements"]) == 5 # 4 missing + 1 penalty
+    assert len(results["improvements"]) == 5  # 4 missing + 1 penalty
+
 
 def test_prompt_analyzer_some_heuristics():
     analyzer = PromptAnalyzer()
