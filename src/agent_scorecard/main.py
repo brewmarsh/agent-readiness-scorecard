@@ -279,5 +279,43 @@ def advise(path, output_file):
         from rich.markdown import Markdown
         console.print(Markdown(markdown_report))
 
+@cli.command(name="check-prompts")
+@click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
+@click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
+def check_prompts(input_path, plain):
+    """Checks a prompt file for LLM best practices."""
+    from .prompt_analyzer import PromptAnalyzer
+
+    if input_path == "-":
+        content = sys.stdin.read()
+    else:
+        with open(input_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+    analyzer = PromptAnalyzer()
+    result = analyzer.analyze(content)
+
+    if plain:
+        print(f"Score: {result['score']}")
+        for sug in result['suggestions']:
+            print(f"Suggestion: {sug}")
+    else:
+        console.print(Panel(f"[bold cyan]Prompt Analysis[/bold cyan]", expand=False))
+        color = "green" if result['score'] >= 80 else "red"
+        console.print(f"Score: [bold {color}]{result['score']}[/bold {color}]")
+
+        if result['matches']:
+             console.print("\n[bold green]Good Practices Found:[/bold green]")
+             for match in result['matches']:
+                 console.print(f"✅ {match}")
+
+        if result['suggestions']:
+             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
+             for sug in result['suggestions']:
+                 console.print(f"💡 {sug}")
+
+    if result['score'] < 80:
+        sys.exit(1)
+
 if __name__ == "__main__":
     cli()
