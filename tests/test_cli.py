@@ -23,7 +23,6 @@ def test_cli_profiles_jules_fail_missing_agents_md():
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
-        # We need a python file to trigger scoring, or let it fail due to no files and missing docs
         result = runner.invoke(cli, ["score", ".", "--agent=jules"])
 
         # Should fail because missing agents.md and instructions.md
@@ -39,7 +38,6 @@ def test_cli_fix_flag():
 
         # Run with --fix and jules profile to ensure agents.md is created
         runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
-        # Exit code might be 0 or 1 depending on score, but we care about file creation
 
         assert os.path.exists("agents.md")
         with open("agents.md", "r") as f:
@@ -79,3 +77,27 @@ def test_cli_advise_command():
             content = f.read()
             # RESOLUTION: Use Upgrade logic (Advisor Report header)
             assert "Agent Advisor Report" in content
+
+def test_cli_check_prompts():
+    """Test the Beta branch command for prompt best-practice analysis."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create a perfect prompt file
+        with open("prompt.txt", "w") as f:
+            f.write("""
+You are a helpful assistant.
+Think step by step.
+<input>
+user input
+</input>
+Example:
+Input: A
+Output: B
+            """)
+
+        result = runner.invoke(cli, ["check-prompts", "prompt.txt"])
+        assert result.exit_code == 0
+        assert "Prompt Analysis: prompt.txt" in result.output
+        assert "Role Definition" in result.output
+        assert "Cognitive Scaffolding" in result.output
+        assert "PASSED: Prompt is optimized!" in result.output

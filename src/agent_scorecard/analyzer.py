@@ -1,6 +1,8 @@
 import os
 import ast
-from typing import Dict, Any
+import mccabe
+from collections import Counter
+from typing import List, Dict, Any, Tuple, Set, Optional
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
@@ -16,8 +18,7 @@ from .metrics import (  # noqa: F401
     check_type_hints,
 )
 
-
-def scan_project_docs(root_path, required_files):
+def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
     root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
@@ -27,44 +28,57 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
-def get_import_graph(root_path):
-    """Builds a dependency graph of the project."""
-    all_py_files = []
-    if os.path.isfile(root_path):
-        if root_path.endswith(".py"):
-             all_py_files.append(os.path.basename(root_path))
-             root_path = os.path.dirname(root_path)
-    else:
-        for root, _, files in os.walk(root_path):
+def _collect_python_files(path: str) -> List[str]:
+    """Collects all Python files in the given path, ignoring hidden directories."""
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
             parts = root.split(os.sep)
+            # Ignore hidden directories like .git or .venv
             if any(p.startswith(".") and p != "." for p in parts):
                 continue
             for file in files:
                 if file.endswith(".py"):
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, start=root_path)
-                    all_py_files.append(rel_path)
+                    py_files.append(os.path.join(root, file))
+    return py_files
+
+def _parse_imports(filepath: str) -> Set[str]:
+    """Parses a Python file and returns a set of imported module names."""
+    imported_names = set()
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            code = f.read()
+        tree = ast.parse(code, filename=filepath)
+    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+        return imported_names
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imported_names.add(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imported_names.add(node.module)
+    return imported_names
+
+def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+    """Builds a dependency graph of the project."""
+    if os.path.isfile(root_path) and root_path.endswith(".py"):
+         all_py_files = [os.path.basename(root_path)]
+         root_path = os.path.dirname(root_path)
+    else:
+        full_paths = _collect_python_files(root_path)
+        all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph = {f: set() for f in all_py_files}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code, filename=full_path)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-            continue
-
-        imported_names = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imported_names.add(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imported_names.add(node.module)
-
+        # RESOLUTION: Use the abstracted helper from the Beta branch
+        imported_names = _parse_imports(full_path)
+        
         for name in imported_names:
             suffix = name.replace(".", os.sep)
             for candidate in all_py_files:
@@ -77,8 +91,8 @@ def get_import_graph(root_path):
                         graph[rel_path].add(candidate)
     return graph
 
-def get_inbound_imports(graph):
-    """Returns {file: count} of inbound imports."""
+def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
+    """Returns {file: count} of inbound imports to identify 'God Modules'."""
     inbound = {node: 0 for node in graph}
     for source, targets in graph.items():
         for target in targets:
@@ -88,18 +102,18 @@ def get_inbound_imports(graph):
                 inbound[target] = 1
     return inbound
 
-def detect_cycles(graph):
-    """Returns list of cycles (list of nodes in cycle)."""
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+    """Returns list of cycles (list of nodes in cycle) using DFS."""
     cycles = []
     visited_global = set()
     path_set = set()
     nodes = sorted(graph.keys())
 
-    def visit(node, current_path):
+    def visit(node: str, current_path: List[str]):
         visited_global.add(node)
         path_set.add(node)
         current_path.append(node)
-        neighbors = sorted(list(graph.get(node, [])))
+        neighbors = sorted(list(graph.get(node, set())))
 
         for neighbor in neighbors:
             if neighbor in path_set:
@@ -120,6 +134,7 @@ def detect_cycles(graph):
         if node not in visited_global:
             visit(node, [])
 
+    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
     unique_cycles = []
     seen_cycle_sets = set()
     for cycle in cycles:
@@ -133,17 +148,19 @@ def detect_cycles(graph):
             unique_cycles.append(list(canonical))
     return unique_cycles
 
-def get_project_issues(path, py_files, profile):
-    """Checks for project-level issues."""
+def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) -> Tuple[int, List[str]]:
+    """Analyzes the project as a whole for documentation, god modules, and architecture."""
     penalty = 0
     issues = []
 
+    # 1. Documentation Check
     missing_docs = scan_project_docs(path, profile.get("required_files", []))
     if missing_docs:
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
+    # 2. God Module Detection
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -152,7 +169,7 @@ def get_project_issues(path, py_files, profile):
         penalty += len(god_modules) * 10
         issues.append(msg)
 
-    # 3. Directory Entropy
+    # 3. Directory Entropy (Structural Complexity)
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
@@ -160,6 +177,7 @@ def get_project_issues(path, py_files, profile):
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
+    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
@@ -169,25 +187,13 @@ def get_project_issues(path, py_files, profile):
 
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict[str, Any]:
-    """Orchestrates the full project analysis."""
+def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Orchestrates the full project analysis from file scores to project-wide metrics."""
     profile = PROFILES[agent]
-
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            parts = root.split(os.sep)
-            if any(p.startswith(".") and p != "." for p in parts):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-
+    py_files = _collect_python_files(path)
     all_py_files = py_files[:]
+
     if limit_to_files:
-        # Filter 'py_files' (files to score) but keep 'all_files' for graph analysis
         py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
 
     file_results = []
@@ -208,14 +214,14 @@ def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict
             "function_metrics": metrics
         })
 
-    # Project Level
+    # Project Level Analysis
     penalty, project_issues = get_project_issues(path, all_py_files, profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
-    # Dependency Analysis for main.py
+    # Advanced Dependency Analysis
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     cycles = detect_cycles(graph)
@@ -226,6 +232,7 @@ def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict
         "god_modules": god_modules
     }
 
+    # Directory Entropy via Auditor
     directory_stats = []
     entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
     for p, count in entropy.items():

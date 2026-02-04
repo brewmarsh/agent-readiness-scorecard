@@ -1,9 +1,10 @@
 import re
-from typing import Dict, Any
+from typing import List, Dict, Any
 
 class PromptAnalyzer:
-    """Analyzes text prompts for LLM best practices."""
+    """Analyzes text prompts for LLM best practices using structural heuristics."""
 
+    # Centralized heuristics dictionary for easier maintenance and testing
     HEURISTICS = {
         "role_definition": {
             "pattern": r"(?i)(you are|act as|your role)",
@@ -38,12 +39,20 @@ class PromptAnalyzer:
     }
 
     def analyze(self, text: str) -> Dict[str, Any]:
-        """Evaluates a raw string against five key dimensions."""
+        """Evaluates a raw string against key prompt engineering dimensions."""
         results = {}
         improvements = []
         score = 0
 
-        # Standard heuristics (Simple Regex)
+        if not text or not text.strip():
+            return {
+                "score": 0,
+                "results": {},
+                "improvements": ["Prompt is empty."]
+            }
+
+        # 1. Standard heuristics (Simple Regex)
+        # We process the first three dimensions using standard regex matching
         for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene"]:
             h = self.HEURISTICS[key]
             if re.search(h["pattern"], text):
@@ -53,7 +62,7 @@ class PromptAnalyzer:
                 results[key] = False
                 improvements.append(h["improvement"])
 
-        # Context-Aware Few-Shot Detection
+        # 2. Context-Aware Few-Shot Detection
         if self._check_few_shot(text):
             results["few_shot"] = True
             score += self.HEURISTICS["few_shot"]["weight"]
@@ -61,7 +70,7 @@ class PromptAnalyzer:
             results["few_shot"] = False
             improvements.append(self.HEURISTICS["few_shot"]["improvement"])
 
-        # Context-Aware Negative Constraint Detection
+        # 3. Context-Aware Negative Constraint Detection
         if self._check_negative_constraints(text):
             results["negative_constraints"] = False # Issue found
             score -= self.HEURISTICS["negative_constraints"]["penalty"]
@@ -124,7 +133,6 @@ class PromptAnalyzer:
                 continue
 
             # Rule 3: Only flag if they appear in imperative instruction sections (lists/numbers)
-            # We apply this to all negative keywords to minimize false positives in descriptive text.
             if not re.match(r"^(\*|\-|\d+\.)", line_content):
                 continue
 
