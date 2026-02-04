@@ -1,87 +1,81 @@
 import re
-from typing import Dict, List, Any
+from typing import List, Dict, Any
 
 class PromptAnalyzer:
-    """Analyzes prompts for LLM best practices."""
+    """Analyzes text prompts for LLM best practices using structural heuristics."""
 
-    def __init__(self):
-        self.heuristics = [
-            {
-                "name": "Persona Adoption",
-                "pattern": r"(?i)\b(you are a|you are an|act as|your role is|you're a|you're an)\b",
-                "score": 25,
-                "description": "Assigns a specific role to the AI."
-            },
-            {
-                "name": "Clear Delimiters",
-                "pattern": r"(```|---|===|<[^>]+>)",
-                "score": 25,
-                "description": "Uses delimiters to separate sections."
-            },
-            {
-                "name": "Few-Shot Examples",
-                "pattern": r"(?i)(\bexample\b|input:|output:|user:|assistant:)",
-                "score": 25,
-                "description": "Provides examples to guide the model."
-            },
-            {
-                "name": "Chain of Thought",
-                "pattern": r"(?i)(step[- ]by[- ]step|think carefully|reasoning|stepwise)",
-                "score": 25,
-                "description": "Encourages reasoning before answering."
-            },
-             {
-                "name": "Structured Output",
-                "pattern": r"(?i)\b(json|csv|markdown|xml|yaml|format)\b",
-                "score": 25,
-                "description": "Specifies the desired output format."
-            }
-        ]
-        self.negative_constraints = [
-             {
-                "name": "Negative Constraints",
-                "pattern": r"(?i)\b(do not|don't|never|avoid)\b",
-                "penalty": -10,
-                "description": "Avoid negative constraints; use positive instructions instead."
-            }
-        ]
+    # Centralized heuristics dictionary for easier maintenance and testing
+    HEURISTICS = {
+        "role_definition": {
+            "pattern": r"(?i)(you are|act as|your role)",
+            "improvement": "Add a clear persona (e.g., 'You are a Python Expert') to ground the model's latent space.",
+            "critical": True,
+            "weight": 25
+        },
+        "cognitive_scaffolding": {
+            "pattern": r"(?i)(step[- ]by[- ]step|think carefully|reasoning|stepwise)",
+            "improvement": "Add Chain-of-Thought instructions ('Think step by step') to improve complex reasoning.",
+            "critical": False,
+            "weight": 25
+        },
+        "delimiter_hygiene": {
+            "pattern": r"(```|---|===|<[^>]+>)",
+            "improvement": "Use delimiters (like XML tags or triple quotes) to separate instructions from input data.",
+            "critical": False,
+            "weight": 25
+        },
+        "few_shot": {
+            "pattern": r"(?i)(\bexample\b|input:.*?output:|user:|assistant:)",
+            "improvement": "Include 1-3 examples (Few-Shot) to guide the model on format and style.",
+            "critical": False,
+            "weight": 25
+        },
+        "negative_constraints": {
+            "pattern": r"(?i)\b(do not|don't|never|avoid)\b",
+            "improvement": "Refactor negative constraints ('Don't do X') into positive instructions ('Do Y instead') for better adherence.",
+            "critical": False,
+            "penalty": 10
+        }
+    }
 
-    def analyze(self, prompt_text: str) -> Dict[str, Any]:
-        """
-        Analyzes the prompt text and returns a score, matches, and suggestions.
-        """
+    def analyze(self, text: str) -> Dict[str, Any]:
+        """Evaluates a raw string against key prompt engineering dimensions."""
+        results = {}
+        improvements = []
         score = 0
-        matches = []
-        suggestions = []
 
-        if not prompt_text:
-             return {
+        if not text or not text.strip():
+            return {
                 "score": 0,
-                "matches": [],
-                "suggestions": ["Prompt is empty."]
+                "results": {},
+                "improvements": ["Prompt is empty."]
             }
 
-        # Check positive heuristics
-        for h in self.heuristics:
-            if re.search(h["pattern"], prompt_text):
-                score += h["score"]
-                matches.append(h["name"])
+        # 1. Process Positive Heuristics
+        positive_keys = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot"]
+        for key in positive_keys:
+            h = self.HEURISTICS[key]
+            if re.search(h["pattern"], text):
+                results[key] = True
+                score += h["weight"]
             else:
-                suggestions.append(f"Missing {h['name']}: {h['description']}")
+                results[key] = False
+                improvements.append(h["improvement"])
 
-        # Check negative constraints
-        for h in self.negative_constraints:
-            found = re.findall(h["pattern"], prompt_text)
-            if found:
-                # Deduct points for presence (once per type for now to avoid massive penalties)
-                score += h["penalty"]
-                # We mention the specific words found to be helpful
-                unique_found = set(f.lower() for f in found)
-                found_str = ", ".join(f"'{w}'" for w in unique_found)
-                suggestions.append(f"Found {h['name']} ({found_str}). Try positive framing.")
+        # 2. Process Negative Constraints (Penalties)
+        h_neg = self.HEURISTICS["negative_constraints"]
+        if re.search(h_neg["pattern"], text):
+            results["negative_constraints"] = False  # Flagged as an issue
+            score -= h_neg["penalty"]
+            improvements.append(h_neg["improvement"])
+        else:
+            results["negative_constraints"] = True
+
+        # Clamp score between 0 and 100
+        score = max(0, min(100, score))
 
         return {
             "score": score,
-            "matches": matches,
-            "suggestions": suggestions
+            "results": results,
+            "improvements": improvements
         }

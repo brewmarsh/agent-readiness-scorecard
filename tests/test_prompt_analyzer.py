@@ -1,64 +1,77 @@
 import pytest
 from src.agent_scorecard.prompt_analyzer import PromptAnalyzer
 
-def test_perfect_prompt():
+def test_prompt_analyzer_perfect():
+    """Test a prompt that satisfies all positive heuristics without penalties."""
     analyzer = PromptAnalyzer()
-    prompt = """
-    You are an expert software engineer.
-    Please fix the following code step-by-step.
-
+    text = """
+    You are a professional coder.
+    Think step by step to solve the problem.
+    <context>
+    Code here
+    </context>
     Example:
-    Input: x = 1
-    Output: x = 2
-
-    ```python
-    print("hello")
-    ```
-
-    Output the result in JSON format.
+    Input: x
+    Output: y
     """
-    result = analyzer.analyze(prompt)
+    results = analyzer.analyze(text)
+    
+    # 4 positive heuristics * 25 = 100
+    assert results["score"] == 100
+    assert results["results"]["role_definition"] is True
+    assert results["results"]["cognitive_scaffolding"] is True
+    assert results["results"]["delimiter_hygiene"] is True
+    assert results["results"]["few_shot"] is True
+    # Negative constraints should be True because the key tracks "No issue found"
+    assert results["results"]["negative_constraints"] is True 
+    assert len(results["improvements"]) == 0
 
-    # 5 heuristics * 25 = 125
-    assert result["score"] == 125
-    assert len(result["matches"]) == 5
-    assert not any("Found Negative Constraints" in s for s in result["suggestions"])
-
-def test_poor_prompt():
+def test_prompt_analyzer_low_score_clamping():
+    """Test that scores are clamped to 0 when penalties exceed positive points."""
     analyzer = PromptAnalyzer()
-    prompt = "fix this code"
-    result = analyzer.analyze(prompt)
+    # No positive heuristics found, 1 negative constraint penalty (-10)
+    text = "Do the task. Don't fail."
+    results = analyzer.analyze(text)
+    
+    # 0 - 10 = -10, clamped to 0
+    assert results["score"] == 0
+    assert results["results"]["role_definition"] is False
+    assert results["results"]["negative_constraints"] is False
+    # 4 missing positive improvements + 1 negative constraint improvement = 5
+    assert len(results["improvements"]) == 5
 
-    assert result["score"] == 0
-    assert len(result["matches"]) == 0
-    assert len(result["suggestions"]) == 5 # All missing
-
-def test_negative_constraints():
+def test_prompt_analyzer_mixed_heuristics():
+    """Test a mix of matches and penalties."""
     analyzer = PromptAnalyzer()
-    prompt = "Do not use global variables. Don't forget to comment."
-    result = analyzer.analyze(prompt)
-
-    # -10 penalty
-    assert result["score"] == -10
-    assert any("Found Negative Constraints" in s for s in result["suggestions"])
-
-def test_mixed_prompt():
-    analyzer = PromptAnalyzer()
-    prompt = """
-    Act as a teacher.
-    Provide the answer in JSON.
-    Do not be verbose.
-    """
-    result = analyzer.analyze(prompt)
-
-    # Persona (+25) + Structured Output (+25) - Negative (-10) = 40
-    assert result["score"] == 40
-    assert "Persona Adoption" in result["matches"]
-    assert "Structured Output" in result["matches"]
-    assert any("Found Negative Constraints" in s for s in result["suggestions"])
+    text = "You are a teacher. Reasoning is important. Never lie."
+    results = analyzer.analyze(text)
+    
+    # Role (+25) + Scaffolding (+25) - Negative Constraint (-10) = 40
+    assert results["score"] == 40
+    assert results["results"]["role_definition"] is True
+    assert results["results"]["cognitive_scaffolding"] is True
+    assert results["results"]["delimiter_hygiene"] is False
+    assert results["results"]["few_shot"] is False
+    assert results["results"]["negative_constraints"] is False
 
 def test_empty_prompt():
+    """Test handling of empty or whitespace strings."""
     analyzer = PromptAnalyzer()
-    result = analyzer.analyze("")
-    assert result["score"] == 0
-    assert result["suggestions"] == ["Prompt is empty."]
+    
+    # Test empty string
+    res_empty = analyzer.analyze("")
+    assert res_empty["score"] == 0
+    assert "Prompt is empty." in res_empty["improvements"]
+    
+    # Test whitespace string
+    res_space = analyzer.analyze("   ")
+    assert res_space["score"] == 0
+    assert "Prompt is empty." in res_space["improvements"]
+
+def test_delimiter_variants():
+    """Verify different delimiter patterns are recognized."""
+    analyzer = PromptAnalyzer()
+    
+    assert analyzer.analyze("```python\nprint()```")["results"]["delimiter_hygiene"] is True
+    assert analyzer.analyze("--- section ---")["results"]["delimiter_hygiene"] is True
+    assert analyzer.analyze("<instructions>do this</instructions>")["results"]["delimiter_hygiene"] is True

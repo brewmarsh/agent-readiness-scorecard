@@ -79,4 +79,26 @@ def test_cli_advise_command():
             content = f.read()
             # RESOLUTION: Use Upgrade logic (Advisor Report header)
             assert "Agent Advisor Report" in content
-        
+
+def test_cli_check_prompts():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create a perfect prompt file
+        with open("prompt.txt", "w") as f:
+            f.write("""
+You are a helpful assistant.
+Think step by step.
+<input>
+user input
+</input>
+Example:
+Input: A
+Output: B
+            """)
+
+        result = runner.invoke(cli, ["check-prompts", "prompt.txt"])
+        assert result.exit_code == 0
+        assert "Prompt Analysis: prompt.txt" in result.output
+        assert "Role Definition" in result.output
+        assert "Cognitive Scaffolding" in result.output
+        assert "PASSED: Prompt is optimized!" in result.output

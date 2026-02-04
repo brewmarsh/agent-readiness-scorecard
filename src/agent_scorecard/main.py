@@ -9,6 +9,7 @@ from rich.panel import Panel
 
 # Import common modules
 from . import analyzer, report, auditor
+from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
 from .fix import apply_fixes
@@ -154,6 +155,43 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         sys.exit(1)
     else:
         console.print("[bold green]PASSED: Agent-Ready[/bold green]")
+
+@cli.command(name="check-prompts")
+@click.argument("path", type=click.Path(exists=True))
+def check_prompts(path: str) -> None:
+    """Statically analyze text prompts for LLM best practices."""
+    analyzer_inst = PromptAnalyzer()
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    analysis = analyzer_inst.analyze(content)
+    score = analysis["score"]
+
+    table = Table(title=f"Prompt Analysis: {os.path.basename(path)}")
+    table.add_column("Heuristic", style="cyan")
+    table.add_column("Status", justify="right")
+
+    # Order of display
+    order = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]
+    for key in order:
+        if key in analysis["results"]:
+            passed = analysis["results"][key]
+            name = key.replace("_", " ").title()
+            status = "[green]✅ PASS[/green]" if passed else "[red]❌ FAIL[/red]"
+            table.add_row(name, status)
+
+    console.print(table)
+    console.print(f"\n[bold]Prompt Score: {score}/100[/bold]")
+
+    if score < 80:
+        console.print("\n[bold yellow]Refactored Suggestions:[/bold yellow]")
+        for imp in analysis["improvements"]:
+            console.print(f"- {imp}")
+        console.print("\n[bold red]FAILED: Prompt does not meet quality standards.[/bold red]")
+        sys.exit(1)
+    else:
+        console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
 @cli.command(name="fix")
 @click.argument("path", default=".", type=click.Path(exists=True))
