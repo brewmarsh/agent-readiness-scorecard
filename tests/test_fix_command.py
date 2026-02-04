@@ -4,6 +4,7 @@ import pytest
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
+
 class TestFixCommand:
     @pytest.fixture
     def runner(self):
@@ -14,10 +15,12 @@ class TestFixCommand:
             # Create a dummy python file
             os.makedirs("src")
             with open("src/test.py", "w") as f:
-                f.write(textwrap.dedent("""
+                f.write(
+                    textwrap.dedent("""
                     def foo():
                         pass
-                """))
+                """)
+                )
 
             # Run fix command with default agent (generic)
             result = runner.invoke(cli, ["fix", "."])
@@ -38,13 +41,15 @@ class TestFixCommand:
 
     def test_fix_command_specific_path(self, runner):
         with runner.isolated_filesystem():
-             # Create a dummy python file in a subdirectory
+            # Create a dummy python file in a subdirectory
             os.makedirs("subdir")
             with open("subdir/test.py", "w") as f:
-                f.write(textwrap.dedent("""
+                f.write(
+                    textwrap.dedent("""
                     def bar(x):
                         return x
-                """))
+                """)
+                )
 
             # Run fix command on subdir with jules agent (requires agents.md)
             result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
@@ -61,5 +66,5 @@ class TestFixCommand:
     def test_fix_command_invalid_agent(self, runner):
         with runner.isolated_filesystem():
             result = runner.invoke(cli, ["fix", ".", "--agent", "invalid"])
-            assert result.exit_code == 0 # It defaults to generic, so exit code 0
+            assert result.exit_code == 0  # It defaults to generic, so exit code 0
             assert "Unknown agent profile: invalid. using generic." in result.output

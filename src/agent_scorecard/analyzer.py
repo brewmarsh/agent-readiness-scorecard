@@ -9,30 +9,34 @@ from . import auditor
 
 # Re-export metrics for backward compatibility
 from .metrics import (
-    get_loc,
-    get_complexity_score,
-    check_type_hints,
-    calculate_acl,
-    get_function_stats,
+    get_loc as get_loc,
+    get_complexity_score as get_complexity_score,
+    check_type_hints as check_type_hints,
+    calculate_acl as calculate_acl,
+    get_function_stats as get_function_stats,
 )
+
 
 def scan_project_docs(root_path, required_files):
     """Checks for existence of agent-critical markdown files."""
     missing = []
-    root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
+    root_files = (
+        [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
+    )
 
     for req in required_files:
         if req.lower() not in root_files:
             missing.append(req)
     return missing
 
+
 def get_import_graph(root_path):
     """Builds a dependency graph of the project."""
     all_py_files = []
     if os.path.isfile(root_path):
         if root_path.endswith(".py"):
-             all_py_files.append(os.path.basename(root_path))
-             root_path = os.path.dirname(root_path)
+            all_py_files.append(os.path.basename(root_path))
+            root_path = os.path.dirname(root_path)
     else:
         for root, _, files in os.walk(root_path):
             parts = root.split(os.sep)
@@ -63,7 +67,7 @@ def get_import_graph(root_path):
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imported_names.add(node.module)
-        
+
         for name in imported_names:
             suffix = name.replace(".", os.sep)
             for candidate in all_py_files:
@@ -72,9 +76,13 @@ def get_import_graph(root_path):
                 candidate_no_ext = os.path.splitext(candidate)[0]
                 if candidate_no_ext.endswith(suffix):
                     match_len = len(suffix)
-                    if len(candidate_no_ext) == match_len or candidate_no_ext[-(match_len+1)] == os.sep:
+                    if (
+                        len(candidate_no_ext) == match_len
+                        or candidate_no_ext[-(match_len + 1)] == os.sep
+                    ):
                         graph[rel_path].add(candidate)
     return graph
+
 
 def get_inbound_imports(graph):
     """Returns {file: count} of inbound imports."""
@@ -86,6 +94,7 @@ def get_inbound_imports(graph):
             else:
                 inbound[target] = 1
     return inbound
+
 
 def detect_cycles(graph):
     """Returns list of cycles (list of nodes in cycle)."""
@@ -132,6 +141,7 @@ def detect_cycles(graph):
             unique_cycles.append(list(canonical))
     return unique_cycles
 
+
 def get_project_issues(path, py_files, profile):
     """Checks for project-level issues."""
     penalty = 0
@@ -142,7 +152,7 @@ def get_project_issues(path, py_files, profile):
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
         issues.append(msg)
-    
+
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -165,10 +175,13 @@ def get_project_issues(path, py_files, profile):
         msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
         penalty += len(cycles) * 5
         issues.append(msg)
-        
+
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: Optional[List] = None) -> Dict[str, Any]:
+
+def perform_analysis(
+    path: str, agent: str, limit_to_files: Optional[List] = None
+) -> Dict[str, Any]:
     """Orchestrates the full project analysis."""
     profile = PROFILES[agent]
 
@@ -187,25 +200,35 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List] = Non
     all_py_files = py_files[:]
     if limit_to_files:
         # Filter 'py_files' (files to score) but keep 'all_files' for graph analysis
-        py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
+        py_files = [
+            f
+            for f in py_files
+            if any(f.endswith(changed) for changed in limit_to_files)
+        ]
 
     file_results = []
     file_scores = []
 
     for filepath in py_files:
-        score, issues, loc, complexity, type_safety, metrics = score_file(filepath, profile)
+        score, issues, loc, complexity, type_safety, metrics = score_file(
+            filepath, profile
+        )
         file_scores.append(score)
 
-        rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))
-        file_results.append({
-            "file": rel_path,
-            "score": score,
-            "issues": issues,
-            "loc": loc,
-            "complexity": complexity,
-            "type_coverage": type_safety,
-            "function_metrics": metrics
-        })
+        rel_path = os.path.relpath(
+            filepath, start=path if os.path.isdir(path) else os.path.dirname(path)
+        )
+        file_results.append(
+            {
+                "file": rel_path,
+                "score": score,
+                "issues": issues,
+                "loc": loc,
+                "complexity": complexity,
+                "type_coverage": type_safety,
+                "function_metrics": metrics,
+            }
+        )
 
     # Project Level
     penalty, project_issues = get_project_issues(path, all_py_files, profile)
@@ -220,18 +243,14 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List] = Non
     cycles = detect_cycles(graph)
     god_modules = {mod: count for mod, count in inbound.items() if count > 50}
 
-    dep_analysis = {
-        "cycles": cycles,
-        "god_modules": god_modules
-    }
+    dep_analysis = {"cycles": cycles, "god_modules": god_modules}
 
     directory_stats = []
-    entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
+    entropy = auditor.get_crowded_directories(
+        path if os.path.isdir(path) else os.path.dirname(path), threshold=50
+    )
     for p, count in entropy.items():
-        directory_stats.append({
-            "path": p,
-            "file_count": count
-        })
+        directory_stats.append({"path": p, "file_count": count})
 
     return {
         "file_results": file_results,
@@ -239,5 +258,5 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List] = Non
         "missing_docs": scan_project_docs(path, profile.get("required_files", [])),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis,
-        "directory_stats": directory_stats
+        "directory_stats": directory_stats,
     }

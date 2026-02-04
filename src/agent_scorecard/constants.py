@@ -31,16 +31,16 @@ PROFILES = {
     "generic": {
         "min_type_coverage": 90,
         "required_files": ["README.md"],
-        "description": "Standard Agent Readiness checks (ACL & Type Safety)."
+        "description": "Standard Agent Readiness checks (ACL & Type Safety).",
     },
     "jules": {
         "min_type_coverage": 90,
         "required_files": ["agents.md", "instructions.md"],
-        "description": "High autonomy profile with strict requirements."
+        "description": "High autonomy profile with strict requirements.",
     },
     "copilot": {
         "min_type_coverage": 90,
         "required_files": [],
-        "description": "Optimized for small context completion."
-    }
+        "description": "Optimized for small context completion.",
+    },
 }

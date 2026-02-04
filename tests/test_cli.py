@@ -2,6 +2,7 @@ import os
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
+
 def test_cli_happy_path():
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -19,6 +20,7 @@ def test_cli_happy_path():
         assert "Running Agent Scorecard" in result.output
         assert "Final Agent Score" in result.output
 
+
 def test_cli_profiles_jules_fail_missing_agents_md():
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -29,6 +31,7 @@ def test_cli_profiles_jules_fail_missing_agents_md():
         # Should fail because missing agents.md and instructions.md
         assert result.exit_code == 1
         assert "Missing Critical Agent Docs" in result.output
+
 
 def test_cli_fix_flag():
     runner = CliRunner()
@@ -48,10 +51,11 @@ def test_cli_fix_flag():
 
         assert os.path.exists("instructions.md")
 
+
 def test_cli_badge_generation():
     runner = CliRunner()
     with runner.isolated_filesystem():
-         # Create a dummy python file
+        # Create a dummy python file
         with open("hello.py", "w") as f:
             f.write("def hello():\n    print('hello')\n")
         with open("README.md", "w") as f:
@@ -61,6 +65,7 @@ def test_cli_badge_generation():
         assert result.exit_code == 0
         assert os.path.exists("agent_score.svg")
         assert "Badge saved" in result.output
+
 
 def test_cli_advise_command():
     runner = CliRunner()
@@ -79,4 +84,3 @@ def test_cli_advise_command():
             content = f.read()
             # RESOLUTION: Use Upgrade logic (Advisor Report header)
             assert "Agent Advisor Report" in content
-        
