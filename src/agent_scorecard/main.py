@@ -158,7 +158,8 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
 
 @cli.command(name="check-prompts")
 @click.argument("path", type=click.Path(exists=True))
-def check_prompts(path: str) -> None:
+@click.option("--plain", is_flag=True, help="Output plain text without colors or tables.")
+def check_prompts(path: str, plain: bool) -> None:
     """Statically analyze text prompts for LLM best practices."""
     analyzer_inst = PromptAnalyzer()
 
@@ -167,6 +168,18 @@ def check_prompts(path: str) -> None:
 
     analysis = analyzer_inst.analyze(content)
     score = analysis["score"]
+
+    if plain:
+        click.echo(f"Prompt Score: {score}/100")
+        if score < 80:
+            click.echo("\nRefactored Suggestions:")
+            for imp in analysis["improvements"]:
+                click.echo(f"- {imp}")
+            click.echo("\nFAILED: Prompt does not meet quality standards.")
+            sys.exit(1)
+        else:
+            click.echo("\nPASSED: Prompt is optimized!")
+        return
 
     table = Table(title=f"Prompt Analysis: {os.path.basename(path)}")
     table.add_column("Heuristic", style="cyan")
