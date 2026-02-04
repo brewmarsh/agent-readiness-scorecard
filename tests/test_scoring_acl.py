@@ -1,7 +1,6 @@
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
-
 def test_score_file_acl_penalty(tmp_path):
     # Create a file with high ACL function
     # ACL = CC + LOC/20
@@ -21,9 +20,7 @@ def test_score_file_acl_penalty(tmp_path):
     # Type Safety: 0/1 typed -> 0%. Penalty -20.
     # Total score = 100 - 5 - 20 = 75.
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(
-        str(p), PROFILES["generic"]
-    )
+    score, details, loc, avg_comp, type_cov, metrics = score_file(str(p), PROFILES['generic'])
 
     assert "Yellow ACL functions" in details
     assert "(-5)" in details

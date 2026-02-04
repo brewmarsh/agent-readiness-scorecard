@@ -8,7 +8,6 @@ from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.main import cli
 from src.agent_scorecard.scoring import score_file
 
-
 def test_get_loc(tmp_path: Path):
     """Tests that get_loc correctly counts lines, ignoring comments and blank lines."""
     content = "# This is a comment\n\n"
@@ -19,7 +18,6 @@ def test_get_loc(tmp_path: Path):
 
     loc = analyzer.get_loc(str(py_file))
     assert loc == 10
-
 
 def test_get_function_stats(tmp_path: Path):
     """Tests that get_function_stats calculates ACL correctly."""
@@ -53,7 +51,6 @@ def test_get_function_stats(tmp_path: Path):
     assert complex_fn["loc"] == 5
     assert complex_fn["acl"] == 3.25
 
-
 def test_check_type_hints(tmp_path: Path):
     """Tests that check_type_hints calculates coverage."""
     # File with 100% type hint coverage
@@ -79,7 +76,6 @@ def untyped_function(a, b):
     assert typed_coverage == 100
     assert untyped_coverage == 0
 
-
 def test_score_file_logic(tmp_path: Path):
     """Tests scoring logic, including penalties for low type safety."""
     content = textwrap.dedent("""
@@ -92,9 +88,7 @@ def test_score_file_logic(tmp_path: Path):
     profile = PROFILES["generic"]
 
     # RESOLUTION: score_file returns (score, details_string, ...) in Upgrade branch
-    score, issues, loc, complexity, type_safety, metrics = score_file(
-        str(py_file), profile
-    )
+    score, issues, loc, complexity, type_safety, metrics = score_file(str(py_file), profile)
 
     # Check metrics manually to verify why score is what it is
     type_cov = analyzer.check_type_hints(str(py_file))
@@ -106,7 +100,6 @@ def test_score_file_logic(tmp_path: Path):
     assert score == 80
     # The scoring string format comes from the resolved scoring.py
     assert "Type Safety Index 0% < 90%" in issues
-
 
 def test_advise_command(tmp_path: Path):
     """Tests the advise command."""
@@ -122,7 +115,6 @@ def test_advise_command(tmp_path: Path):
     assert "Agent Advisor Report" in result.output
     assert "Agent Cognitive Load" in result.output
 
-
 def test_score_command_with_report(tmp_path: Path):
     """Tests the score command with the --report option."""
     (tmp_path / "test.py").write_text("def f(a,b,c): pass")
@@ -136,6 +128,7 @@ def test_score_command_with_report(tmp_path: Path):
     assert report_path.exists()
 
     report_content = report_path.read_text(encoding="utf-8")
+
 
     assert "# Agent Scorecard Report" in report_content
     assert "Overall Score" in report_content

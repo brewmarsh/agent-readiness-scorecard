@@ -2,30 +2,14 @@ name: 'Jules: Prompt Gatekeeper'
 
 on:
   issues:
-    types: [labeled, reopened]
-  issue_comment:
-    types: [created]
-  pull_request:
     types: [labeled]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  check-prompt:
-    if: >
-      (
-        github.event.label.name == 'jules' ||
-        (github.event.comment && contains(github.event.comment.body, '@jules')) ||
-        (github.event.action == 'reopened' && contains(github.event.issue.labels.*.name, 'jules'))
-      ) &&
-      github.actor != 'dependabot[bot]' &&
-      github.actor != 'github-actions[bot]'
+  gatekeeper:
+    if: github.event.label.name == 'jules'
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      pull-requests: write
       contents: read
     steps:
       - name: Checkout
@@ -39,77 +23,42 @@ jobs:
       - name: Install agent-scorecard
         run: pip install .
 
-      - name: Export Prompt
+      - name: Run Gatekeeper Analysis
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const body = context.payload.issue ? context.payload.issue.body : context.payload.pull_request.body;
-            fs.writeFileSync('issue_prompt.txt', body || '');
+            const issueBody = context.payload.issue.body || '';
+            fs.writeFileSync('issue_prompt.txt', issueBody);
 
-      - name: Run Prompt Physics Check
-        id: physics
-        run: |
-          # Run check and capture exit code, don't crash yet
-          set +e
-          output=$(agent-score check-prompts issue_prompt.txt --plain)
-          exit_code=$?
-          echo "score_output<<EOF" >> $GITHUB_ENV
-          echo "$output" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "exit_code=$exit_code" >> $GITHUB_ENV
-          exit 0 # Always pass this step so we can handle logic in the next
+            let output = '';
+            const options = {
+              listeners: {
+                stdout: (data) => {
+                  output += data.toString();
+                }
+              },
+              ignoreReturnCode: true
+            };
 
-      - name: Gatekeeper Action
-        if: env.exit_code != '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # 1. Post Comment
-          gh issue comment ${{ github.event.issue.number || github.event.pull_request.number }} --body "🛑 **Prompt Physics Failed**
+            const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
 
-          $score_output"
+            if (exitCode !== 0) {
+              // Extract suggestions from output
+              const suggestionsMatch = output.match(/Refactored Suggestions:([\s\S]*?)(\nFAILED:|$)/);
+              const suggestions = suggestionsMatch ? suggestionsMatch[1].trim() : "No specific suggestions found.";
 
-          # 2. Remove Label
-          gh issue edit ${{ github.event.issue.number || github.event.pull_request.number }} --remove-label "jules" || true
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `🛑 Prompt Physics Check Failed\nI cannot start this task yet because the prompt instructions are ambiguous.\n\nSuggested Improvements:\n${suggestions}`
+              });
 
-          # 3. HARD FAIL
-          echo "::error::Prompt failed physics check. Blocking execution."
-          exit 1
-
-  run-agent:
-    needs: check-prompt
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    steps:
-      # Step 1: Plan and Execute
-      - name: Plan and Execute
-        id: jules
-        uses: google-labs-code/jules-invoke@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          jules_api_key: ${{ secrets.JULES_API_KEY }}
-          starting_branch: 'beta'
-
-      # Step 2: Validation
-      - name: Checkout agent's branch
-        if: success() && steps.jules.outputs.branch_name != ''
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.jules.outputs.branch_name }}
-
-      - name: Set up Python
-        if: success() && steps.jules.outputs.branch_name != ''
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: '.python-version'
-
-      - name: Set up uv
-        if: success() && steps.jules.outputs.branch_name != ''
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'jules'
+              });
+            }

@@ -1,10 +1,8 @@
 from pathlib import Path
 from click.testing import CliRunner
-
 # RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
 from src.agent_scorecard.main import cli
 from src.agent_scorecard.analyzer import check_type_hints
-
 
 def test_async_function_support_checks(tmp_path: Path):
     """Test that check_type_hints correctly identifies async functions."""
@@ -18,7 +16,6 @@ async def fetch_data(url):
     # RESOLUTION: Updated function name from analyze_type_hints to check_type_hints
     cov = check_type_hints(str(p))
     assert cov == 0
-
 
 def test_fix_async_function(tmp_path: Path):
     """Test that 'fix' command adds docstrings and type hints to async functions."""
@@ -35,8 +32,7 @@ async def process_data(data):
 
     content = p.read_text()
     assert '"""TODO: Add docstring for AI context."""' in content
-    assert "# TODO: Add type hints for Agent clarity" in content
-
+    assert '# TODO: Add type hints for Agent clarity' in content
 
 def test_score_async_function(tmp_path: Path):
     """Test that 'score' command detects issues in async functions."""

@@ -1,41 +1,40 @@
 import re
 from typing import Dict, Any
 
-
 class PromptAnalyzer:
     """Analyzes text prompts for LLM best practices."""
 
-    HEURISTICS: Dict[str, Dict[str, Any]] = {
+    HEURISTICS = {
         "role_definition": {
             "pattern": r"(?i)(you are|act as|your role)",
             "improvement": "Add a clear persona (e.g., 'You are a Python Expert') to ground the model's latent space.",
             "critical": True,
-            "weight": 25,
+            "weight": 25
         },
         "cognitive_scaffolding": {
             "pattern": r"(?i)(step by step|reasoning|think|plan|step \d+|phase \d+)",
             "improvement": "Add Chain-of-Thought instructions ('Think step by step') to improve complex reasoning.",
             "critical": False,
-            "weight": 25,
+            "weight": 25
         },
         "delimiter_hygiene": {
             "pattern": r"(?i)(<[^>]+>|'''|\"\"\"|```|\{\{.*?\}\})",
             "improvement": "Use delimiters (like XML tags or triple quotes) to separate instructions from input data.",
             "critical": False,
-            "weight": 25,
+            "weight": 25
         },
         "few_shot": {
             "pattern": r"(?i)(example:|input:.*?output:)",
             "improvement": "Include 1-3 examples (Few-Shot) to guide the model on format and style.",
             "critical": False,
-            "weight": 25,
+            "weight": 25
         },
         "negative_constraints": {
             "pattern": r"(?i)(not|don't|do not|never)",
             "improvement": "Refactor negative constraints ('Don't do X') into positive instructions ('Do Y instead') for better adherence.",
             "critical": False,
-            "penalty": 10,
-        },
+            "penalty": 10
+        }
     }
 
     def analyze(self, text: str) -> Dict[str, Any]:
@@ -44,20 +43,17 @@ class PromptAnalyzer:
         improvements = []
         score = 0
 
-        # 1. Standard heuristics (Simple Regex)
-        # We removed few_shot and negative_constraints from here to handle them specifically below
+        # Standard heuristics (Simple Regex)
         for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene"]:
             h = self.HEURISTICS[key]
-            pattern = str(h["pattern"])
-            weight = int(h["weight"])
-            if re.search(pattern, text):
+            if re.search(h["pattern"], text):
                 results[key] = True
-                score += weight
+                score += h["weight"]
             else:
                 results[key] = False
-                improvements.append(str(h["improvement"]))
+                improvements.append(h["improvement"])
 
-        # 2. Context-Aware Few-Shot Detection
+        # Context-Aware Few-Shot Detection
         if self._check_few_shot(text):
             results["few_shot"] = True
             score += self.HEURISTICS["few_shot"]["weight"]
@@ -65,13 +61,13 @@ class PromptAnalyzer:
             results["few_shot"] = False
             improvements.append(self.HEURISTICS["few_shot"]["improvement"])
 
-        # 3. Context-Aware Negative Constraint Detection
+        # Context-Aware Negative Constraint Detection
         if self._check_negative_constraints(text):
-            results["negative_constraints"] = False  # Issue found
+            results["negative_constraints"] = False # Issue found
             score -= self.HEURISTICS["negative_constraints"]["penalty"]
             improvements.append(self.HEURISTICS["negative_constraints"]["improvement"])
         else:
-            results["negative_constraints"] = True   # No issue found
+            results["negative_constraints"] = True # No issue
 
         # Clamp score between 0 and 100
         score = max(0, min(100, score))
@@ -105,7 +101,9 @@ class PromptAnalyzer:
         return False
 
     def _check_negative_constraints(self, text: str) -> bool:
-        """Heuristic for detecting negative constraints with context awareness."""
+        """Heuristic for detecting negative constraints with context awareness.
+        Returns True if a penalty-worthy violation is found.
+        """
         h = self.HEURISTICS["negative_constraints"]
         threshold_20 = len(text) * 0.2
 
@@ -117,18 +115,19 @@ class PromptAnalyzer:
             # Get the line containing the match for context
             start_of_line = text.rfind('\n', 0, match.start()) + 1
             end_of_line = text.find('\n', match.end())
-            if end_of_line == -1: 
+            if end_of_line == -1:
                 end_of_line = len(text)
             line_content = text[start_of_line:end_of_line].strip()
 
-            # Rule 2: Ignore standard "anti-pattern" descriptions
+            # Rule 2: Ignore standard "anti-pattern" descriptions (e.g., "Currently, it does not work")
             if re.search(r"(?i)currently.*not", line_content):
                 continue
 
             # Rule 3: Only flag if they appear in imperative instruction sections (lists/numbers)
+            # We apply this to all negative keywords to minimize false positives in descriptive text.
             if not re.match(r"^(\*|\-|\d+\.)", line_content):
                 continue
 
-            return True  # Violation found
+            return True # Violation found
 
         return False

@@ -12,12 +12,10 @@ from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
 
-
 def test_calculate_acl():
     # ACL = CC + (LOC / 20)
-    assert calculate_acl(10, 100) == 10 + (100 / 20)  # 15.0
+    assert calculate_acl(10, 100) == 10 + (100 / 20) # 15.0
     assert calculate_acl(0, 0) == 0
-
 
 def test_get_directory_entropy(tmp_path):
     # Create 25 files in tmp_path
@@ -35,9 +33,8 @@ def test_get_directory_entropy(tmp_path):
     base_name = tmp_path.name
 
     assert base_name in entropy
-    assert entropy[base_name] == 25  # only files in root
+    assert entropy[base_name] == 25 # only files in root
     assert "subdir" not in entropy
-
 
 def test_dependency_analysis(tmp_path):
     # main.py imports utils, utils imports shared
@@ -57,7 +54,6 @@ def test_dependency_analysis(tmp_path):
     assert inbound.get("shared.py") == 1
     assert inbound.get("main.py") == 0
 
-
 def test_cycle_detection(tmp_path):
     # a.py <-> b.py
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
@@ -71,12 +67,11 @@ def test_cycle_detection(tmp_path):
     assert "a.py" in flat_cycle
     assert "b.py" in flat_cycle
 
-
 def test_generate_advisor_report_standalone():
     """Tests the standalone Advisor Report used in 'agent-score advise' command."""
     stats = [
         {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
-        {"file": "normal.py", "acl": 5.0, "complexity": 2, "loc": 60},
+        {"file": "normal.py", "acl": 5.0, "complexity": 2, "loc": 60}
     ]
     dependency_stats = {"god.py": 55, "util.py": 5}
     entropy_stats = {"large_dir": 30}
@@ -95,9 +90,7 @@ def test_generate_advisor_report_standalone():
     assert "large_dir" in report_md
     assert "Directory Entropy" in report_md
 
-
 # --- Advisor Mode Tests (Integration Tests) ---
-
 
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
@@ -124,7 +117,6 @@ def test_function_stats_parsing(tmp_path):
     assert func["loc"] >= 20
     assert func["acl"] > 2
 
-
 def test_unified_score_report_content(tmp_path):
     """Tests the Markdown report generated during the 'score' command."""
     # Setup a project that triggers advisor warnings
@@ -141,23 +133,19 @@ def test_unified_score_report_content(tmp_path):
     # But wait, generate_markdown_report handles both. Let's pass the list format used by 'score'.
 
     func_stats = analyzer.get_function_stats(str(tmp_path / "hallucination.py"))
-    acl_violations = [f for f in func_stats if f["acl"] > 15]
+    acl_violations = [f for f in func_stats if f['acl'] > 15]
 
-    stats = [
-        {
-            "file": "hallucination.py",
-            "score": 50,
-            "issues": "Yellow ACL functions (-5)",
-            "loc": 130,
-            "complexity": 11,
-            "type_coverage": 0,
-            "acl_violations": acl_violations,
-        }
-    ]
+    stats = [{
+        "file": "hallucination.py",
+        "score": 50,
+        "issues": "Yellow ACL functions (-5)",
+        "loc": 130,
+        "complexity": 11,
+        "type_coverage": 0,
+        "acl_violations": acl_violations
+    }]
 
-    report_md = report.generate_markdown_report(
-        stats, 50, str(tmp_path), PROFILES["generic"]
-    )
+    report_md = report.generate_markdown_report(stats, 50, str(tmp_path), PROFILES["generic"])
 
     # Check for sections
     assert "Agent Scorecard Report" in report_md

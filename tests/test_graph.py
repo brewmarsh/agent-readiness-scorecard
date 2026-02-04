@@ -3,7 +3,6 @@ import tempfile
 import networkx as nx
 from agent_scorecard.graph import build_dependency_graph, analyze_graph
 
-
 def test_build_dependency_graph():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a small package structure
@@ -32,7 +31,6 @@ def test_build_dependency_graph():
         # main.py depends on utils.py
         assert graph.has_edge(os.path.abspath(main_py), os.path.abspath(utils_py))
 
-
 def test_circular_dependency():
     with tempfile.TemporaryDirectory() as tmpdir:
         a_py = os.path.join(tmpdir, "a.py")
@@ -51,7 +49,6 @@ def test_circular_dependency():
         cycle = analysis["cycles"][0]
         assert os.path.abspath(a_py) in cycle
         assert os.path.abspath(b_py) in cycle
-
 
 def test_god_module():
     graph = nx.DiGraph()
