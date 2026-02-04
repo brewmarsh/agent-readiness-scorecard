@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from src.agent_scorecard.report import generate_markdown_report, generate_recommendations_report
 from src.agent_scorecard.constants import PROFILES
 

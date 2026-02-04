@@ -1,7 +1,5 @@
 import os
 import tempfile
-import shutil
-import pytest
 import networkx as nx
 from agent_scorecard.graph import build_dependency_graph, analyze_graph
 

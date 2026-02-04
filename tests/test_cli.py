@@ -38,7 +38,7 @@ def test_cli_fix_flag():
             f.write("def test():\n    pass\n")
 
         # Run with --fix and jules profile to ensure agents.md is created
-        result = runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
+        runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
         # Exit code might be 0 or 1 depending on score, but we care about file creation
 
         assert os.path.exists("agents.md")

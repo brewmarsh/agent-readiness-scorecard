@@ -62,7 +62,7 @@ def resolve_module_path(base_path: str, current_file: str, module_name: str, lev
 
 def build_dependency_graph(root_path: str) -> nx.DiGraph:
     """Builds a Directed Graph of dependencies between Python files."""
-    graph = nx.DiGraph()
+    graph: nx.DiGraph = nx.DiGraph()
     py_files = set()
 
     abs_root = os.path.abspath(root_path)

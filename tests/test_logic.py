@@ -1,4 +1,3 @@
-import pytest
 import textwrap
 from pathlib import Path
 from click.testing import CliRunner

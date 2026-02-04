@@ -1,11 +1,9 @@
-import os
-from . import analyzer
 
 def generate_markdown_report(stats, final_score, path, profile, project_issues=None):
     """Generates a Markdown report from the collected statistics."""
 
     # --- 1. Executive Summary ---
-    summary = f"# Agent Scorecard Report\n\n"
+    summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 

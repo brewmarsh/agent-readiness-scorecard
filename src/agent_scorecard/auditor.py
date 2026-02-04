@@ -1,7 +1,7 @@
 import os
 import ast
 import tiktoken
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
     """Calculate directory entropy. Warn if avg files > 15 OR max files > 50."""
@@ -43,7 +43,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """Returns directories with file count > threshold."""
-    entropy_stats = {}
+    entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
         return entropy_stats
 

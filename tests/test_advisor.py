@@ -1,7 +1,4 @@
-import pytest
 import textwrap
-import os
-from pathlib import Path
 from src.agent_scorecard import analyzer, report
 from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.analyzer import (

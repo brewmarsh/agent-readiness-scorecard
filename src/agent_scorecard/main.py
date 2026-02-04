@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import click
+from typing import List, Optional
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
@@ -13,7 +14,7 @@ from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
 from .fix import apply_fixes
-from .scoring import generate_badge, score_file
+from .scoring import generate_badge
 
 console = Console()
 
@@ -42,7 +43,7 @@ def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
     pass
 
-def get_changed_files(base_ref: str = "origin/main") -> list:
+def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     """Uses git diff to return a list of changed Python files."""
     try:
         cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
@@ -51,7 +52,7 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
     except Exception:
         return []
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: Optional[List[str]] = None) -> None:
     """Helper to run the scoring logic."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")

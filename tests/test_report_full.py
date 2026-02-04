@@ -1,5 +1,3 @@
-import textwrap
-from pathlib import Path
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 

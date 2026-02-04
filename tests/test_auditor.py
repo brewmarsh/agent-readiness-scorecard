@@ -1,6 +1,5 @@
 import os
 import tempfile
-import pytest
 from agent_scorecard import auditor
 
 def test_check_directory_entropy():

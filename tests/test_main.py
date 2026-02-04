@@ -1,4 +1,3 @@
-import os
 import pytest
 from pathlib import Path
 from src.agent_scorecard.analyzer import (
@@ -8,7 +7,6 @@ from src.agent_scorecard.analyzer import (
     scan_project_docs,
 )
 from src.agent_scorecard.scoring import generate_badge
-from src.agent_scorecard.constants import PROFILES
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:

@@ -1,10 +1,10 @@
 import re
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 class PromptAnalyzer:
     """Analyzes text prompts for LLM best practices."""
 
-    HEURISTICS = {
+    HEURISTICS: Dict[str, Dict[str, Any]] = {
         "role_definition": {
             "pattern": r"(?i)(you are|act as|your role)",
             "improvement": "Add a clear persona (e.g., 'You are a Python Expert') to ground the model's latent space.",
@@ -46,19 +46,23 @@ class PromptAnalyzer:
         # Positive heuristics
         for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot"]:
             h = self.HEURISTICS[key]
-            if re.search(h["pattern"], text):
+            pattern = str(h["pattern"])
+            weight = int(h["weight"])
+            if re.search(pattern, text):
                 results[key] = True
-                score += h["weight"]
+                score += weight
             else:
                 results[key] = False
-                improvements.append(h["improvement"])
+                improvements.append(str(h["improvement"]))
 
         # Negative constraints (Warning)
         h = self.HEURISTICS["negative_constraints"]
-        if re.search(h["pattern"], text):
-            results["negative_constraints"] = False # Flagged as an issue
-            score -= h["penalty"]
-            improvements.append(h["improvement"])
+        pattern = str(h["pattern"])
+        penalty = int(h["penalty"])
+        if re.search(pattern, text):
+            results["negative_constraints"] = False  # Flagged as an issue
+            score -= penalty
+            improvements.append(str(h["improvement"]))
         else:
             results["negative_constraints"] = True
 

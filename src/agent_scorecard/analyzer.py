@@ -1,8 +1,6 @@
 import os
 import ast
-import mccabe
-from collections import Counter
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, List, Optional
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
@@ -15,8 +13,7 @@ from .metrics import (
     get_complexity_score,
     check_type_hints,
     calculate_acl,
-    count_tokens,
-    get_function_stats
+    get_function_stats,
 )
 
 def scan_project_docs(root_path, required_files):
@@ -70,7 +67,8 @@ def get_import_graph(root_path):
         for name in imported_names:
             suffix = name.replace(".", os.sep)
             for candidate in all_py_files:
-                if candidate == rel_path: continue
+                if candidate == rel_path:
+                    continue
                 candidate_no_ext = os.path.splitext(candidate)[0]
                 if candidate_no_ext.endswith(suffix):
                     match_len = len(suffix)
@@ -108,8 +106,9 @@ def detect_cycles(graph):
                     idx = current_path.index(neighbor)
                     cycle = current_path[idx:]
                     if cycle not in cycles:
-                         cycles.append(cycle[:])
-                except ValueError: pass
+                        cycles.append(cycle[:])
+                except ValueError:
+                    pass
             elif neighbor not in visited_global:
                 visit(neighbor, current_path)
 
@@ -123,7 +122,8 @@ def detect_cycles(graph):
     unique_cycles = []
     seen_cycle_sets = set()
     for cycle in cycles:
-        if len(cycle) < 2: continue
+        if len(cycle) < 2:
+            continue
         min_node = min(cycle)
         min_idx = cycle.index(min_node)
         canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
@@ -168,7 +168,7 @@ def get_project_issues(path, py_files, profile):
         
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str, limit_to_files: Optional[List] = None) -> Dict[str, Any]:
     """Orchestrates the full project analysis."""
     profile = PROFILES[agent]
 

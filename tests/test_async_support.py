@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from click.testing import CliRunner
 # RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
