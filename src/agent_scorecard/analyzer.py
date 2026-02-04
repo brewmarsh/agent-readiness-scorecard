@@ -2,7 +2,7 @@ import os
 import ast
 import mccabe
 from collections import Counter
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Set, Optional
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
@@ -19,7 +19,7 @@ from .metrics import (
     get_function_stats
 )
 
-def scan_project_docs(root_path, required_files):
+def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
     root_files = [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
@@ -29,43 +29,55 @@ def scan_project_docs(root_path, required_files):
             missing.append(req)
     return missing
 
-def get_import_graph(root_path):
-    """Builds a dependency graph of the project."""
-    all_py_files = []
-    if os.path.isfile(root_path):
-        if root_path.endswith(".py"):
-             all_py_files.append(os.path.basename(root_path))
-             root_path = os.path.dirname(root_path)
-    else:
-        for root, _, files in os.walk(root_path):
+def _collect_python_files(path: str) -> List[str]:
+    """Collects all Python files in the given path."""
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
             parts = root.split(os.sep)
             if any(p.startswith(".") and p != "." for p in parts):
                 continue
             for file in files:
                 if file.endswith(".py"):
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, start=root_path)
-                    all_py_files.append(rel_path)
+                    py_files.append(os.path.join(root, file))
+    return py_files
+
+def _parse_imports(filepath: str) -> Set[str]:
+    """Parses a Python file and returns a set of imported module names."""
+    imported_names = set()
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            code = f.read()
+        tree = ast.parse(code, filename=filepath)
+    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+        return imported_names
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imported_names.add(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imported_names.add(node.module)
+    return imported_names
+
+def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+    """Builds a dependency graph of the project."""
+    if os.path.isfile(root_path) and root_path.endswith(".py"):
+         all_py_files = [os.path.basename(root_path)]
+         root_path = os.path.dirname(root_path)
+    else:
+        # Use helper but we need relative paths for the graph logic
+        full_paths = _collect_python_files(root_path)
+        all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph = {f: set() for f in all_py_files}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code, filename=full_path)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-            continue
-
-        imported_names = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imported_names.add(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imported_names.add(node.module)
+        imported_names = _parse_imports(full_path)
         
         for name in imported_names:
             suffix = name.replace(".", os.sep)
@@ -78,7 +90,7 @@ def get_import_graph(root_path):
                         graph[rel_path].add(candidate)
     return graph
 
-def get_inbound_imports(graph):
+def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     """Returns {file: count} of inbound imports."""
     inbound = {node: 0 for node in graph}
     for source, targets in graph.items():
@@ -89,18 +101,18 @@ def get_inbound_imports(graph):
                 inbound[target] = 1
     return inbound
 
-def detect_cycles(graph):
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     """Returns list of cycles (list of nodes in cycle)."""
     cycles = []
     visited_global = set()
     path_set = set()
     nodes = sorted(graph.keys())
 
-    def visit(node, current_path):
+    def visit(node: str, current_path: List[str]):
         visited_global.add(node)
         path_set.add(node)
         current_path.append(node)
-        neighbors = sorted(list(graph.get(node, [])))
+        neighbors = sorted(list(graph.get(node, set())))
 
         for neighbor in neighbors:
             if neighbor in path_set:
@@ -132,7 +144,7 @@ def detect_cycles(graph):
             unique_cycles.append(list(canonical))
     return unique_cycles
 
-def get_project_issues(path, py_files, profile):
+def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) -> Tuple[int, List[str]]:
     """Checks for project-level issues."""
     penalty = 0
     issues = []
@@ -168,21 +180,11 @@ def get_project_issues(path, py_files, profile):
         
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: list = None) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> Dict[str, Any]:
     """Orchestrates the full project analysis."""
     profile = PROFILES[agent]
 
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            parts = root.split(os.sep)
-            if any(p.startswith(".") and p != "." for p in parts):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
+    py_files = _collect_python_files(path)
 
     all_py_files = py_files[:]
     if limit_to_files:
