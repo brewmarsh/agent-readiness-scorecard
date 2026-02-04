@@ -2,7 +2,6 @@ import os
 import tempfile
 from agent_scorecard import auditor
 
-
 def test_check_directory_entropy():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a few folders and files
@@ -25,7 +24,6 @@ def test_check_directory_entropy():
         assert result["avg_files"] == 5.0
         assert result["warning"] is False
 
-
 def test_check_directory_entropy_warning():
     with tempfile.TemporaryDirectory() as tmpdir:
         for i in range(20):
@@ -36,7 +34,6 @@ def test_check_directory_entropy_warning():
         result = auditor.check_directory_entropy(tmpdir)
         assert result["avg_files"] == 20.0
         assert result["warning"] is True
-
 
 def test_check_directory_entropy_max_files():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -57,7 +54,6 @@ def test_check_directory_entropy_max_files():
         assert result["warning"] is True
         assert result["max_files"] == 60
         assert god_dir in result["crowded_dirs"]
-
 
 def test_get_python_signatures():
     code = """
@@ -84,7 +80,6 @@ class MyClass:
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
 
 def test_get_python_signatures_with_decorators():
     code = """
@@ -115,7 +110,6 @@ class DecoratedClass:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-
 def test_get_python_signatures_multiline():
     code = """
 def multiline_func(
@@ -136,7 +130,6 @@ def multiline_func(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-
 def test_check_critical_context_tokens():
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
@@ -148,7 +141,6 @@ def test_check_critical_context_tokens():
         result = auditor.check_critical_context_tokens(tmpdir)
         assert result["token_count"] > 0
         assert result["alert"] is False
-
 
 def test_check_critical_context_tokens_single_file():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -168,12 +160,10 @@ def test_check_critical_context_tokens_single_file():
 
         # Test just signature tokens
         import tiktoken
-
         enc = tiktoken.get_encoding("cl100k_base")
         sig_tokens = len(enc.encode("def foo():"))
 
         assert result["token_count"] > sig_tokens
-
 
 def test_check_environment_health():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -200,7 +190,6 @@ def test_check_environment_health():
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["lock_file"] is True
-
 
 def test_check_environment_health_pyproject_ruff():
     with tempfile.TemporaryDirectory() as tmpdir:

@@ -11,32 +11,11 @@ AI Agents struggle with:
 
 This tool scores your repo and helps you fix it.
 
-## 📦 Installation & Quickstart
+## 📦 Installation
 
-### 1. Install `uv`
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+pip install agent-scorecard
 
-### 2. Setup Project
-```bash
-# Clone the repo and sync dependencies
-uv sync --all-extras
-```
-
-### 3. Run Checks
-```bash
-# Linting & Formatting
-uv run ruff check .
-uv run ruff format --check .
-
-# Type Safety
-uv run mypy src/
-
-# Security & Tests
-uv run bandit -r src/ -ll
-uv run pip-audit
-uv run pytest
 ```
 
 ## 🚀 Usage

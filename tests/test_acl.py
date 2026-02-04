@@ -4,7 +4,6 @@ from src.agent_scorecard.analyzer import calculate_acl
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
-
 def test_acl_calculation_logic():
     """Tests the ACL calculation formula."""
     # Formula: ACL = CC + (LOC / 20)
@@ -27,7 +26,6 @@ def test_acl_calculation_logic():
     # ACL = 10 + 10 = 20
     assert calculate_acl(cc, loc) == 20.0
 
-
 def test_scoring_with_acl_penalty(tmp_path: Path):
     """Tests that a function with high ACL receives a penalty."""
 
@@ -45,9 +43,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     # Score the file
-    score, details, loc, avg_comp, type_cov, func_metrics = score_file(
-        str(py_file), PROFILES["generic"]
-    )
+    score, details, loc, avg_comp, type_cov, func_metrics = score_file(str(py_file), PROFILES["generic"])
 
     # RESOLUTION: Verify the specific output format from scoring.py
     # New logic uses "Yellow ACL functions" in details and keeps names in func_metrics

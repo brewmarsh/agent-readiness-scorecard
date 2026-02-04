@@ -1,7 +1,6 @@
 import textwrap
 from src.agent_scorecard.analyzer import get_function_stats
 
-
 def test_get_function_stats(tmp_path):
     code = textwrap.dedent("""
     def simple():
@@ -38,15 +37,15 @@ def test_get_function_stats(tmp_path):
     stats = get_function_stats(str(p))
     assert len(stats) == 2
 
-    simple = next(s for s in stats if s["name"] == "simple")
-    complex_long = next(s for s in stats if s["name"] == "complex_long")
+    simple = next(s for s in stats if s['name'] == 'simple')
+    complex_long = next(s for s in stats if s['name'] == 'complex_long')
 
     # Simple: Complexity 1, LOC ~2. ACL = 1 + 2/20 = 1.1
-    assert simple["complexity"] == 1
-    assert simple["loc"] == 2
-    assert simple["acl"] == 1.1
+    assert simple['complexity'] == 1
+    assert simple['loc'] == 2
+    assert simple['acl'] == 1.1
 
     # Complex: Complexity 2 (if/else), LOC ~25. ACL = 2 + 25/20 = 3.25
-    assert complex_long["complexity"] == 2
-    assert complex_long["loc"] >= 20
-    assert complex_long["acl"] > 3.0
+    assert complex_long['complexity'] == 2
+    assert complex_long['loc'] >= 20
+    assert complex_long['acl'] > 3.0

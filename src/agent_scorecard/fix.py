@@ -2,26 +2,15 @@ import os
 import ast
 from typing import List, Tuple, Dict, Any, Union
 from rich.console import Console
-from .constants import (
-    AGENT_CONTEXT_TEMPLATE,
-    INSTRUCTIONS_TEMPLATE,
-    DOCSTRING_TEXT,
-    TYPE_HINT_STUB,
-)
+from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE, DOCSTRING_TEXT, TYPE_HINT_STUB
 
 console = Console()
 
-
 def get_indentation(line: str) -> str:
     """Returns the indentation string of a line."""
-    return line[: len(line) - len(line.lstrip())]
+    return line[:len(line) - len(line.lstrip())]
 
-
-def check_missing_docstring(
-    node: Union[ast.FunctionDef, ast.AsyncFunctionDef],
-    lines: List[str],
-    insertions: List[Tuple[int, str]],
-) -> None:
+def check_missing_docstring(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
     """Checks for missing docstring and adds insertion if needed."""
     if not ast.get_docstring(node):
         # Insert after the function definition line (handling decorators)
@@ -32,7 +21,7 @@ def check_missing_docstring(
         if not node.body:
             return
 
-        body_start_line = node.body[0].lineno - 1  # 0-indexed
+        body_start_line = node.body[0].lineno - 1 # 0-indexed
 
         # Determine indentation from the first line of the body
         if body_start_line < len(lines):
@@ -41,14 +30,9 @@ def check_missing_docstring(
 
             # Check if it's just 'pass' or '...' on the same line
             if node.body[0].lineno > node.lineno:
-                insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
+                    insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
 
-
-def check_missing_type_hints(
-    node: Union[ast.FunctionDef, ast.AsyncFunctionDef],
-    lines: List[str],
-    insertions: List[Tuple[int, str]],
-) -> None:
+def check_missing_type_hints(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
     """Checks for missing type hints and adds insertion if needed."""
     has_return = node.returns is not None
     has_args = any(arg.annotation is not None for arg in node.args.args)
@@ -65,10 +49,9 @@ def check_missing_type_hints(
 
         # Determine function indentation
         if node.lineno - 1 < len(lines):
-            func_line_content = lines[node.lineno - 1]
+            func_line_content = lines[node.lineno-1]
             indent_str = get_indentation(func_line_content)
             insertions.append((start_line, f"{indent_str}{TYPE_HINT_STUB}\n"))
-
 
 def fix_file_issues(filepath: str) -> None:
     """Injects docstrings and type hint TODOs where missing."""
@@ -101,7 +84,6 @@ def fix_file_issues(filepath: str) -> None:
 
     console.print(f"[bold green][Fixed][/bold green] Injected issues in {filepath}")
 
-
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
 
@@ -115,9 +97,7 @@ def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
                 filepath = os.path.join(path, req)
                 content = ""
                 if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(
-                        project_name=os.path.basename(os.path.abspath(path))
-                    )
+                    content = AGENT_CONTEXT_TEMPLATE.format(project_name=os.path.basename(os.path.abspath(path)))
                 elif req.lower() == "instructions.md":
                     content = INSTRUCTIONS_TEMPLATE
                 elif req.lower() == "readme.md":
