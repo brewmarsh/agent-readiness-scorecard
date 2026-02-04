@@ -90,3 +90,18 @@ agent-score score --diff origin/main
 ```
 
 This feature uses `git diff` to identify modified `.py` files and ensures that even if you only check one file, the codebase's global "Agent Physics" (like dependency cycles) remains healthy.
+
+## 📝 Prompt Engineering Linter
+
+Static analysis for your LLM prompts. Ensure your system prompts follow best practices (Role Definition, Few-Shot, CoT) before deploying them to production.
+
+```bash
+agent-score check-prompts prompts/system_v1.txt
+```
+
+### Heuristics Checked:
+* **Role Definition**: Does the prompt establish a persona?
+* **Cognitive Scaffolding**: Are there "Think step-by-step" instructions?
+* **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
+* **Few-Shot Examples**: Does it include 1-3 examples?
+* **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
