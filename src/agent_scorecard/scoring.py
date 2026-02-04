@@ -1,9 +1,9 @@
 from typing import Dict, Any, Tuple, List
-from .checks import get_loc, analyze_functions
+from .metrics import get_loc, get_function_stats
 
 def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
     """Calculates score based on the selected profile and new Agent Readiness spec."""
-    metrics = analyze_functions(filepath)
+    metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
     if not metrics:
