@@ -90,3 +90,19 @@ agent-score score --diff origin/main
 ```
 
 This feature uses `git diff` to identify modified `.py` files and ensures that even if you only check one file, the codebase's global "Agent Physics" (like dependency cycles) remains healthy.
+
+## 📢 Prompt Analyzer
+
+Ensure your prompt engineering follows best practices to get the best results from LLMs.
+
+```bash
+agent-score check-prompts my_prompt.txt
+```
+
+This checks for:
+* **Persona Adoption** (e.g., "You are an expert...")
+* **Clear Delimiters** (e.g., `---` or ` ``` `)
+* **Few-Shot Examples** (Providing examples)
+* **Chain of Thought** (Asking for step-by-step reasoning)
+* **Structured Output** (Requesting JSON/CSV/etc.)
+* **Negative Constraints** (Warning against "Do not...")
