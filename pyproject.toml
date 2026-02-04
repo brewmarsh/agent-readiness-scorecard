@@ -22,7 +22,13 @@ agent-score = "agent_scorecard.main:cli"
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
+    "pytest>=8.3.5",
+    "ruff>=0.15.0",
+    "mypy>=1.14.1",
+    "bandit>=1.7.10",
+    "safety>=3.6.2",
+    "types-networkx>=3.4.2.20241227",
+    "pip-audit>=2.7.3",
 ]
 
 [tool.setuptools_scm]

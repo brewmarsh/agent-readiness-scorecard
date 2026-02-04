@@ -1,7 +1,10 @@
 from typing import Dict, Any, Tuple, List
 from .metrics import get_loc, get_function_stats
 
-def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+
+def score_file(
+    filepath: str, profile: Dict[str, Any]
+) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
     """Calculates score based on the selected profile and new Agent Readiness spec."""
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
@@ -40,7 +43,15 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 
-    return max(score, 0), ", ".join(details), loc, avg_complexity, type_safety_index, metrics
+    return (
+        max(score, 0),
+        ", ".join(details),
+        loc,
+        avg_complexity,
+        type_safety_index,
+        metrics,
+    )
+
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge for the agent score."""

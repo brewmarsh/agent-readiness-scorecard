@@ -1,17 +1,13 @@
 import os
 import ast
 import tiktoken
-from typing import Dict, Any, List
+from typing import Dict, Any
+
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
     """Calculate directory entropy. Warn if avg files > 15 OR max files > 50."""
     if not os.path.isdir(path):
-        return {
-            "avg_files": 0,
-            "warning": False,
-            "max_files": 0,
-            "crowded_dirs": []
-        }
+        return {"avg_files": 0, "warning": False, "max_files": 0, "crowded_dirs": []}
 
     total_files = 0
     total_folders = 0
@@ -20,7 +16,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
 
     for root, dirs, files in os.walk(path):
         # Filter out hidden directories and __pycache__
-        dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
 
         total_folders += 1
         num_files = len(files)
@@ -38,12 +34,13 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
         "avg_files": avg,
         "warning": avg > 15 or max_files > 50,
         "max_files": max_files,
-        "crowded_dirs": crowded_dirs
+        "crowded_dirs": crowded_dirs,
     }
+
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """Returns directories with file count > threshold."""
-    entropy_stats = {}
+    entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
         return entropy_stats
 
@@ -59,6 +56,7 @@ def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, in
                 rel_path = os.path.basename(os.path.abspath(root_path))
             entropy_stats[rel_path] = count
     return entropy_stats
+
 
 def get_python_signatures(filepath: str) -> str:
     """Extracts function/method signatures from a python file."""
@@ -104,7 +102,9 @@ def get_python_signatures(filepath: str) -> str:
                 if isinstance(node, ast.ClassDef):
                     sig = f"class {node.name}:"
                 else:
-                    prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+                    prefix = (
+                        "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+                    )
                     sig = f"{prefix} {node.name}(...):"
 
                 if deco_list:
@@ -113,6 +113,7 @@ def get_python_signatures(filepath: str) -> str:
                     signatures.append(sig)
 
     return "\n".join(signatures)
+
 
 def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     """Count tokens in README.md + AGENTS.md + python signatures."""
@@ -153,27 +154,23 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
         # Python signatures
         for root, dirs, files in os.walk(path):
             # Filter out hidden directories and __pycache__
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
             for file in files:
                 if file.endswith(".py"):
-                    total_content += get_python_signatures(os.path.join(root, file)) + "\n"
+                    total_content += (
+                        get_python_signatures(os.path.join(root, file)) + "\n"
+                    )
     elif os.path.isfile(path) and path.endswith(".py"):
         total_content += get_python_signatures(path)
 
     tokens = enc.encode(total_content)
     count = len(tokens)
-    return {
-        "token_count": count,
-        "alert": count > 32000
-    }
+    return {"token_count": count, "alert": count > 32000}
+
 
 def check_environment_health(path: str) -> Dict[str, Any]:
     """Check for AGENTS.md, Linter Config, and Lock File."""
-    results = {
-        "agents_md": False,
-        "linter_config": False,
-        "lock_file": False
-    }
+    results = {"agents_md": False, "linter_config": False, "lock_file": False}
 
     # Normalize path to directory
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
@@ -202,7 +199,9 @@ def check_environment_health(path: str) -> Dict[str, Any]:
                 results["linter_config"] = True
             elif "pyproject.toml" in root_files:
                 try:
-                    with open(os.path.join(s_dir, "pyproject.toml"), "r", encoding="utf-8") as f:
+                    with open(
+                        os.path.join(s_dir, "pyproject.toml"), "r", encoding="utf-8"
+                    ) as f:
                         if "[tool.ruff]" in f.read():
                             results["linter_config"] = True
                 except Exception:

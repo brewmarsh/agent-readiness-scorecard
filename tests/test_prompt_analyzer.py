@@ -1,4 +1,6 @@
+import pytest
 from src.agent_scorecard.prompt_analyzer import PromptAnalyzer
+
 
 def test_prompt_analyzer_perfect():
     analyzer = PromptAnalyzer()
@@ -18,16 +20,27 @@ def test_prompt_analyzer_perfect():
     assert results["results"]["cognitive_scaffolding"] is True
     assert results["results"]["delimiter_hygiene"] is True
     assert results["results"]["few_shot"] is True
-    assert results["results"]["negative_constraints"] is True # No negative constraints found
+    assert (
+        results["results"]["negative_constraints"] is True
+    )  # No negative constraints found
     assert len(results["improvements"]) == 0
+
 
 def test_prompt_analyzer_low_score():
     analyzer = PromptAnalyzer()
     # Negative constraints like "Don't" are only flagged in lists and not in first 20%
     text = "x" * 100 + "\n* Don't fail."
     results = analyzer.analyze(text)
+    
+    # Verify the negative constraint was flagged
     assert results["results"]["negative_constraints"] is False
-    assert results["score"] == 0 # 4 missing (100) - 10 penalty = 0 clamped
+    
+    # 4 missing positive dimensions (100 pts) - 10 penalty = 0 clamped
+    assert results["score"] == 0 
+    
+    # 4 missing positive improvements + 1 remediation idea for the negative constraint
+    assert len(results["improvements"]) == 5  
+
 
 def test_negative_constraints_all_keywords():
     analyzer = PromptAnalyzer()
@@ -42,11 +55,13 @@ def test_negative_constraints_all_keywords():
     assert analyzer.analyze(padding + "\nNever say never.")["results"]["negative_constraints"] is True
     assert analyzer.analyze(padding + "\nIt is not working.")["results"]["negative_constraints"] is True
 
+
 def test_delimiter_variants():
     analyzer = PromptAnalyzer()
     assert analyzer.analyze("```\ncode\n```")["results"]["delimiter_hygiene"] is True
     assert analyzer.analyze("'''\ncode\n'''")["results"]["delimiter_hygiene"] is True
     assert analyzer.analyze("<tag>data</tag>")["results"]["delimiter_hygiene"] is True
+
 
 def test_cot_relaxed_variants():
     analyzer = PromptAnalyzer()
