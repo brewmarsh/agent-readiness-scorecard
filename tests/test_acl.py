@@ -1,7 +1,6 @@
-import pytest
 import textwrap
 from pathlib import Path
-from src.agent_scorecard.analyzer import calculate_acl, get_loc, get_complexity_score
+from src.agent_scorecard.analyzer import calculate_acl
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
@@ -30,7 +29,7 @@ def test_acl_calculation_logic():
 def test_scoring_with_acl_penalty(tmp_path: Path):
     """Tests that a function with high ACL receives a penalty."""
 
-    # RESOLUTION: We use the Advisor-Mode setup (Large Function) because 
+    # RESOLUTION: We use the Advisor-Mode setup (Large Function) because
     # the new logic ignores global scope for ACL calculations.
     content = textwrap.dedent("""
     def big_function():

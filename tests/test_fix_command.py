@@ -1,10 +1,8 @@
 import os
-import shutil
 import textwrap
 import pytest
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
-from src.agent_scorecard.constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 
 class TestFixCommand:
     @pytest.fixture

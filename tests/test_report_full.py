@@ -1,5 +1,3 @@
-import textwrap
-from pathlib import Path
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
@@ -26,6 +24,6 @@ def test_report_full(tmp_path):
     assert "high_acl.py" in content
     assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in content
 
-    
+
     assert "Type Safety Index" in content
     assert "Agent Prompts for Remediation" in content

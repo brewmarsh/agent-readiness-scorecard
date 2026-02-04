@@ -23,7 +23,6 @@ def test_cli_profiles_jules_fail_missing_agents_md():
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
-        # We need a python file to trigger scoring, or let it fail due to no files and missing docs
         result = runner.invoke(cli, ["score", ".", "--agent=jules"])
 
         # Should fail because missing agents.md and instructions.md
@@ -38,8 +37,7 @@ def test_cli_fix_flag():
             f.write("def test():\n    pass\n")
 
         # Run with --fix and jules profile to ensure agents.md is created
-        result = runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
-        # Exit code might be 0 or 1 depending on score, but we care about file creation
+        runner.invoke(cli, ["score", ".", "--agent=jules", "--fix"])
 
         assert os.path.exists("agents.md")
         with open("agents.md", "r") as f:
@@ -81,6 +79,7 @@ def test_cli_advise_command():
             assert "Agent Advisor Report" in content
 
 def test_cli_check_prompts():
+    """Test the Beta branch command for prompt best-practice analysis."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a perfect prompt file

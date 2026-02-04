@@ -1,5 +1,3 @@
-import textwrap
-from pathlib import Path
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 

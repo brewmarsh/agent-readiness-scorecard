@@ -13,25 +13,25 @@ class PromptAnalyzer:
             "weight": 25
         },
         "cognitive_scaffolding": {
-            "pattern": r"(?i)(step[- ]by[- ]step|think carefully|reasoning|stepwise)",
+            "pattern": r"(?i)(step by step|reasoning|think|plan|step \d+|phase \d+)",
             "improvement": "Add Chain-of-Thought instructions ('Think step by step') to improve complex reasoning.",
             "critical": False,
             "weight": 25
         },
         "delimiter_hygiene": {
-            "pattern": r"(```|---|===|<[^>]+>)",
+            "pattern": r"(?i)(<[^>]+>|'''|\"\"\"|```|\{\{.*?\}\})",
             "improvement": "Use delimiters (like XML tags or triple quotes) to separate instructions from input data.",
             "critical": False,
             "weight": 25
         },
         "few_shot": {
-            "pattern": r"(?i)(\bexample\b|input:.*?output:|user:|assistant:)",
+            "pattern": r"(?i)(example:|input:.*?output:)",
             "improvement": "Include 1-3 examples (Few-Shot) to guide the model on format and style.",
             "critical": False,
             "weight": 25
         },
         "negative_constraints": {
-            "pattern": r"(?i)\b(do not|don't|never|avoid)\b",
+            "pattern": r"(?i)(not|don't|do not|never)",
             "improvement": "Refactor negative constraints ('Don't do X') into positive instructions ('Do Y instead') for better adherence.",
             "critical": False,
             "penalty": 10
@@ -51,9 +51,9 @@ class PromptAnalyzer:
                 "improvements": ["Prompt is empty."]
             }
 
-        # 1. Process Positive Heuristics
-        positive_keys = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot"]
-        for key in positive_keys:
+        # 1. Standard heuristics (Simple Regex)
+        # We process the first three dimensions using standard regex matching
+        for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene"]:
             h = self.HEURISTICS[key]
             if re.search(h["pattern"], text):
                 results[key] = True
@@ -62,14 +62,21 @@ class PromptAnalyzer:
                 results[key] = False
                 improvements.append(h["improvement"])
 
-        # 2. Process Negative Constraints (Penalties)
-        h_neg = self.HEURISTICS["negative_constraints"]
-        if re.search(h_neg["pattern"], text):
-            results["negative_constraints"] = False  # Flagged as an issue
-            score -= h_neg["penalty"]
-            improvements.append(h_neg["improvement"])
+        # 2. Context-Aware Few-Shot Detection
+        if self._check_few_shot(text):
+            results["few_shot"] = True
+            score += self.HEURISTICS["few_shot"]["weight"]
         else:
-            results["negative_constraints"] = True
+            results["few_shot"] = False
+            improvements.append(self.HEURISTICS["few_shot"]["improvement"])
+
+        # 3. Context-Aware Negative Constraint Detection
+        if self._check_negative_constraints(text):
+            results["negative_constraints"] = False # Issue found
+            score -= self.HEURISTICS["negative_constraints"]["penalty"]
+            improvements.append(self.HEURISTICS["negative_constraints"]["improvement"])
+        else:
+            results["negative_constraints"] = True # No issue
 
         # Clamp score between 0 and 100
         score = max(0, min(100, score))
@@ -79,3 +86,56 @@ class PromptAnalyzer:
             "results": results,
             "improvements": improvements
         }
+
+    def _check_few_shot(self, text: str) -> bool:
+        """Heuristic for detecting few-shot examples with context awareness."""
+        h = self.HEURISTICS["few_shot"]
+
+        # 1. Standard patterns (Example: or Input/Output)
+        if re.search(h["pattern"], text, re.DOTALL):
+            return True
+
+        # 2. Markdown Header with "Example" or "Examples"
+        if re.search(r"(?m)^#+.*(Example|Examples)", text, re.IGNORECASE):
+            return True
+
+        # 3. Markdown code blocks preceded by lines containing "example" or "sample"
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            if re.search(r"(?i)(example|sample)", line):
+                # Check if next 2 lines contain a code block start
+                for j in range(i + 1, min(i + 3, len(lines))):
+                    if lines[j].strip().startswith("```"):
+                        return True
+        return False
+
+    def _check_negative_constraints(self, text: str) -> bool:
+        """Heuristic for detecting negative constraints with context awareness.
+        Returns True if a penalty-worthy violation is found.
+        """
+        h = self.HEURISTICS["negative_constraints"]
+        threshold_20 = len(text) * 0.2
+
+        for match in re.finditer(h["pattern"], text):
+            # Rule 1: Ignore negative words in the first 20% (Context setting phase)
+            if match.start() < threshold_20:
+                continue
+
+            # Get the line containing the match for context
+            start_of_line = text.rfind('\n', 0, match.start()) + 1
+            end_of_line = text.find('\n', match.end())
+            if end_of_line == -1:
+                end_of_line = len(text)
+            line_content = text[start_of_line:end_of_line].strip()
+
+            # Rule 2: Ignore standard "anti-pattern" descriptions (e.g., "Currently, it does not work")
+            if re.search(r"(?i)currently.*not", line_content):
+                continue
+
+            # Rule 3: Only flag if they appear in imperative instruction sections (lists/numbers)
+            if not re.match(r"^(\*|\-|\d+\.)", line_content):
+                continue
+
+            return True # Violation found
+
+        return False

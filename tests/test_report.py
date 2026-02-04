@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from src.agent_scorecard.report import generate_markdown_report, generate_recommendations_report
 from src.agent_scorecard.constants import PROFILES
 
@@ -46,7 +44,7 @@ def test_generate_markdown_report():
 
     # Verify Upgrade Branch Features (ACL & Type Safety)
     assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in report_content
-    
+
     assert "complex_untyped" in report_content
     assert "25.0" in report_content
     assert "🔴 Red" in report_content

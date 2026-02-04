@@ -1,0 +1,64 @@
+name: 'Jules: Prompt Gatekeeper'
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  gatekeeper:
+    if: github.event.label.name == 'jules'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install agent-scorecard
+        run: pip install .
+
+      - name: Run Gatekeeper Analysis
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueBody = context.payload.issue.body || '';
+            fs.writeFileSync('issue_prompt.txt', issueBody);
+
+            let output = '';
+            const options = {
+              listeners: {
+                stdout: (data) => {
+                  output += data.toString();
+                }
+              },
+              ignoreReturnCode: true
+            };
+
+            const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
+
+            if (exitCode !== 0) {
+              // Extract suggestions from output
+              const suggestionsMatch = output.match(/Refactored Suggestions:([\s\S]*?)(\nFAILED:|$)/);
+              const suggestions = suggestionsMatch ? suggestionsMatch[1].trim() : "No specific suggestions found.";
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `🛑 Prompt Physics Check Failed\nI cannot start this task yet because the prompt instructions are ambiguous.\n\nSuggested Improvements:\n${suggestions}`
+              });
+
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'jules'
+              });
+            }

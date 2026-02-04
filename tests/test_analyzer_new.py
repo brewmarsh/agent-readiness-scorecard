@@ -1,5 +1,4 @@
 import textwrap
-from pathlib import Path
 from src.agent_scorecard.analyzer import get_function_stats
 
 def test_get_function_stats(tmp_path):

@@ -1,10 +1,15 @@
 import os
 import ast
 import tiktoken
+# RESOLUTION: Accept expanded typing from Beta branch
 from typing import Dict, Any, List, Optional, Set
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
-    """Calculate directory entropy. Warn if avg files > 15 OR max files > 50."""
+    """
+    Calculate directory entropy. 
+    Warns if avg files > 15 OR any single directory has > 50 files.
+    High entropy makes it difficult for RAG or Agents to find specific files.
+    """
     if not os.path.isdir(path):
         return {
             "avg_files": 0,
@@ -19,7 +24,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
     crowded_dirs = []
 
     for root, dirs, files in os.walk(path):
-        # Filter out hidden directories and __pycache__
+        # Filter out hidden directories and __pycache__ to avoid noise
         dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
 
         total_folders += 1
@@ -42,13 +47,12 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
     }
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
-    """Returns directories with file count > threshold."""
+    """Returns a flat dictionary of directories exceeding the file count threshold."""
     entropy_stats = {}
     if os.path.isfile(root_path):
         return entropy_stats
 
     for root, dirs, files in os.walk(root_path):
-        # Ignore hidden directories like .git
         if any(part.startswith(".") for part in root.split(os.sep)):
             continue
 
@@ -61,9 +65,12 @@ def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, in
     return entropy_stats
 
 def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
-    """Extracts signature from a single AST node."""
+    """
+    Extracts function/class signatures from an AST node.
+    This provides the 'skeleton' of the code for token counting.
+    """
     if hasattr(ast, "unparse"):
-        # We want just the signature. A trick is to replace the body with 'pass'
+        # Python 3.9+ logic: Replace body with 'pass' to get just the signature
         orig_body = getattr(node, 'body', [])
         node.body = [ast.Pass()]
         try:
@@ -76,13 +83,9 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
         finally:
             node.body = orig_body
     else:
-        # Fallback for < 3.9
-        deco_list = []
-        for deco in node.decorator_list:
-            if isinstance(deco, ast.Name):
-                deco_list.append(f"@{deco.id}")
-            elif isinstance(deco, ast.Call) and isinstance(deco.func, ast.Name):
-                deco_list.append(f"@{deco.func.id}(...)")
+        # Fallback for older Python versions
+        deco_list = [f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator" 
+                     for deco in node.decorator_list]
 
         if isinstance(node, ast.ClassDef):
             sig = f"class {node.name}:"
@@ -90,14 +93,11 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
             prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
             sig = f"{prefix} {node.name}(...):"
 
-        if deco_list:
-            return "\n".join(deco_list) + "\n" + sig
-        else:
-            return sig
+        return "\n".join(deco_list + [sig]) if deco_list else sig
     return None
 
 def get_python_signatures(filepath: str) -> str:
-    """Extracts function/method signatures from a python file."""
+    """Extracts all top-level function and class signatures from a file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -114,41 +114,33 @@ def get_python_signatures(filepath: str) -> str:
 
     return "\n".join(signatures)
 
-def _get_critical_file_content(path: str) -> str:
-    """Reads content from README.md and AGENTS.md."""
-    content = ""
-    search_dirs = []
-    if os.path.isdir(path):
-        search_dirs.append(os.path.abspath(path))
-    else:
-        search_dirs.append(os.path.dirname(os.path.abspath(path)))
-        parent = os.path.dirname(search_dirs[0])
-        if parent and parent != search_dirs[0]:
-            search_dirs.append(parent)
-
-    critical_files = ["README.md", "AGENTS.md"]
-    checked_paths = set()
-    for s_dir in search_dirs:
-        for cf in critical_files:
-            cf_path = os.path.join(s_dir, cf)
-            if os.path.exists(cf_path) and cf_path not in checked_paths:
-                checked_paths.add(cf_path)
-                try:
-                    with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content += f.read() + "\n"
-                except Exception:
-                    pass
-    return content
-
 def check_critical_context_tokens(path: str) -> Dict[str, Any]:
-    """Count tokens in README.md + AGENTS.md + python signatures."""
+    """
+    Counts tokens for the project's 'Critical Context':
+    (README + AGENTS.md + All Python Signatures).
+    If this exceeds 32k, an Agent will likely lose track of the overall architecture.
+    """
+    
     try:
         enc = tiktoken.get_encoding("cl100k_base")
     except Exception:
         return {"token_count": 0, "alert": False}
 
-    total_content = _get_critical_file_content(path)
+    # Gather documentation
+    total_content = ""
+    critical_files = ["README.md", "AGENTS.md"]
+    base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    
+    for cf in critical_files:
+        cf_path = os.path.join(base_dir, cf)
+        if os.path.exists(cf_path):
+            try:
+                with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
+                    total_content += f.read() + "\n"
+            except Exception:
+                pass
 
+    # Gather signatures
     if os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
@@ -165,51 +157,22 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
         "alert": count > 32000
     }
 
-def _check_linter_config(root_files: List[str], s_dir: str) -> bool:
-    """Checks if linter config exists."""
-    target_linters = ["ruff.toml", ".flake8", ".eslintrc"]
-    if any(f in root_files for f in target_linters):
-        return True
-    if "pyproject.toml" in root_files:
-        try:
-            with open(os.path.join(s_dir, "pyproject.toml"), "r", encoding="utf-8") as f:
-                if "[tool.ruff]" in f.read():
-                    return True
-        except Exception:
-            pass
-    return False
-
 def check_environment_health(path: str) -> Dict[str, Any]:
-    """Check for AGENTS.md, Linter Config, and Lock File."""
-    results = {
-        "agents_md": False,
-        "linter_config": False,
-        "lock_file": False
-    }
+    """Check for essential agent configuration: AGENTS.md, Linters, and Lock files."""
+    results = {"agents_md": False, "linter_config": False, "lock_file": False}
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
-    search_dirs = [base_dir]
-    parent = os.path.dirname(base_dir)
-    if parent and parent != base_dir:
-        search_dirs.append(parent)
+    root_files = os.listdir(base_dir) if os.path.exists(base_dir) else []
 
-    for s_dir in search_dirs:
-        try:
-            root_files = os.listdir(s_dir)
-        except OSError:
-            continue
+    # 1. AGENTS.md check
+    results["agents_md"] = any(f.lower() == "agents.md" for f in root_files)
 
-        if not results["agents_md"]:
-            if any(f.lower() == "agents.md" for f in root_files):
-                results["agents_md"] = True
+    # 2. Linter check
+    linter_files = ["ruff.toml", ".flake8", ".eslintrc", "pyproject.toml"]
+    results["linter_config"] = any(f in root_files for f in linter_files)
 
-        if not results["linter_config"]:
-            if _check_linter_config(root_files, s_dir):
-                results["linter_config"] = True
-
-        if not results["lock_file"]:
-            lock_files = ["package-lock.json", "poetry.lock", "uv.lock"]
-            if any(f in root_files for f in lock_files):
-                results["lock_file"] = True
+    # 3. Lock file check
+    lock_files = ["package-lock.json", "poetry.lock", "uv.lock", "requirements.txt"]
+    results["lock_file"] = any(f in root_files for f in lock_files)
 
     return results

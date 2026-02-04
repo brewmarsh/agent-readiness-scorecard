@@ -1,6 +1,5 @@
 import os
 import tempfile
-import pytest
 from agent_scorecard import auditor
 
 def test_check_directory_entropy():
@@ -175,17 +174,20 @@ def test_check_environment_health():
         assert res["lock_file"] is False
 
         # Add AGENTS.md
-        with open(os.path.join(tmpdir, "AGENTS.md"), "w") as f: f.write("")
+        with open(os.path.join(tmpdir, "AGENTS.md"), "w") as f:
+            f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["agents_md"] is True
 
         # Add Linter
-        with open(os.path.join(tmpdir, "ruff.toml"), "w") as f: f.write("")
+        with open(os.path.join(tmpdir, "ruff.toml"), "w") as f:
+            f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["linter_config"] is True
 
         # Add Lock file
-        with open(os.path.join(tmpdir, "poetry.lock"), "w") as f: f.write("")
+        with open(os.path.join(tmpdir, "poetry.lock"), "w") as f:
+            f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["lock_file"] is True
 

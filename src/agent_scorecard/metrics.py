@@ -1,6 +1,5 @@
 import ast
 import mccabe
-from typing import List, Dict, Any, Tuple
 
 def get_loc(filepath):
     """Returns lines of code excluding whitespace/comments roughly."""

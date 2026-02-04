@@ -1,13 +1,10 @@
-import pytest
 import textwrap
-import os
-from pathlib import Path
 from src.agent_scorecard import analyzer, report
 from src.agent_scorecard.constants import PROFILES
 from src.agent_scorecard.analyzer import (
-    calculate_acl, 
-    get_import_graph, 
-    get_inbound_imports, 
+    calculate_acl,
+    get_import_graph,
+    get_inbound_imports,
     detect_cycles,
 )
 from src.agent_scorecard.auditor import get_crowded_directories
@@ -134,10 +131,10 @@ def test_unified_score_report_content(tmp_path):
     # Run analysis to get stats
     # Note: We need stats in the format generate_markdown_report expects (list of file dicts for score mode)
     # But wait, generate_markdown_report handles both. Let's pass the list format used by 'score'.
-    
+
     func_stats = analyzer.get_function_stats(str(tmp_path / "hallucination.py"))
     acl_violations = [f for f in func_stats if f['acl'] > 15]
-    
+
     stats = [{
         "file": "hallucination.py",
         "score": 50,
