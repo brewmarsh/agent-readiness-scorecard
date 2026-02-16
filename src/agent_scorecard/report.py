@@ -177,11 +177,25 @@ def generate_recommendations_report(results: Any) -> str:
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
 
     for res in file_list:
-        if res["complexity"] > 20:
+        if res.get("complexity", 0) > 20:
             recommendations.append({
                 "Finding": f"High Complexity in {res['file']}",
                 "Agent Impact": "Context window overflow.",
                 "Recommendation": "Refactor into pure functions."
+            })
+
+        if "Circular dependency detected" in res.get("issues", "") or "Circular Dependency" in res.get("issues", ""):
+             recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Break cycle with dependency injection."
+            })
+
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add PEP 484 type hints."
             })
 
     if isinstance(results, dict) and results.get("missing_docs"):
@@ -191,8 +205,6 @@ def generate_recommendations_report(results: Any) -> str:
                 "Agent Impact": "Agent guesses commands.",
                 "Recommendation": "Create AGENTS.md with build steps."
             })
-
-    # ... (Logic for Circular Dependency and Type Coverage follows same pattern) ...
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
