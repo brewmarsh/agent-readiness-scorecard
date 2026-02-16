@@ -20,10 +20,13 @@ def _generate_summary_section(final_score: float, profile: Dict[str, Any], proje
         summary += "\n"
     return summary
 
-def _generate_acl_section(stats: List[Dict[str, Any]]) -> str:
+def _generate_acl_section(stats: List[Dict[str, Any]], thresholds: Dict[str, Any]) -> str:
     """Analyzes and reports on functions with high cognitive load."""
+    acl_yellow = thresholds.get("acl_yellow", 10)
+    acl_red = thresholds.get("acl_red", 20)
+
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    targets += "ACL = Complexity + (Lines of Code / 20). Target: ACL <= 10.\n\n"
+    targets += f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
     for f_res in stats:
@@ -40,18 +43,20 @@ def _generate_acl_section(stats: List[Dict[str, Any]]) -> str:
         targets += "| Function | File | ACL | Status |\n"
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
-            if fn['acl'] > 10:
-                status = "🔴 Red" if fn['acl'] > 20 else "🟡 Yellow"
+            if fn['acl'] > acl_yellow:
+                status = "🔴 Red" if fn['acl'] > acl_red else "🟡 Yellow"
                 targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
     return targets
 
-def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
+def _generate_type_safety_section(stats: List[Dict[str, Any]], thresholds: Dict[str, Any]) -> str:
     """Summarizes type hint coverage across the project."""
+    type_safety_threshold = thresholds.get("type_safety", 90)
+
     types_section = "## 🛡️ Type Safety Index\n\n"
-    types_section += "Target: >90% of functions must have explicit type signatures.\n\n"
+    types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
 
     types_section += "| File | Type Safety Index | Status |\n"
     types_section += "| :--- | :---------------: | :----- |\n"
@@ -59,13 +64,17 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
     sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
 
     for res in sorted_types:
-        status = "✅" if res["type_coverage"] >= 90 else "❌"
+        status = "✅" if res["type_coverage"] >= type_safety_threshold else "❌"
         types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
     types_section += "\n"
     return types_section
 
-def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
+def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str, Any]) -> str:
     """Provides actionable prompts for an AI Agent to use for refactoring."""
+    acl_yellow = thresholds.get("acl_yellow", 10)
+    acl_red = thresholds.get("acl_red", 20)
+    type_safety_threshold = thresholds.get("type_safety", 90)
+
     prompts = "## 🤖 Agent Prompts for Remediation\n\n"
     problematic_files = [f for f in stats if f["score"] < 90]
 
@@ -74,14 +83,14 @@ def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
         file_issues = []
 
         metrics = f_res.get("function_metrics", [])
-        red_functions = [m for m in metrics if m["acl"] > 20]
+        red_functions = [m for m in metrics if m["acl"] > acl_red]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
-            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below 10. Split complex logic and reduce function length.'")
+            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>{acl_red}). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below {acl_yellow}. Split complex logic and reduce function length.'")
 
-        if f_res["type_coverage"] < 90:
-             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the 90% Type Safety Index requirement.'")
+        if f_res["type_coverage"] < type_safety_threshold:
+             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the {type_safety_threshold}% Type Safety Index requirement.'")
 
         if file_issues:
             prompts += f"### File: `{file_path}`\n"
@@ -101,12 +110,15 @@ def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
         table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
     return table
 
-def generate_markdown_report(stats: List[Dict[str, Any]], final_score: float, path: str, profile: Dict[str, Any], project_issues: Optional[List[str]] = None) -> str:
+def generate_markdown_report(stats: List[Dict[str, Any]], final_score: float, path: str, profile: Dict[str, Any], project_issues: Optional[List[str]] = None, thresholds: Optional[Dict[str, Any]] = None) -> str:
     """Orchestrates the generation of the Markdown report."""
+    if thresholds is None:
+        thresholds = {"acl_yellow": 10, "acl_red": 20, "type_safety": 90}
+
     summary = _generate_summary_section(final_score, profile, project_issues)
-    targets = _generate_acl_section(stats)
-    types_section = _generate_type_safety_section(stats)
-    prompts = _generate_prompts_section(stats)
+    targets = _generate_acl_section(stats, thresholds)
+    types_section = _generate_type_safety_section(stats, thresholds)
+    prompts = _generate_prompts_section(stats, thresholds)
     table = _generate_file_table_section(stats)
 
     return summary + targets + types_section + prompts + "\n" + table + "\n---\n*Generated by Agent-Scorecard*"
@@ -177,22 +189,39 @@ def generate_recommendations_report(results: Any) -> str:
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
 
     for res in file_list:
-        if res["complexity"] > 20:
+        # 1. Complexity Checks
+        if res.get("complexity", 0) > 20:
             recommendations.append({
                 "Finding": f"High Complexity in {res['file']}",
                 "Agent Impact": "Context window overflow.",
                 "Recommendation": "Refactor into pure functions."
             })
 
+        # 2. Dependency Checks
+        issues_text = str(res.get("issues", ""))
+        if "Circular dependency" in issues_text or "Circular Dependency" in issues_text:
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Use Dependency Injection to break the cycle."
+            })
+
+        # 3. Type Safety Checks
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of function signatures.",
+                "Recommendation": "Add PEP 484 hints to all public functions."
+            })
+
+    # 4. Documentation Checks
     if isinstance(results, dict) and results.get("missing_docs"):
         if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
             recommendations.append({
                 "Finding": "Missing AGENTS.md",
-                "Agent Impact": "Agent guesses commands.",
-                "Recommendation": "Create AGENTS.md with build steps."
+                "Agent Impact": "Agent guesses build/test commands.",
+                "Recommendation": "Create AGENTS.md with specific context for AI agents."
             })
-
-    # ... (Logic for Circular Dependency and Type Coverage follows same pattern) ...
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
