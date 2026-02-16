@@ -179,7 +179,10 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
