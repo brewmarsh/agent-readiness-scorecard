@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import click
+from typing import List, Dict, Any, Optional
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
@@ -26,7 +27,7 @@ except PackageNotFoundError:
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
     """Invokes a default command if a subcommand is not found."""
-    def resolve_command(self, ctx, args):
+    def resolve_command(self, ctx: click.Context, args: List[str]) -> Any:
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
@@ -42,7 +43,7 @@ def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
     pass
 
-def get_changed_files(base_ref: str = "origin/main") -> list:
+def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     """Uses git diff to return a list of changed Python files."""
     try:
         cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
@@ -51,23 +52,8 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
     except Exception:
         return []
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
-    """Helper to run the scoring logic."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-    profile = PROFILES[agent]
-
-    if fix:
-        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-        apply_fixes(path, profile)
-        console.print("")
-
-    # Run Analysis
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
-    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
-
-    # 1. Environment Health & Auditor Checks
+def _print_environment_health(path: str, results: Dict[str, Any]) -> None:
+    """Prints the environment health table."""
     health_table = Table(title="Environment Health")
     health_table.add_column("Check", style="cyan")
     health_table.add_column("Status", justify="right")
@@ -99,33 +85,28 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
-    console.print("") 
+    console.print("")
 
-    # 2. File Table
+    # Print warnings for entropy if needed (moved from main logic for consistency)
+    if entropy["warning"]:
+        console.print(f"[bold yellow]High Directory Entropy ({entropy_status})[/bold yellow]")
+
+def _print_file_analysis(file_results: List[Dict[str, Any]], final_score: float) -> None:
+    """Prints the file analysis table."""
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
     table.add_column("Issues", style="magenta")
 
-    for res in results["file_results"]:
+    for res in file_results:
         status_color = "green" if res["score"] >= 70 else "red"
         table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
 
     console.print(table)
-    console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
+    console.print(f"\n[bold]Final Agent Score: {final_score:.1f}/100[/bold]")
 
-    # Explicit warnings for tests
-    if results.get("missing_docs"):
-        console.print(f"[bold red]Missing Critical Agent Docs: {', '.join(results['missing_docs'])}[/bold red]")
-
-    god_modules = results.get("dep_analysis", {}).get("god_modules", {})
-    if god_modules:
-        console.print(f"[bold red]God Modules Detected: {', '.join(god_modules.keys())}[/bold red]")
-
-    if entropy["warning"]:
-        console.print(f"[bold yellow]High Directory Entropy ({entropy_status})[/bold yellow]")
-
-    # 3. Artifact Generation
+def _generate_artifacts(badge: bool, report_path: str, results: Dict[str, Any], path: str, profile: Dict[str, Any]) -> None:
+    """Generates artifacts like badges and reports."""
     if badge:
         output_path = "agent_score.svg"
         with open(output_path, "w", encoding="utf-8") as f:
@@ -140,13 +121,70 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
 
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: Optional[List[str]] = None) -> None:
+    """Helper to run the scoring logic."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+
+    if fix:
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+        apply_fixes(path, profile)
+        console.print("")
+
+    # Run Analysis
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
+    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
+
+    # 1. Environment Health
+    _print_environment_health(path, results)
+
+    # 2. File Table
+    _print_file_analysis(results["file_results"], results["final_score"])
+
+    # Explicit warnings for tests
+    if results.get("missing_docs"):
+        console.print(f"[bold red]Missing Critical Agent Docs: {', '.join(results['missing_docs'])}[/bold red]")
+
+    god_modules = results.get("dep_analysis", {}).get("god_modules", {})
+    if god_modules:
+        console.print(f"[bold red]God Modules Detected: {', '.join(god_modules.keys())}[/bold red]")
+
+    # 3. Artifact Generation
+    _generate_artifacts(badge, report_path, results, path, profile)
+
     if results["final_score"] < 70:
         sys.exit(1)
+
+def _print_prompt_analysis(score: int, result: Dict[str, Any], input_path: str) -> None:
+    """Prints the prompt analysis table and suggestions."""
+    table = Table(title=f"Prompt Analysis: {os.path.basename(input_path) if input_path != '-' else 'Stdin'}")
+    table.add_column("Heuristic", style="cyan")
+    table.add_column("Status", justify="right")
+
+    order = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]
+    for key in order:
+        if key in result.get("results", {}):
+            status = "[green]✅ PASS[/green]" if result["results"][key] else "[red]❌ FAIL[/red]"
+            table.add_row(key.replace("_", " ").title(), status)
+
+    console.print(table)
+    color = "green" if score >= 80 else "red"
+    console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
+
+    if result.get("improvements"):
+        console.print("\n[bold yellow]Suggestions:[/bold yellow]")
+        for imp in result["improvements"]:
+            console.print(f"💡 {imp}")
+
+    if score >= 80:
+        console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
 @cli.command(name="check-prompts")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
-def check_prompts(input_path, plain):
+def check_prompts(input_path: str, plain: bool) -> None:
     """Checks a prompt file for LLM best practices."""
     if input_path == "-":
         content = sys.stdin.read()
@@ -163,27 +201,7 @@ def check_prompts(input_path, plain):
         for sug in result.get('improvements', result.get('suggestions', [])):
             click.echo(f"Suggestion: {sug}")
     else:
-        table = Table(title=f"Prompt Analysis: {os.path.basename(input_path) if input_path != '-' else 'Stdin'}")
-        table.add_column("Heuristic", style="cyan")
-        table.add_column("Status", justify="right")
-
-        order = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]
-        for key in order:
-            if key in result.get("results", {}):
-                status = "[green]✅ PASS[/green]" if result["results"][key] else "[red]❌ FAIL[/red]"
-                table.add_row(key.replace("_", " ").title(), status)
-
-        console.print(table)
-        color = "green" if score >= 80 else "red"
-        console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
-
-        if result.get("improvements"):
-            console.print("\n[bold yellow]Suggestions:[/bold yellow]")
-            for imp in result["improvements"]:
-                console.print(f"💡 {imp}")
-
-        if score >= 80:
-            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+        _print_prompt_analysis(score, result, input_path)
 
     if score < 80:
         sys.exit(1)
@@ -217,7 +235,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
-def advise(path, output_file):
+def advise(path: str, output_file: str) -> None:
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
