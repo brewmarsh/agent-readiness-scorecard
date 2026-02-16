@@ -64,6 +64,27 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
     types_section += "\n"
     return types_section
 
+def _build_craft_prompt(issue_type: str, file_path: str, details: str) -> str:
+    """Helper function to build a CRAFT-structured remediation prompt."""
+    context = "You are a Senior Python Refactoring Specialist."
+    request = f"Your goal is to refactor `{file_path}` to resolve {issue_type} issues: {details}."
+
+    if issue_type == "ACL":
+        actions = "1. Analyze the complexity. 2. Extract nested logic into helper functions. 3. Ensure no function exceeds 20 lines."
+    else:  # Type Safety
+        actions = "1. Analyze function signatures. 2. Add specific type hints (avoid Any). 3. Verify imports."
+
+    frame = "Do not break existing logic. Do not remove comments unless necessary."
+    template = "Output the refactored code in a single Markdown code block."
+
+    return (
+        f"**Context**: {context}\n"
+        f"**Request**: {request}\n"
+        f"**Actions**: {actions}\n"
+        f"**Frame**: {frame}\n"
+        f"**Template**: {template}"
+    )
+
 def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
     """Provides actionable prompts for an AI Agent to use for refactoring."""
     prompts = "## 🤖 Agent Prompts for Remediation\n\n"
@@ -78,10 +99,12 @@ def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
-            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below 10. Split complex logic and reduce function length.'")
+            prompt = _build_craft_prompt("ACL", file_path, f"Functions {fn_names} have Red ACL (>20)")
+            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20).\n\n{prompt}")
 
         if f_res["type_coverage"] < 90:
-             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the 90% Type Safety Index requirement.'")
+             prompt = _build_craft_prompt("Type Safety", file_path, f"Coverage is {f_res['type_coverage']:.0f}%")
+             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%.\n\n{prompt}")
 
         if file_issues:
             prompts += f"### File: `{file_path}`\n"
@@ -192,7 +215,19 @@ def generate_recommendations_report(results: Any) -> str:
                 "Recommendation": "Create AGENTS.md with build steps."
             })
 
-    # ... (Logic for Circular Dependency and Type Coverage follows same pattern) ...
+    for res in file_list:
+        if "Circular dependency detected" in res.get("issues", ""):
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Refactor to use dependency injection or a shared interface."
+            })
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add explicit type hints."
+            })
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
