@@ -16,6 +16,7 @@ from .metrics import (  # noqa: F401
     get_complexity_score,
     get_function_stats,
     check_type_hints,
+    count_tokens,
 )
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
@@ -211,7 +212,9 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
             "loc": loc,
             "complexity": complexity,
             "type_coverage": type_safety,
-            "function_metrics": metrics
+            "function_metrics": metrics,
+            "tokens": count_tokens(filepath),
+            "acl": max([m["acl"] for m in metrics]) if metrics else 0
         })
 
     # Project Level Analysis

@@ -203,13 +203,25 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    # Run analysis with generic profile
+    results = analyzer.perform_analysis(path, "generic")
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # Prepare data for advisor report
+    entropy_map = {item["path"]: item["file_count"] for item in results["directory_stats"]}
+
+    report_md = report.generate_advisor_report(
+        results["file_results"],
+        results["dep_analysis"]["god_modules"],
+        entropy_map,
+        results["dep_analysis"]["cycles"]
+    )
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Advisor report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()
