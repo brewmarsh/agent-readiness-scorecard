@@ -67,11 +67,13 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
 def _format_craft_prompt(context: str, request: str, actions: List[str], frame: str, template: str) -> str:
     """Formats a prompt using the CRAFT framework."""
     action_items = "\n".join([f"- {a}" for a in actions])
+    # INDENTATION FIX: Move replace out of f-string for Python 3.11 compatibility
+    indented_actions = action_items.replace('\n', '\n> ')
     return (
         f"> **Context**: {context}\n"
         f"> **Request**: {request}\n"
         f"> **Actions**:\n"
-        f"> {action_items.replace('\n', '\n> ')}\n"
+        f"> {indented_actions}\n"
         f"> **Frame**: {frame}\n"
         f"> **Template**: {template}"
     )

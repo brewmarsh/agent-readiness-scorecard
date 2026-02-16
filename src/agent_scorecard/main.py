@@ -230,8 +230,8 @@ def advise(path, output_file):
         res["acl"] = res.get("function_metrics", [{}])[0].get("acl", 0) if res.get("function_metrics") else 0
         # If there are multiple functions, we might want the max or avg. Advisor report expects one per file in its table.
         if res.get("function_metrics"):
-             res["acl"] = max(m["acl"] for m in res["function_metrics"])
-             res["complexity"] = max(m["complexity"] for m in res["function_metrics"])
+            res["acl"] = max(m["acl"] for m in res["function_metrics"])
+            res["complexity"] = max(m["complexity"] for m in res["function_metrics"])
 
     report_md = report.generate_advisor_report(
         results["file_results"],
