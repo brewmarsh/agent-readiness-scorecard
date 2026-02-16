@@ -39,7 +39,12 @@ def load_config(path: str = ".") -> Config:
     Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
     Looks for the [tool.agent-scorecard] section.
     """
-    config_path = os.path.join(path, "pyproject.toml")
+    if os.path.isfile(path):
+        search_dir = os.path.dirname(os.path.abspath(path))
+    else:
+        search_dir = path
+
+    config_path = os.path.join(search_dir, "pyproject.toml")
     user_config = {}
 
     if tomllib and os.path.exists(config_path):

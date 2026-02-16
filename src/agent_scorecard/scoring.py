@@ -14,9 +14,12 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
     details = []
 
     # 1. ACL Scoring (Agent Cognitive Load)
-    # Thresholds: Green <= 10, Yellow 11-20, Red > 20
-    red_count = sum(1 for m in metrics if m["acl"] > 20)
-    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 20)
+    # Thresholds: configurable via profile/config
+    red_threshold = profile.get("thresholds", {}).get("acl", 20)
+    yellow_threshold = red_threshold / 2
+
+    red_count = sum(1 for m in metrics if m["acl"] > red_threshold)
+    yellow_count = sum(1 for m in metrics if yellow_threshold < m["acl"] <= red_threshold)
 
     if red_count > 0:
         penalty = red_count * 15
@@ -29,14 +32,16 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
     # 2. Type Safety Index
-    # Target > 90% for a "Pass"
+    # Target configurable via profile/config
+    min_type_safety = profile.get("thresholds", {}).get("type_safety", 90)
+
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 
-    if type_safety_index < 90:
+    if type_safety_index < min_type_safety:
         penalty = 20
         score -= penalty
-        details.append(f"Type Safety Index {type_safety_index:.0f}% < 90% (-{penalty})")
+        details.append(f"Type Safety Index {type_safety_index:.0f}% < {min_type_safety}% (-{penalty})")
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 

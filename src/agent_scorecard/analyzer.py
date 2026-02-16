@@ -16,6 +16,7 @@ from .metrics import (  # noqa: F401
     get_complexity_score,
     get_function_stats,
     check_type_hints,
+    count_tokens,
 )
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
@@ -187,9 +188,10 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
 
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str = "generic", limit_to_files: Optional[List[str]] = None, profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Orchestrates the full project analysis from file scores to project-wide metrics."""
-    profile = PROFILES[agent]
+    if profile is None:
+        profile = PROFILES.get(agent, PROFILES["generic"])
     py_files = _collect_python_files(path)
     all_py_files = py_files[:]
 

@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
@@ -10,6 +11,7 @@ from rich.panel import Panel
 # Import common modules
 from . import analyzer, report, auditor
 from .prompt_analyzer import PromptAnalyzer
+from .config import load_config
 
 from .constants import PROFILES
 from .fix import apply_fixes
@@ -53,10 +55,18 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
 
 def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
     """Helper to run the scoring logic."""
+    config = load_config(path)
+
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
-    profile = PROFILES[agent]
+
+    # Merge config thresholds into the selected profile
+    profile = copy.deepcopy(PROFILES[agent])
+    if "thresholds" in config:
+        if "thresholds" not in profile:
+            profile["thresholds"] = {}
+        profile["thresholds"].update(config["thresholds"])
 
     if fix:
         console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
@@ -64,7 +74,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         console.print("")
 
     # Run Analysis
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, profile=profile)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
     # 1. Environment Health & Auditor Checks
@@ -179,7 +189,13 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    config = load_config(path)
+    profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
+    if "thresholds" in config:
+        if "thresholds" not in profile:
+            profile["thresholds"] = {}
+        profile["thresholds"].update(config["thresholds"])
+
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -203,13 +219,47 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    config = load_config(path)
+    profile = copy.deepcopy(PROFILES["generic"])
+    if "thresholds" in config:
+        if "thresholds" not in profile:
+            profile["thresholds"] = {}
+        profile["thresholds"].update(config["thresholds"])
+
+    # Run analysis to get basic data
+    results = analyzer.perform_analysis(path, "generic", profile=profile)
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # Prepare stats for advisor report
+    stats = []
+    for res in results["file_results"]:
+        # generate_advisor_report wants file, acl, complexity, loc, tokens.
+        # We'll use the max ACL found in the file's functions.
+        max_acl = 0
+        if res["function_metrics"]:
+            max_acl = max(m["acl"] for m in res["function_metrics"])
+
+        file_stats = {
+            "file": res["file"],
+            "acl": max_acl,
+            "complexity": res["complexity"],
+            "loc": res["loc"],
+            "tokens": analyzer.count_tokens(os.path.join(path, res["file"]))
+        }
+        stats.append(file_stats)
+
+    graph = analyzer.get_import_graph(path)
+    dependency_stats = analyzer.get_inbound_imports(graph)
+    entropy_stats = auditor.get_crowded_directories(path)
+    cycles = analyzer.detect_cycles(graph)
+
+    report_md = report.generate_advisor_report(stats, dependency_stats, entropy_stats, cycles)
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()
