@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 # Import common modules
-from . import analyzer, report, auditor
+from . import analyzer, report, auditor, metrics
 from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
@@ -202,14 +202,60 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
-    
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
-    
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+
+    # 1. Resolve output file to absolute path
+    if output_file:
+        output_file = os.path.abspath(output_file)
+
+    try:
+        # 2. Run Analysis
+        results = analyzer.perform_analysis(path, "generic")
+
+        # 3. Gather metrics for Advisor Report
+        advisor_stats = []
+        for res in results["file_results"]:
+            f_metrics = res.get("function_metrics", [])
+            max_acl = max([m["acl"] for m in f_metrics]) if f_metrics else 0
+
+            # Resolve full path for token estimation
+            full_filepath = os.path.join(path, res["file"])
+            if not os.path.exists(full_filepath):
+                 full_filepath = res["file"]
+
+            tokens = metrics.count_tokens(full_filepath)
+
+            advisor_stats.append({
+                "file": res["file"],
+                "acl": max_acl,
+                "complexity": res["complexity"],
+                "loc": res["loc"],
+                "tokens": tokens
+            })
+
+        # 4. Extract project-wide metrics
+        graph = analyzer.get_import_graph(path)
+        dependency_stats = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+        entropy_stats = auditor.get_crowded_directories(path, threshold=50)
+
+        if not advisor_stats:
+            report_md = "# Agent Advisor Report\n\nNo Python files found for analysis."
+        else:
+            report_md = report.generate_advisor_report(
+                advisor_stats, dependency_stats, entropy_stats, cycles
+            )
+
+    except Exception as e:
+        report_md = f"# Agent Advisor Report\n\nError during analysis: {str(e)}"
+        console.print(f"[red]Error during advisor analysis: {e}[/red]")
+
+    # 5. Output Results (Guaranteed Creation if output_file is provided)
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Advisor report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()
