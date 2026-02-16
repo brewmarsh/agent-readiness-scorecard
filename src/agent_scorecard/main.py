@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import click
+import tiktoken
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
 from rich.table import Table
@@ -112,6 +113,12 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
 
     console.print(table)
+
+    if results.get("project_issues"):
+        console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
+        for issue in results["project_issues"]:
+            console.print(f"⚠️ {issue}")
+
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
 
     # 3. Artifact Generation
@@ -165,6 +172,8 @@ def check_prompts(input_path, plain):
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
+        if score >= 80:
+            console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
 
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
@@ -179,7 +188,10 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -203,13 +215,48 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    # Run analysis
+    results = analyzer.perform_analysis(path, agent="generic")
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # Enrich stats for advisor
+    stats = []
+    try:
+        enc = tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        enc = None
+
+    for f_res in results["file_results"]:
+        # Calculate max ACL for the file
+        max_acl = 0
+        if f_res.get("function_metrics"):
+            max_acl = max(m["acl"] for m in f_res["function_metrics"])
+
+        # Calculate tokens for the file (signatures)
+        file_path = os.path.join(path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path)), f_res["file"])
+        token_count = 0
+        if enc:
+            signatures = auditor.get_python_signatures(file_path)
+            token_count = len(enc.encode(signatures))
+
+        stats.append({
+            **f_res,
+            "acl": max_acl,
+            "tokens": token_count
+        })
+
+    dep_analysis = results.get("dep_analysis", {})
+    cycles = dep_analysis.get("cycles", [])
+    god_modules = dep_analysis.get("god_modules", {})
+    entropy_stats = auditor.get_crowded_directories(path, threshold=50)
+
+    report_md = report.generate_advisor_report(stats, god_modules, entropy_stats, cycles)
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Advisor report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()
