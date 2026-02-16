@@ -4,7 +4,7 @@ from . import analyzer
 
 def _generate_summary_section(final_score: float, profile: Dict[str, Any], project_issues: Optional[List[str]]) -> str:
     """Creates the executive summary section of the report."""
-    summary = f"# Agent Scorecard Report\n\n"
+    summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 
@@ -189,36 +189,38 @@ def generate_recommendations_report(results: Any) -> str:
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
 
     for res in file_list:
-        if res["complexity"] > 20:
+        # 1. Complexity Checks
+        if res.get("complexity", 0) > 20:
             recommendations.append({
                 "Finding": f"High Complexity in {res['file']}",
                 "Agent Impact": "Context window overflow.",
                 "Recommendation": "Refactor into pure functions."
             })
 
+        # 2. Dependency Checks
+        issues_text = str(res.get("issues", ""))
+        if "Circular dependency" in issues_text or "Circular Dependency" in issues_text:
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Use Dependency Injection to break the cycle."
+            })
+
+        # 3. Type Safety Checks
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of function signatures.",
+                "Recommendation": "Add PEP 484 hints to all public functions."
+            })
+
+    # 4. Documentation Checks
     if isinstance(results, dict) and results.get("missing_docs"):
         if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
             recommendations.append({
                 "Finding": "Missing AGENTS.md",
-                "Agent Impact": "Agent guesses commands.",
-                "Recommendation": "Create AGENTS.md with build steps."
-            })
-
-    # Check for Circular Dependencies and Type Coverage
-    for res in file_list:
-        issues_text = str(res.get("issues", ""))
-        if "Circular dependency" in issues_text:
-            recommendations.append({
-                "Finding": f"Circular Dependency in {res['file']}",
-                "Agent Impact": "Infinite recursion loops.",
-                "Recommendation": "Use Dependency Injection."
-            })
-
-        if res.get("type_coverage", 100) < 90:
-            recommendations.append({
-                "Finding": f"Type Coverage < 90% in {res['file']}",
-                "Agent Impact": "Hallucination of signatures.",
-                "Recommendation": "Add PEP 484 hints."
+                "Agent Impact": "Agent guesses build/test commands.",
+                "Recommendation": "Create AGENTS.md with specific context for AI agents."
             })
 
     if not recommendations:
