@@ -114,6 +114,17 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     console.print(table)
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
 
+    # Explicit warnings for tests
+    if results.get("missing_docs"):
+        console.print(f"[bold red]Missing Critical Agent Docs: {', '.join(results['missing_docs'])}[/bold red]")
+
+    god_modules = results.get("dep_analysis", {}).get("god_modules", {})
+    if god_modules:
+        console.print(f"[bold red]God Modules Detected: {', '.join(god_modules.keys())}[/bold red]")
+
+    if entropy["warning"]:
+        console.print(f"[bold yellow]High Directory Entropy ({entropy_status})[/bold yellow]")
+
     # 3. Artifact Generation
     if badge:
         output_path = "agent_score.svg"
@@ -171,6 +182,9 @@ def check_prompts(input_path, plain):
             for imp in result["improvements"]:
                 console.print(f"💡 {imp}")
 
+        if score >= 80:
+            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+
     if score < 80:
         sys.exit(1)
 
@@ -179,7 +193,11 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -203,13 +221,25 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    # We use 'generic' profile for advisor mode as it's about physics, not specific agent constraints
+    results = analyzer.perform_analysis(path, "generic")
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # Convert directory_stats back to dict for report generator
+    entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
+
+    report_md = report.generate_advisor_report(
+        stats=results['file_results'],
+        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}), # This is pre-filtered > 50, which is fine
+        entropy_stats=entropy_stats,
+        cycles=results.get('dep_analysis', {}).get('cycles', [])
+    )
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()
