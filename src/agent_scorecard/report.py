@@ -4,7 +4,7 @@ from . import analyzer
 
 def _generate_summary_section(final_score: float, profile: Dict[str, Any], project_issues: Optional[List[str]]) -> str:
     """Creates the executive summary section of the report."""
-    summary = "# Agent Scorecard Report\n\n"
+    summary = f"# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
 
@@ -204,19 +204,21 @@ def generate_recommendations_report(results: Any) -> str:
                 "Recommendation": "Create AGENTS.md with build steps."
             })
 
-    # Logic for Circular Dependency and Type Coverage
+    # Check for Circular Dependencies and Type Coverage
     for res in file_list:
-        if "Circular dependency" in res.get("issues", ""):
+        issues_text = str(res.get("issues", ""))
+        if "Circular dependency" in issues_text:
             recommendations.append({
                 "Finding": f"Circular Dependency in {res['file']}",
                 "Agent Impact": "Infinite recursion loops.",
-                "Recommendation": "Refactor to remove cycle."
+                "Recommendation": "Use Dependency Injection."
             })
+
         if res.get("type_coverage", 100) < 90:
             recommendations.append({
                 "Finding": f"Type Coverage < 90% in {res['file']}",
                 "Agent Impact": "Hallucination of signatures.",
-                "Recommendation": "Add type hints."
+                "Recommendation": "Add PEP 484 hints."
             })
 
     if not recommendations:

@@ -52,7 +52,7 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
         return []
 
 def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None, verbosity: str = "summary", thresholds: dict = None) -> None:
-    """Helper to run the scoring logic."""
+    """Helper to run the scoring logic with verbosity support."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
@@ -106,7 +106,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         console.print(health_table)
         console.print("")
 
-    # 2. File Table
+    # 2. File Table (Respecting Verbosity)
     if verbosity != "quiet":
         table = Table(title="File Analysis")
         table.add_column("File", style="cyan")
@@ -137,10 +137,6 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     # Final Score
     score_color = "green" if results['final_score'] >= 70 else "red"
     console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
-
-    if verbosity == "quiet" and results.get("project_issues"):
-        for issue in results["project_issues"]:
-            console.print(f"[bold red]CRITICAL:[/bold red] {issue}")
 
     # 3. Artifact Generation
     if badge:
@@ -195,13 +191,13 @@ def check_prompts(input_path, plain):
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
 
-        if score == 100:
-            console.print("[green]PASSED: Prompt is optimized![/green]")
-
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
                 console.print(f"💡 {imp}")
+
+        if score >= 80:
+            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
     if score < 80:
         sys.exit(1)
@@ -215,6 +211,7 @@ def fix(path: str, agent: str) -> None:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     profile = PROFILES[agent]
+
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -243,15 +240,15 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
+    # We use 'generic' profile for advisor mode as it's about physics
     results = analyzer.perform_analysis(path, "generic")
     
-    # Prepare stats for the advisor report
+    # Process file_results to add token counts (required for advisor report)
     stats = []
     for res in results["file_results"]:
-        max_acl = max([m["acl"] for m in res["function_metrics"]] or [0])
-        # Token count is needed for advisor report
         tokens_info = auditor.check_critical_context_tokens(os.path.join(path, res["file"]))
-
+        max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0])
+        
         stats.append({
             "file": res["file"],
             "acl": max_acl,
@@ -260,24 +257,23 @@ def advise(path, output_file):
             "tokens": tokens_info["token_count"]
         })
 
-    graph = analyzer.get_import_graph(path)
-    inbound = analyzer.get_inbound_imports(graph)
-    cycles = analyzer.detect_cycles(graph)
+    # Prepare other stats
+    entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
 
-    # Directory Entropy via Auditor
-    entropy_stats = {}
-    entropy = auditor.get_crowded_directories(path, threshold=50)
-    for p, count in entropy.items():
-        entropy_stats[p] = count
-
-    report_md = report.generate_advisor_report(stats, inbound, entropy_stats, cycles)
+    report_md = report.generate_advisor_report(
+        stats=stats,
+        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
+        entropy_stats=entropy_stats,
+        cycles=results.get('dep_analysis', {}).get('cycles', [])
+    )
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(report_md)
-        console.print(f"[bold green]Advisor report saved to {output_file}[/bold green]")
+        console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
     else:
-        console.print(report_md)
+        from rich.markdown import Markdown
+        console.print(Markdown(report_md))
 
 if __name__ == "__main__":
     cli()
