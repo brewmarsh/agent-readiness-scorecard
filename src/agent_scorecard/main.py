@@ -129,6 +129,12 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
 
+    # Project Level Issues
+    if results.get("project_issues"):
+        console.print("\n[bold red]Project Issues Detected:[/bold red]")
+        for issue in results["project_issues"]:
+            console.print(f"- {issue}")
+
     if results["final_score"] < 70:
         sys.exit(1)
 
@@ -171,6 +177,9 @@ def check_prompts(input_path, plain):
             for imp in result["improvements"]:
                 console.print(f"💡 {imp}")
 
+        if score >= 80:
+            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+
     if score < 80:
         sys.exit(1)
 
@@ -179,6 +188,10 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+
     profile = PROFILES.get(agent, PROFILES["generic"])
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
@@ -203,13 +216,26 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    # 1. Gather Stats
+    results = analyzer.perform_analysis(path, "generic")
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # 2. Extract Data
+    file_stats = results["file_results"]
+    dep_stats = results.get("dep_analysis", {}).get("god_modules", {})
+    cycles = results.get("dep_analysis", {}).get("cycles", [])
+
+    # Get entropy stats as dict {dir: count}
+    entropy_stats = auditor.get_crowded_directories(path, threshold=50)
+
+    # 3. Generate Report
+    report_content = report.generate_advisor_report(file_stats, dep_stats, entropy_stats, cycles)
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_content)
+        console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_content)
 
 if __name__ == "__main__":
     cli()

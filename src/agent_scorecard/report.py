@@ -184,6 +184,20 @@ def generate_recommendations_report(results: Any) -> str:
                 "Recommendation": "Refactor into pure functions."
             })
 
+        if "Circular dependency detected" in res.get("issues", ""):
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Refactor to break cycles."
+            })
+
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add type hints to function signatures."
+            })
+
     if isinstance(results, dict) and results.get("missing_docs"):
         if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
             recommendations.append({
