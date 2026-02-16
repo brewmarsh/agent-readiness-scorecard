@@ -26,6 +26,7 @@ except PackageNotFoundError:
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
     def resolve_command(self, ctx: click.Context, args: List[str]) -> Any:
+        """Resolves the command, defaulting to 'score' if no command matches."""
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
@@ -95,6 +96,18 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
         console.print("[bold yellow]High Directory Entropy warning[/bold yellow]")
     console.print("")
 
+def _print_project_issues(results: Dict[str, Any]) -> None:
+    """Prints project-wide issues."""
+    if results.get("project_issues"):
+        console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
+        for issue in results["project_issues"]:
+            console.print(f"⚠️ {issue}")
+
+def _print_score(results: Dict[str, Any]) -> None:
+    """Prints the final agent score."""
+    score_color = "green" if results['final_score'] >= 70 else "red"
+    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
+
 def _print_file_analysis(results: Dict[str, Any], verbosity: str) -> None:
     """Prints the file analysis table based on verbosity settings."""
     if verbosity == "quiet":
@@ -118,14 +131,6 @@ def _print_file_analysis(results: Dict[str, Any], verbosity: str) -> None:
         console.print(table)
     elif verbosity == "summary":
         console.print("[green]All files passed Agent Readiness checks.[/green]")
-
-    if results.get("project_issues"):
-        console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
-        for issue in results["project_issues"]:
-            console.print(f"⚠️ {issue}")
-
-    score_color = "green" if results['final_score'] >= 70 else "red"
-    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
 def _generate_artifacts(results: Dict[str, Any], path: str, profile: Dict[str, Any], badge: bool, report_path: Optional[str], thresholds: Dict[str, Any], verbosity: str) -> None:
     """Handles generation of SVG badges and Markdown reports."""
@@ -166,6 +171,8 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Opti
 
     _print_environment_health(path, results, verbosity)
     _print_file_analysis(results, verbosity)
+    _print_project_issues(results)
+    _print_score(results)
     _generate_artifacts(results, path, profile, badge, report_path, thresholds, verbosity)
 
     if results["final_score"] < 70:

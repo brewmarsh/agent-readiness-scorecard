@@ -1,6 +1,5 @@
 from pathlib import Path
 from click.testing import CliRunner
-# RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
 from src.agent_scorecard.main import cli
 from src.agent_scorecard.analyzer import check_type_hints
 
@@ -13,7 +12,6 @@ async def fetch_data(url):
 """)
 
     # Should find 1 function, 0 typed -> 0% coverage.
-    # RESOLUTION: Updated function name from analyze_type_hints to check_type_hints
     cov = check_type_hints(str(p))
     assert cov == 0
 
@@ -26,8 +24,8 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    # Run 'fix' command
-    result = runner.invoke(cli, ["fix", str(p)])
+    # Run 'fix' command (via score command with --fix option)
+    result = runner.invoke(cli, ["score", str(p), "--fix"])
     assert result.exit_code == 0
 
     content = p.read_text()
@@ -45,5 +43,4 @@ async def process_data(data):
     runner = CliRunner()
     result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
 
-    # RESOLUTION: Updated assertion to match scoring.py output format
     assert "Type Safety Index 0%" in result.output

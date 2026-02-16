@@ -110,6 +110,7 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     nodes = sorted(graph.keys())
 
     def visit(node: str, current_path: List[str]):
+        """Recursively visits nodes to find cycles."""
         visited_global.add(node)
         path_set.add(node)
         current_path.append(node)

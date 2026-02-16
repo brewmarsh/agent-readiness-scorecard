@@ -20,11 +20,11 @@ class TestFixCommand:
                 """))
 
             # Run fix command with default agent (generic)
-            result = runner.invoke(cli, ["fix", "."])
+            result = runner.invoke(cli, ["score", ".", "--fix"])
 
             assert result.exit_code == 0
             assert "Applying Fixes" in result.output
-            assert "Fixes applied!" in result.output
+            assert "Fixed" in result.output
 
             # Check if README.md was created (required by generic)
             assert os.path.exists("README.md")
@@ -47,7 +47,7 @@ class TestFixCommand:
                 """))
 
             # Run fix command on subdir with jules agent (requires agents.md)
-            result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
+            result = runner.invoke(cli, ["score", "subdir", "--fix", "--agent", "jules"])
 
             assert result.exit_code == 0
             # Should create docs in subdir because apply_fixes creates docs in the given path if it's a directory
@@ -60,6 +60,10 @@ class TestFixCommand:
 
     def test_fix_command_invalid_agent(self, runner):
         with runner.isolated_filesystem():
-            result = runner.invoke(cli, ["fix", ".", "--agent", "invalid"])
+            # Create a dummy python file so score is high enough
+            with open("test.py", "w") as f:
+                f.write("def foo():\n    pass\n")
+
+            result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
             assert result.exit_code == 0 # It defaults to generic, so exit code 0
             assert "Unknown agent profile: invalid. using generic." in result.output
