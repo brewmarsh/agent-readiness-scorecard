@@ -105,3 +105,13 @@ agent-score check-prompts prompts/system_v1.txt
 * **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
 * **Few-Shot Examples**: Does it include 1-3 examples?
 * **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
+
+## 🤖 Working with Jules
+
+To start a task using the Jules Agent:
+1. Add the `prompt-check` label to your issue or pull request.
+2. The Gatekeeper will analyze your prompt.
+3. If the prompt passes analysis, the `jules` label will be automatically added, and the agent will start.
+4. If it fails, you will receive a comment with suggested improvements.
+
+**Note:** Do not add the `jules` label directly. Always start with `prompt-check`.
