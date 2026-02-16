@@ -101,6 +101,12 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     console.print(health_table)
     console.print("") 
 
+    if results.get("project_issues"):
+        console.print(Panel("[bold red]Project Level Issues[/bold red]", expand=False))
+        for issue in results["project_issues"]:
+            console.print(f"⚠️ {issue}")
+        console.print("")
+
     # 2. File Table
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
@@ -170,6 +176,8 @@ def check_prompts(input_path, plain):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
                 console.print(f"💡 {imp}")
+        elif score >= 80:
+            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
     if score < 80:
         sys.exit(1)
@@ -179,7 +187,10 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -203,13 +214,22 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    results = analyzer.perform_analysis(path, "generic")
+
+    stats = results["file_results"]
+    dep_analysis = results.get("dep_analysis", {})
+    god_modules = dep_analysis.get("god_modules", {})
+    cycles = dep_analysis.get("cycles", [])
+
+    entropy_stats = {d["path"]: d["file_count"] for d in results.get("directory_stats", [])}
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    report_content = report.generate_advisor_report(stats, god_modules, entropy_stats, cycles)
+    console.print(report_content)
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_content)
+        console.print(f"\n[bold green]Report saved to {output_file}[/bold green]")
 
 if __name__ == "__main__":
     cli()

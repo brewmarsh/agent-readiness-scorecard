@@ -192,7 +192,21 @@ def generate_recommendations_report(results: Any) -> str:
                 "Recommendation": "Create AGENTS.md with build steps."
             })
 
-    # ... (Logic for Circular Dependency and Type Coverage follows same pattern) ...
+    for res in file_list:
+        if res.get("issues") and "Circular dependency detected" in res["issues"]:
+             recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Break cycle with dependency injection."
+            })
+
+    for res in file_list:
+        if res.get("type_coverage", 100) < 90:
+             recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add type hints to function signatures."
+            })
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
