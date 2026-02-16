@@ -187,7 +187,7 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
 
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None, thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> Dict[str, Any]:
     """Orchestrates the full project analysis from file scores to project-wide metrics."""
     profile = PROFILES[agent]
     py_files = _collect_python_files(path)
@@ -200,7 +200,7 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
     file_scores = []
 
     for filepath in py_files:
-        score, issues, loc, complexity, type_safety, metrics = score_file(filepath, profile, thresholds=thresholds)
+        score, issues, loc, complexity, type_safety, metrics = score_file(filepath, profile)
         file_scores.append(score)
 
         rel_path = os.path.relpath(filepath, start=path if os.path.isdir(path) else os.path.dirname(path))

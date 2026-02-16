@@ -53,7 +53,7 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
+    result = runner.invoke(cli, ["score", str(p)])
 
     # RESOLUTION: Updated assertion to match scoring.py output format
     assert "Type Safety Index 0%" in result.output

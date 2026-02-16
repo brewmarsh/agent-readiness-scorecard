@@ -1,11 +1,8 @@
 from typing import Dict, Any, Tuple, List
 from .metrics import get_loc, get_function_stats
 
-def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any] = None) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
     """Calculates score based on the selected profile and new Agent Readiness spec."""
-    if thresholds is None:
-        thresholds = {"acl_yellow": 10, "acl_red": 20, "type_safety": 90}
-
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
@@ -16,14 +13,10 @@ def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any
     score = 100
     details = []
 
-    acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
-    type_safety_threshold = thresholds.get("type_safety", 90)
-
     # 1. ACL Scoring (Agent Cognitive Load)
-    # Thresholds: Green <= yellow, Yellow yellow-red, Red > red
-    red_count = sum(1 for m in metrics if m["acl"] > acl_red)
-    yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
+    # Thresholds: Green <= 10, Yellow 11-20, Red > 20
+    red_count = sum(1 for m in metrics if m["acl"] > 20)
+    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 20)
 
     if red_count > 0:
         penalty = red_count * 15
@@ -36,14 +29,14 @@ def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
     # 2. Type Safety Index
-    # Target > threshold for a "Pass"
+    # Target > 90% for a "Pass"
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 
-    if type_safety_index < type_safety_threshold:
+    if type_safety_index < 90:
         penalty = 20
         score -= penalty
-        details.append(f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})")
+        details.append(f"Type Safety Index {type_safety_index:.0f}% < 90% (-{penalty})")
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 
