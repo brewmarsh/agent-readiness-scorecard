@@ -1,6 +1,8 @@
 import os
 import sys
 import subprocess
+from typing import Optional, List
+
 import click
 from importlib.metadata import version, PackageNotFoundError
 from rich.console import Console
@@ -26,7 +28,7 @@ except PackageNotFoundError:
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
     """Invokes a default command if a subcommand is not found."""
-    def resolve_command(self, ctx, args):
+    def resolve_command(self, ctx: click.Context, args: List[str]):
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
@@ -80,11 +82,13 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     entropy = auditor.check_directory_entropy(path)
     if entropy["warning"] and entropy.get("max_files", 0) > 50:
         entropy_status = f"Max {entropy['max_files']} files/dir"
+        entropy_label = "WARN"
     else:
         entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+        entropy_label = "WARN" if entropy["warning"] else "PASS"
 
     entropy_color = "yellow" if entropy["warning"] else "green"
-    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_label} ({entropy_status})[/{entropy_color}]")
 
     tokens = auditor.check_critical_context_tokens(path)
     token_status = f"{tokens['token_count']:,} tokens"
@@ -146,7 +150,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
 @cli.command(name="check-prompts")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
-def check_prompts(input_path, plain):
+def check_prompts(input_path: str, plain: bool) -> None:
     """Checks a prompt file for LLM best practices."""
     if input_path == "-":
         content = sys.stdin.read()
@@ -217,7 +221,7 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
-def advise(path, output_file):
+def advise(path: str, output_file: Optional[str]) -> None:
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
