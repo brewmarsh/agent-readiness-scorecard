@@ -99,7 +99,13 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
-    console.print("") 
+    console.print("")
+
+    if results.get("project_issues"):
+        console.print("[bold yellow]Project-Wide Issues:[/bold yellow]")
+        for issue in results["project_issues"]:
+            console.print(f"- {issue}")
+        console.print("")
 
     # 2. File Table
     table = Table(title="File Analysis")
@@ -165,6 +171,8 @@ def check_prompts(input_path, plain):
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
+        if score >= 80:
+            console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
 
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
@@ -179,7 +187,10 @@ def check_prompts(input_path, plain):
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
-    profile = PROFILES.get(agent, PROFILES["generic"])
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -202,14 +213,39 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
+
+    results = analyzer.perform_analysis(path, "generic")
     
-    # ... logic for gathering stats (loc, complexity, acl, tokens) ...
-    # This section delegates to analyzer and auditor as seen in your earlier advisor logic.
+    # Dependency graph and stats for Advisor
+    graph = analyzer.get_import_graph(path)
+    dependency_stats = analyzer.get_inbound_imports(graph)
+    cycles = analyzer.detect_cycles(graph)
+    entropy_stats = auditor.get_crowded_directories(path)
     
-    # Placeholder for brevity: assumes existing advisor logic from your Beta branch
-    # stats = gathering_logic(path)
-    # report_md = report.generate_advisor_report(stats, ...)
-    # print/save report_md
+    # Add token counts to file results
+    for res in results["file_results"]:
+        full_path = os.path.join(path, res["file"])
+        res["tokens"] = auditor.count_python_tokens(full_path)
+        # Add ACL and complexity to top level for advisor report convenience
+        res["acl"] = res.get("function_metrics", [{}])[0].get("acl", 0) if res.get("function_metrics") else 0
+        # If there are multiple functions, we might want the max or avg. Advisor report expects one per file in its table.
+        if res.get("function_metrics"):
+             res["acl"] = max(m["acl"] for m in res["function_metrics"])
+             res["complexity"] = max(m["complexity"] for m in res["function_metrics"])
+
+    report_md = report.generate_advisor_report(
+        results["file_results"],
+        dependency_stats,
+        entropy_stats,
+        cycles
+    )
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        console.print(f"[bold green]Advisor report saved to {output_file}[/bold green]")
+    else:
+        console.print(report_md)
 
 if __name__ == "__main__":
     cli()

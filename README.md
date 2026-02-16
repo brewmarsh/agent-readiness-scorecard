@@ -105,3 +105,37 @@ agent-score check-prompts prompts/system_v1.txt
 * **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
 * **Few-Shot Examples**: Does it include 1-3 examples?
 * **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
+
+## 🤖 Using the CRAFT Prompts
+
+The score report now includes auto-generated **CRAFT** prompts for every major issue detected in your codebase. These prompts are designed to be copy-pasted directly into LLMs like **ChatGPT, Claude, or Cursor** to get optimal refactoring results.
+
+### What is CRAFT?
+
+CRAFT is a prompt engineering framework that ensures the AI has enough context and structure to perform complex tasks:
+
+- **C**ontext: Defines the persona (e.g., "You are a Software Architect").
+- **R**equest: The specific task to be performed.
+- **A**ctions: Step-by-step instructions for the AI.
+- **F**rame: Constraints and boundaries (e.g., "Keep functions under 50 lines").
+- **T**emplate: The desired output format.
+
+### Example CRAFT Prompt
+
+If `agent-scorecard` detects a **God Module**, it will generate a prompt like this:
+
+> **Context**: You are a Software Architect specializing in modular system design.
+> **Request**: Decompose the God Module `main.py` to improve maintainability.
+> **Actions**:
+> - Analyze the module to identify distinct responsibilities.
+> - Extract logic into smaller, cohesive modules.
+> - Refactor inbound imports to point to the new, smaller modules.
+> **Frame**: Ensure inbound imports for any single module stay below 50. Maintain all existing functionality.
+> **Template**: A detailed refactoring plan followed by the code for the new module structure.
+
+### How to use them
+1. Run `agent-score . --report report.md`.
+2. Open `report.md` and scroll to the **🤖 Agent Prompts for Remediation (CRAFT Format)** section.
+3. Copy a CRAFT prompt.
+4. Paste it into your AI editor (Cursor) or chat interface (Claude/ChatGPT).
+5. Review and apply the generated code!

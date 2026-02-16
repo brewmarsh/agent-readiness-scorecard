@@ -64,30 +64,84 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
     types_section += "\n"
     return types_section
 
-def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
+def _format_craft_prompt(context: str, request: str, actions: List[str], frame: str, template: str) -> str:
+    """Formats a prompt using the CRAFT framework."""
+    action_items = "\n".join([f"- {a}" for a in actions])
+    return (
+        f"> **Context**: {context}\n"
+        f"> **Request**: {request}\n"
+        f"> **Actions**:\n"
+        f"> {action_items.replace('\n', '\n> ')}\n"
+        f"> **Frame**: {frame}\n"
+        f"> **Template**: {template}"
+    )
+
+def _generate_prompts_section(stats: List[Dict[str, Any]], project_issues: Optional[List[str]] = None) -> str:
     """Provides actionable prompts for an AI Agent to use for refactoring."""
-    prompts = "## 🤖 Agent Prompts for Remediation\n\n"
+    prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
+    prompts += "Copy and paste these prompts into your favorite LLM (ChatGPT, Claude, Cursor) to fix the issues.\n\n"
+
+    # 1. Project-Wide Issues (God Modules)
+    if project_issues:
+        for issue in project_issues:
+            if "God Modules Detected" in issue:
+                mods = issue.split(": ")[1].split(", ")
+                for mod in mods:
+                    prompts += f"### Project Issue: God Module `{mod}`\n"
+                    craft = _format_craft_prompt(
+                        context="You are a Software Architect specializing in modular system design.",
+                        request=f"Decompose the God Module `{mod}` to improve maintainability and reduce context pressure.",
+                        actions=[
+                            "Analyze the module to identify distinct responsibilities.",
+                            "Extract logic into smaller, cohesive modules.",
+                            "Refactor inbound imports to point to the new, smaller modules."
+                        ],
+                        frame="Ensure inbound imports for any single module stay below 50. Maintain all existing functionality.",
+                        template="A detailed refactoring plan followed by the code for the new module structure."
+                    )
+                    prompts += craft + "\n\n"
+
+    # 2. File-Specific Issues
     problematic_files = [f for f in stats if f["score"] < 90]
 
     for f_res in problematic_files:
         file_path = f_res["file"]
-        file_issues = []
 
         metrics = f_res.get("function_metrics", [])
         red_functions = [m for m in metrics if m["acl"] > 20]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
-            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20). Prompt: 'Refactor functions in `{file_path}` with high cognitive load to bring ACL below 10. Split complex logic and reduce function length.'")
+            prompts += f"### File: `{file_path}` - High Cognitive Load\n"
+            craft = _format_craft_prompt(
+                context="You are a Senior Software Engineer specializing in code maintainability.",
+                request=f"Refactor high-complexity functions in `{file_path}`.",
+                actions=[
+                    f"Identify functions with Red ACL (>20): {fn_names}.",
+                    "Extract complex nested logic into smaller, private helper functions.",
+                    "Ensure each function has a single responsibility and ACL < 10."
+                ],
+                frame="Keep functions under 50 lines. Maintain existing logic and ensure all tests pass.",
+                template="Return only the refactored code blocks for the affected functions."
+            )
+            prompts += craft + "\n\n"
 
         if f_res["type_coverage"] < 90:
-             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%. Prompt: 'Add explicit type signatures to all functions in `{file_path}` to meet the 90% Type Safety Index requirement.'")
+            prompts += f"### File: `{file_path}` - Low Type Safety\n"
+            craft = _format_craft_prompt(
+                context="You are a Python Developer focused on type safety and static analysis.",
+                request=f"Add comprehensive type hints to `{file_path}`.",
+                actions=[
+                    "Analyze all functions lacking explicit type signatures.",
+                    "Add PEP 484 compatible type hints to all function arguments and return values.",
+                    "Use `typing` module (List, Dict, Any, Optional) where appropriate."
+                ],
+                frame="Do not change runtime logic. Target 100% type coverage for this file.",
+                template="Return the full updated content of the file."
+            )
+            prompts += craft + "\n\n"
 
-        if file_issues:
-            prompts += f"### File: `{file_path}`\n"
-            prompts += "\n".join(file_issues) + "\n\n"
-
-    if not problematic_files:
+    if not problematic_files and not (project_issues and any("God Modules" in i for i in project_issues)):
         prompts += "✅ Codebase is optimized for AI Agents. No immediate prompts needed.\n\n"
     return prompts
 
@@ -106,7 +160,7 @@ def generate_markdown_report(stats: List[Dict[str, Any]], final_score: float, pa
     summary = _generate_summary_section(final_score, profile, project_issues)
     targets = _generate_acl_section(stats)
     types_section = _generate_type_safety_section(stats)
-    prompts = _generate_prompts_section(stats)
+    prompts = _generate_prompts_section(stats, project_issues)
     table = _generate_file_table_section(stats)
 
     return summary + targets + types_section + prompts + "\n" + table + "\n---\n*Generated by Agent-Scorecard*"
@@ -192,7 +246,19 @@ def generate_recommendations_report(results: Any) -> str:
                 "Recommendation": "Create AGENTS.md with build steps."
             })
 
-    # ... (Logic for Circular Dependency and Type Coverage follows same pattern) ...
+    for res in file_list:
+        if res.get("type_coverage", 100) < 90:
+            recommendations.append({
+                "Finding": f"Type Coverage < 90% in {res['file']}",
+                "Agent Impact": "Hallucination of signatures.",
+                "Recommendation": "Add PEP 484 hints."
+            })
+        if "Circular dependency detected" in res.get("issues", ""):
+            recommendations.append({
+                "Finding": f"Circular Dependency in {res['file']}",
+                "Agent Impact": "Infinite recursion loops.",
+                "Recommendation": "Refactor into a directed graph."
+            })
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
