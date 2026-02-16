@@ -1,6 +1,7 @@
 import os
 import textwrap
 import pytest
+from unittest.mock import patch
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
@@ -19,12 +20,25 @@ class TestFixCommand:
                         pass
                 """))
 
-            # Run fix command with default agent (generic)
-            result = runner.invoke(cli, ["fix", "."])
+            # Mock LLM.generate to return fixed code
+            fixed_code = textwrap.dedent("""
+                def foo() -> None:
+                    \"\"\"A docstring.\"\"\"
+                    pass
+            """).strip()
 
-            assert result.exit_code == 0
-            assert "Applying Fixes" in result.output
-            assert "Fixes applied!" in result.output
+            with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code) as mock_gen:
+                # Run fix command with default agent (generic)
+                result = runner.invoke(cli, ["fix", "."])
+
+                assert result.exit_code == 0
+                assert "Applying Fixes" in result.output
+                assert "Fixes applied!" in result.output
+
+                # Verify LLM was called with CRAFT prompt
+                system_prompt, user_prompt = mock_gen.call_args[0]
+                assert "Elite DevOps Engineer" in system_prompt
+                assert "ACL > 15 or Missing Types" in user_prompt
 
             # Check if README.md was created (required by generic)
             assert os.path.exists("README.md")
@@ -32,9 +46,8 @@ class TestFixCommand:
             # Check if python file was modified
             with open("src/test.py", "r") as f:
                 content = f.read()
-            assert "TODO: Add docstring" in content
-            # Note: The exact string depends on constants, but checking for substring is robust enough.
-            assert "TODO: Add type hints" in content
+            assert "A docstring." in content
+            assert "-> None" in content
 
     def test_fix_command_specific_path(self, runner):
         with runner.isolated_filesystem():
@@ -46,8 +59,15 @@ class TestFixCommand:
                         return x
                 """))
 
-            # Run fix command on subdir with jules agent (requires agents.md)
-            result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
+            fixed_code = textwrap.dedent("""
+                def bar(x: int) -> int:
+                    \"\"\"Returns x.\"\"\"
+                    return x
+            """).strip()
+
+            with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+                # Run fix command on subdir with jules agent (requires agents.md)
+                result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
 
             assert result.exit_code == 0
             # Should create docs in subdir because apply_fixes creates docs in the given path if it's a directory
@@ -56,7 +76,8 @@ class TestFixCommand:
 
             with open("subdir/test.py", "r") as f:
                 content = f.read()
-            assert "TODO: Add docstring" in content
+            assert "Returns x." in content
+            assert "x: int" in content
 
     def test_fix_command_invalid_agent(self, runner):
         with runner.isolated_filesystem():

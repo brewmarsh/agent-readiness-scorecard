@@ -87,12 +87,6 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
-    
-    # Explicit alerts for critical issues
-    if not health["agents_md"]:
-        console.print("[bold red]Missing Critical Agent Docs: AGENTS.md[/bold red]")
-    if entropy["warning"]:
-        console.print("[bold yellow]High Directory Entropy warning[/bold yellow]")
     console.print("")
 
 def _print_file_analysis(results: Dict[str, Any], verbosity: str) -> None:
@@ -210,6 +204,19 @@ def check_prompts(input_path: str, plain: bool) -> None:
     if score < 80:
         sys.exit(1)
 
+@cli.command(name="fix")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--agent", default="generic", help="Profile to use.")
+def fix(path: str, agent: str) -> None:
+    """Automatically fix common issues using CRAFT framework prompts."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+    apply_fixes(path, profile)
+    console.print("[bold green]Fixes applied![/bold green]")
+
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
@@ -238,8 +245,9 @@ def advise(path: str, output_file: Optional[str]) -> None:
     
     # Enrich file results with token counts for the advisor report
     stats = []
-    for res in results["file_results"]:
-        tokens_info = auditor.check_critical_context_tokens(os.path.join(path, res["file"]))
+    for res in results.get("file_results", []):
+        full_path = os.path.join(path, res["file"])
+        tokens_info = auditor.check_critical_context_tokens(full_path)
         max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0])
         
         stats.append({
@@ -250,6 +258,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
             "tokens": tokens_info["token_count"]
         })
 
+    # Prepare other stats
     entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
 
     report_md = report.generate_advisor_report(
@@ -259,10 +268,15 @@ def advise(path: str, output_file: Optional[str]) -> None:
         cycles=results.get('dep_analysis', {}).get('cycles', [])
     )
 
+    # GUARANTEE: Ensure the file is written even if results are empty to prevent CI failure
     if output_file:
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(report_md)
-        console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
+        abs_output_path = os.path.abspath(output_file)
+        # Handle cases where stats might be empty
+        final_output = report_md if stats else "# Agent Advisor Report\n\nNo Python files found for analysis."
+        
+        with open(abs_output_path, "w", encoding="utf-8") as f:
+            f.write(final_output)
+        console.print(f"[bold green]Advisor Report saved to {abs_output_path}[/bold green]")
     else:
         from rich.markdown import Markdown
         console.print(Markdown(report_md))
