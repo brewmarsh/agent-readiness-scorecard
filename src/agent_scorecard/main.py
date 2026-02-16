@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 # Import common modules
-from . import analyzer, report, auditor
+from . import analyzer, report, auditor, config
 from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
@@ -51,90 +51,104 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
     except Exception:
         return []
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
-    """Helper to run the scoring logic."""
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None, verbosity: str = "summary", thresholds: dict = None) -> None:
+    """Helper to run the scoring logic with verbosity support."""
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     profile = PROFILES[agent]
 
     if fix:
-        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+        if verbosity != "quiet":
+            console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         apply_fixes(path, profile)
-        console.print("")
+        if verbosity != "quiet":
+            console.print("")
 
     # Run Analysis
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
-    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, thresholds=thresholds)
+
+    if verbosity != "quiet":
+        console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
     # 1. Environment Health & Auditor Checks
-    health_table = Table(title="Environment Health")
-    health_table.add_column("Check", style="cyan")
-    health_table.add_column("Status", justify="right")
+    if verbosity != "quiet":
+        health_table = Table(title="Environment Health")
+        health_table.add_column("Check", style="cyan")
+        health_table.add_column("Status", justify="right")
 
-    health = auditor.check_environment_health(path)
-    health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
-    health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
-    health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
+        health = auditor.check_environment_health(path)
+        health_table.add_row("AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]")
+        health_table.add_row("Linter Config", "[green]PASS[/green]" if health["linter_config"] else "[red]FAIL[/red]")
+        health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
-    entropy = auditor.check_directory_entropy(path)
-    if entropy["warning"] and entropy.get("max_files", 0) > 50:
-        entropy_status = f"Max {entropy['max_files']} files/dir"
-    else:
-        entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+        entropy = auditor.check_directory_entropy(path)
+        if entropy["warning"] and entropy.get("max_files", 0) > 50:
+            entropy_status = f"Max {entropy['max_files']} files/dir"
+        else:
+            entropy_status = f"{entropy['avg_files']:.1f} files/dir"
 
-    entropy_color = "yellow" if entropy["warning"] else "green"
-    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+        entropy_color = "yellow" if entropy["warning"] else "green"
+        health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
 
-    tokens = auditor.check_critical_context_tokens(path)
-    token_status = f"{tokens['token_count']:,} tokens"
-    if tokens["alert"]:
-        health_table.add_row("Critical Token Count", f"[red]ALERT ({token_status})[/red]")
-    else:
-        health_table.add_row("Critical Token Count", f"[green]PASS ({token_status})[/green]")
+        tokens = auditor.check_critical_context_tokens(path)
+        token_status = f"{tokens['token_count']:,} tokens"
+        if tokens["alert"]:
+            health_table.add_row("Critical Token Count", f"[red]ALERT ({token_status})[/red]")
+        else:
+            health_table.add_row("Critical Token Count", f"[green]PASS ({token_status})[/green]")
 
-    if results.get("dep_analysis", {}).get("cycles"):
-        health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(results['dep_analysis']['cycles'])})[/red]")
-    else:
-        health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
+        if results.get("dep_analysis", {}).get("cycles"):
+            health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(results['dep_analysis']['cycles'])})[/red]")
+        else:
+            health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
-    console.print(health_table)
-    console.print("") 
+        console.print(health_table)
+        console.print("")
 
-    # 2. File Table
-    table = Table(title="File Analysis")
-    table.add_column("File", style="cyan")
-    table.add_column("Score", justify="right")
-    table.add_column("Issues", style="magenta")
+    # 2. File Table (Respecting Verbosity)
+    if verbosity != "quiet":
+        table = Table(title="File Analysis")
+        table.add_column("File", style="cyan")
+        table.add_column("Score", justify="right")
+        table.add_column("Issues", style="magenta")
 
-    for res in results["file_results"]:
-        status_color = "green" if res["score"] >= 70 else "red"
-        table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
+        has_rows = False
+        for res in results["file_results"]:
+            status_color = "green" if res["score"] >= 70 else "red"
 
-    console.print(table)
-    console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
+            # summary mode: only show failing files
+            if verbosity == "summary" and res["score"] >= 70:
+                continue
 
-    # Explicit warnings for tests
-    if results.get("missing_docs"):
-        console.print(f"[bold red]Missing Critical Agent Docs: {', '.join(results['missing_docs'])}[/bold red]")
+            table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
+            has_rows = True
 
-    god_modules = results.get("dep_analysis", {}).get("god_modules", {})
-    if god_modules:
-        console.print(f"[bold red]God Modules Detected: {', '.join(god_modules.keys())}[/bold red]")
+        if has_rows:
+            console.print(table)
+        elif verbosity == "summary":
+            console.print("[green]All files passed Agent Readiness checks.[/green]")
 
-    if entropy["warning"]:
-        console.print(f"[bold yellow]High Directory Entropy ({entropy_status})[/bold yellow]")
+    if verbosity != "quiet" and results.get("project_issues"):
+        console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
+        for issue in results["project_issues"]:
+            console.print(f"⚠️ {issue}")
+
+    # Final Score
+    score_color = "green" if results['final_score'] >= 70 else "red"
+    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
     # 3. Artifact Generation
     if badge:
         output_path = "agent_score.svg"
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(generate_badge(results["final_score"]))
-        console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
+        if verbosity != "quiet":
+            console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
 
     if report_path:
         report_content = report.generate_markdown_report(
-            results["file_results"], results["final_score"], path, profile, results.get("project_issues")
+            results["file_results"], results["final_score"], path, profile, results.get("project_issues"), thresholds=thresholds
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_content)
@@ -209,10 +223,15 @@ def fix(path: str, agent: str) -> None:
 @click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
 @click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
 @click.option("--diff", "diff_base", help="Only score files changed vs this git ref.")
-def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str) -> None:
+@click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity level.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str, verbosity: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
+    cfg = config.load_config(path)
+    final_verbosity = verbosity or cfg.get("verbosity", "summary")
+    thresholds = cfg.get("thresholds")
+
     limit_to_files = get_changed_files(diff_base) if diff_base else None
-    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files)
+    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files, verbosity=final_verbosity, thresholds=thresholds)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
@@ -221,15 +240,29 @@ def advise(path, output_file):
     """Generates a Markdown report with actionable advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # We use 'generic' profile for advisor mode as it's about physics, not specific agent constraints
+    # We use 'generic' profile for advisor mode as it's about physics
     results = analyzer.perform_analysis(path, "generic")
     
-    # Convert directory_stats back to dict for report generator
+    # Process file_results to add token counts (required for advisor report)
+    stats = []
+    for res in results["file_results"]:
+        tokens_info = auditor.check_critical_context_tokens(os.path.join(path, res["file"]))
+        max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0])
+        
+        stats.append({
+            "file": res["file"],
+            "acl": max_acl,
+            "complexity": res["complexity"],
+            "loc": res["loc"],
+            "tokens": tokens_info["token_count"]
+        })
+
+    # Prepare other stats
     entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
 
     report_md = report.generate_advisor_report(
-        stats=results['file_results'],
-        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}), # This is pre-filtered > 50, which is fine
+        stats=stats,
+        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
         entropy_stats=entropy_stats,
         cycles=results.get('dep_analysis', {}).get('cycles', [])
     )
@@ -239,7 +272,8 @@ def advise(path, output_file):
             f.write(report_md)
         console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
     else:
-        console.print(report_md)
+        from rich.markdown import Markdown
+        console.print(Markdown(report_md))
 
 if __name__ == "__main__":
     cli()
