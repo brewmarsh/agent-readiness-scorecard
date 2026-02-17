@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, cast
 from . import analyzer
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
@@ -33,13 +33,13 @@ def _generate_acl_section(stats: List[FileAnalysisResult]) -> str:
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
-    top_acl = sorted(all_functions, key=lambda x: float(x['acl']), reverse=True)[:10]
+    top_acl = sorted(all_functions, key=lambda x: cast(float, x['acl']), reverse=True)[:10]
 
     if top_acl:
         targets += "| Function | File | ACL | Status |\n"
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
-            acl_val = float(fn['acl'])
+            acl_val = cast(float, fn['acl'])
             if acl_val > 10:
                 status = "🔴 Red" if acl_val > 20 else "🟡 Yellow"
                 targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"

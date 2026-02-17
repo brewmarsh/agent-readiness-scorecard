@@ -13,44 +13,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Security & Logic Audit
-        # This step uses an LLM action to process our CRAFT prompts
-        # You can use 'actions-ml/llm-reviewer' or similar integrations
-        uses: actions-ml/llm-reviewer@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          context_persona: "Senior AppSec & QA Engineer"
-          # Logic: Check requirements to prevent regressions
-          # Frame: Do not hallucinate; only report High/Medium risks.
-          prompt: |
-            # Context
-            You are a Senior AppSec and QA Engineer for the 'agent-scorecard' public tool.
+          python-version: "3.10"
 
-            # Request
-            Perform a Security, Logic, and API review on the provided diff. 
-            Ensure that requirements are checked to prevent regressions.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-            # Actions
-            1. Audit for 'eval', 'exec', or insecure subprocess calls.
-            2. Verify that Agent Cognitive Load (ACL) logic remains intact.
-            3. Check that public CLI arguments are documented and intuitive.
-
-            # Frame
-            Compare changes against the existing core modules. 
-            If targeting 'main', be 2x stricter on breaking changes.
-
-            # Template
-            ## 🛡️ Audit Results
-            - **Security Status**: [PASS/FAIL]
-            - **Regression Risk**: [None/Low/High]
-            - **Public API Impact**: [Breaking/Non-breaking]
-
-      - name: Run Existing Scorecard
+      - name: Install dependencies
         run: |
-          pip install .
+          uv pip install --system -e "."
+
+      - name: Run Agent Scorecard
+        run: |
           agent-score . --verbosity summary --report pr_health.md
 
-      - name: Post Summary to PR
-        uses: maroon-cloud/markdown-summary-action@v1
-        with:
-          path: pr_health.md
+      - name: Post Summary to GITHUB_STEP_SUMMARY
+        if: always()
+        run: |
+          if [ -f pr_health.md ]; then
+            cat pr_health.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No scorecard report generated." >> $GITHUB_STEP_SUMMARY
+          fi
