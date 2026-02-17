@@ -1,7 +1,9 @@
 import ast
 import mccabe
+from typing import List, Dict
+from .types import FunctionMetric
 
-def get_loc(filepath):
+def get_loc(filepath: str) -> int:
     """Returns lines of code excluding whitespace/comments roughly."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -9,10 +11,11 @@ def get_loc(filepath):
     except UnicodeDecodeError:
         return 0
 
-def get_complexity_score(filepath):
+def get_complexity_score(filepath: str) -> float:
     """Returns average cyclomatic complexity."""
     try:
-        code = open(filepath, "r", encoding="utf-8").read()
+        with open(filepath, "r", encoding="utf-8") as f:
+            code = f.read()
         tree = ast.parse(code, filepath)
     except (SyntaxError, UnicodeDecodeError):
         return 0
@@ -26,10 +29,11 @@ def get_complexity_score(filepath):
 
     return sum(complexities) / len(complexities)
 
-def check_type_hints(filepath):
+def check_type_hints(filepath: str) -> float:
     """Returns type hint coverage percentage."""
     try:
-        code = open(filepath, "r", encoding="utf-8").read()
+        with open(filepath, "r", encoding="utf-8") as f:
+            code = f.read()
         tree = ast.parse(code)
     except (SyntaxError, UnicodeDecodeError):
         return 0
@@ -47,7 +51,7 @@ def check_type_hints(filepath):
 
     return (typed_functions / len(functions)) * 100
 
-def calculate_acl(complexity, loc):
+def calculate_acl(complexity: float, loc: int) -> float:
     """Calculates Agent Cognitive Load (ACL). Formula: ACL = CC + (LLOC / 20)"""
     return complexity + (loc / 20.0)
 
@@ -60,10 +64,11 @@ def count_tokens(filepath: str) -> int:
     except UnicodeDecodeError:
         return 0
 
-def get_function_stats(filepath):
+def get_function_stats(filepath: str) -> List[FunctionMetric]:
     """Returns statistics for each function in the file."""
     try:
-        code = open(filepath, "r", encoding="utf-8").read()
+        with open(filepath, "r", encoding="utf-8") as f:
+            code = f.read()
         tree = ast.parse(code, filepath)
     except (SyntaxError, UnicodeDecodeError):
         return []
@@ -72,7 +77,7 @@ def get_function_stats(filepath):
     visitor.preorder(tree, visitor)
     complexity_map = {graph.lineno: graph.complexity() for graph in visitor.graphs.values()}
 
-    stats = []
+    stats: List[FunctionMetric] = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             start_line = node.lineno

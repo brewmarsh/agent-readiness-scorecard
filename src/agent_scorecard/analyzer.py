@@ -2,10 +2,11 @@ import os
 import ast
 import mccabe
 from collections import Counter
-from typing import List, Dict, Any, Tuple, Set, Optional
+from typing import List, Dict, Any, Tuple, Set, Optional, TypedDict, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
+from .types import FunctionMetric, FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -46,7 +47,7 @@ def _collect_python_files(path: str) -> List[str]:
 
 def _parse_imports(filepath: str) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
-    imported_names = set()
+    imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -72,7 +73,7 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
         full_paths = _collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
-    graph = {f: set() for f in all_py_files}
+    graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
@@ -154,7 +155,7 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
     issues = []
 
     # 1. Documentation Check
-    missing_docs = scan_project_docs(path, profile.get("required_files", []))
+    missing_docs = scan_project_docs(path, cast(List[str], profile.get("required_files", [])))
     if missing_docs:
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
@@ -187,7 +188,7 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
 
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> Dict[str, Any]:
+def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None) -> AnalysisResult:
     """Orchestrates the full project analysis from file scores to project-wide metrics."""
     profile = PROFILES[agent]
     py_files = _collect_python_files(path)
@@ -196,7 +197,7 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
     if limit_to_files:
         py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
 
-    file_results = []
+    file_results: List[FileAnalysisResult] = []
     file_scores = []
 
     for filepath in py_files:
@@ -227,13 +228,13 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
     cycles = detect_cycles(graph)
     god_modules = {mod: count for mod, count in inbound.items() if count > 50}
 
-    dep_analysis = {
+    dep_analysis: DepAnalysis = {
         "cycles": cycles,
         "god_modules": god_modules
     }
 
     # Directory Entropy via Auditor
-    directory_stats = []
+    directory_stats: List[DirectoryStat] = []
     entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
     for p, count in entropy.items():
         directory_stats.append({
@@ -244,7 +245,7 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
     return {
         "file_results": file_results,
         "final_score": final_score,
-        "missing_docs": scan_project_docs(path, profile.get("required_files", [])),
+        "missing_docs": scan_project_docs(path, cast(List[str], profile.get("required_files", []))),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis,
         "directory_stats": directory_stats

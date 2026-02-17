@@ -4,7 +4,7 @@ import subprocess
 import click
 import tiktoken
 from importlib.metadata import version, PackageNotFoundError
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -16,6 +16,7 @@ from .prompt_analyzer import PromptAnalyzer
 from .constants import PROFILES
 from .fix import apply_fixes
 from .scoring import generate_badge
+from .types import AnalysisResult, AdvisorFileResult
 
 console = Console()
 
@@ -28,7 +29,7 @@ except PackageNotFoundError:
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
     """Invokes a default command (score) if a subcommand is not found."""
-    def resolve_command(self, ctx, args):
+    def resolve_command(self, ctx: click.Context, args: List[str]) -> Tuple[Optional[str], click.Command, List[str]]:
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
@@ -46,31 +47,21 @@ def cli() -> None:
 
 # --- HELPERS ---
 
-def get_changed_files(base_ref: str = "origin/main") -> list:
+def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     """Uses git diff to return a list of changed Python files."""
     try:
         cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return [f for f in result.stdout.splitlines() if f.endswith(".py") and os.path.exists(f)]
-    except Exception:
+    except subprocess.CalledProcessError as e:
+        console.print(f"[yellow]Warning: Could not determine changed files via git: {e.stderr.strip()}[/yellow]")
+        return []
+    except Exception as e:
+        console.print(f"[yellow]Warning: Unexpected error while checking git diff: {e}[/yellow]")
         return []
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
-    """Helper to run the scoring logic."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-    profile = PROFILES[agent]
-
-    if fix:
-        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-        apply_fixes(path, profile)
-        console.print("")
-
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
-    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
-
-    # 1. Environment Health
+def _print_environment_health(path: str, results: AnalysisResult) -> None:
+    """Prints the Environment Health table."""
     health_table = Table(title="Environment Health")
     health_table.add_column("Check", style="cyan")
     health_table.add_column("Status", justify="right")
@@ -94,28 +85,42 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
-    console.print("") 
+    console.print("")
 
-    # 2. File Table
+def _print_file_analysis(results: AnalysisResult, verbosity: str) -> None:
+    """Prints the per-file analysis table based on verbosity."""
+    if verbosity == "quiet":
+        return
+
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
     table.add_column("Score", justify="right")
     table.add_column("Issues", style="magenta")
 
     for res in results["file_results"]:
+        if verbosity == "summary" and res["score"] >= 70:
+            continue
         status_color = "green" if res["score"] >= 70 else "red"
         table.add_row(res["file"], f"[{status_color}]{res['score']}[/{status_color}]", res["issues"])
 
-    console.print(table)
+    if table.row_count > 0:
+        console.print(table)
+    elif verbosity == "summary":
+        console.print("[green]No file issues detected.[/green]")
 
+def _print_project_issues(results: AnalysisResult) -> None:
+    """Prints project-wide issues."""
     if results.get("project_issues"):
         console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
         for issue in results["project_issues"]:
             console.print(f"⚠️ {issue}")
 
+def _print_score(results: AnalysisResult) -> None:
+    """Prints the final score."""
     console.print(f"\n[bold]Final Agent Score: {results['final_score']:.1f}/100[/bold]")
 
-    # 3. Artifact Generation
+def _generate_artifacts(results: AnalysisResult, path: str, profile: Dict[str, Any], badge: bool, report_path: Optional[str]) -> None:
+    """Generates badge and markdown report artifacts."""
     if badge:
         output_path = "agent_score.svg"
         with open(output_path, "w", encoding="utf-8") as f:
@@ -128,6 +133,29 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
 
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Optional[str], verbosity: str = "summary", limit_to_files: Optional[List[str]] = None) -> None:
+    """Helper to run the scoring logic."""
+    if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
+        agent = "generic"
+    profile = PROFILES[agent]
+
+    if fix:
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+        apply_fixes(path, profile)
+        console.print("")
+
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
+    console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
+
+    if verbosity != "quiet":
+        _print_environment_health(path, results)
+
+    _print_file_analysis(results, verbosity)
+    _print_project_issues(results)
+    _print_score(results)
+    _generate_artifacts(results, path, profile, badge, report_path)
+
     if results["final_score"] < 70:
         sys.exit(1)
 
@@ -136,7 +164,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
 @cli.command(name="check-prompts")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
-def check_prompts(input_path, plain):
+def check_prompts(input_path: str, plain: bool) -> None:
     """Checks a prompt file for LLM best practices."""
     content = sys.stdin.read() if input_path == "-" else open(input_path, "r", encoding="utf-8").read()
     analyzer_inst = PromptAnalyzer()
@@ -188,15 +216,16 @@ def fix(path: str, agent: str) -> None:
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 @click.option("--report", "report_path", type=click.Path(), help="Save report.")
 @click.option("--diff", "diff_base", help="Score only changed files.")
-def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str) -> None:
+@click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), default="summary", help="Output verbosity.")
+def score(path: str, agent: str, fix: bool, badge: bool, report_path: Optional[str], diff_base: Optional[str], verbosity: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
     limit_to_files = get_changed_files(diff_base) if diff_base else None
-    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files)
+    run_scoring(path, agent, fix, badge, report_path, verbosity=verbosity, limit_to_files=limit_to_files)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save report to Markdown.")
-def advise(path, output_file):
+def advise(path: str, output_file: Optional[str]) -> None:
     """Generates an Advisor Report using absolute paths and guaranteed file creation."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
@@ -205,7 +234,7 @@ def advise(path, output_file):
 
     try:
         results = analyzer.perform_analysis(path, agent="generic")
-        advisor_stats = []
+        advisor_stats: List[AdvisorFileResult] = []
         
         # Enrich stats for Advisor (merging logic from both branches)
         for f_res in results["file_results"]:

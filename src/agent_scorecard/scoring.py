@@ -1,7 +1,8 @@
 from typing import Dict, Any, Tuple, List
 from .metrics import get_loc, get_function_stats
+from .types import FunctionMetric
 
-def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """Calculates score based on the selected profile and new Agent Readiness spec."""
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)

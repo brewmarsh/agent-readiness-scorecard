@@ -48,7 +48,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """Returns a flat dictionary of directories exceeding the file count threshold."""
-    entropy_stats = {}
+    entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
         return entropy_stats
 
@@ -69,15 +69,23 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     Extracts function/class signatures from an AST node.
     This provides the 'skeleton' of the code for token counting.
     """
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return None
+
     if hasattr(ast, "unparse"):
         # Python 3.9+ logic: Replace body with 'pass' to get just the signature
-        orig_body = getattr(node, 'body', [])
+        orig_body = node.body
         node.body = [ast.Pass()]
         try:
             unparsed = ast.unparse(node)
             lines = unparsed.splitlines()
             if lines:
-                return "\n".join(lines[:-1]).strip() or lines[0]
+                # For functions/classes, unparse usually includes the signature and 'pass'
+                # We want just the signature.
+                sig = "\n".join(lines[:-1]).strip()
+                if not sig: # Fallback if it's a single line
+                     sig = lines[0]
+                return sig
         except Exception:
             pass
         finally:
@@ -85,7 +93,7 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     else:
         # Fallback for older Python versions
         deco_list = [f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator" 
-                     for deco in node.decorator_list]
+                     for deco in getattr(node, 'decorator_list', [])]
 
         if isinstance(node, ast.ClassDef):
             sig = f"class {node.name}:"
