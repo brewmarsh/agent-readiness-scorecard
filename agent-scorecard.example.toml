@@ -1,0 +1,23 @@
+# agent-scorecard.example.toml
+# This file shows all available configuration options for agent-scorecard.
+# You can also place these settings in your pyproject.toml under [tool.agent-scorecard].
+
+# Verbosity level of the output.
+# Options:
+#   "quiet":   Suppresses health table and file list; prints only Final Score and Project Issues.
+#   "summary": (Default) Displays environment health table and rows for files with issues.
+#   "detailed": Provides a full breakdown of every file analyzed, including those that pass.
+verbosity = "summary"
+
+[thresholds]
+# Agent Cognitive Load (ACL) thresholds.
+# ACL is calculated as: Complexity + (Lines of Code / 20).
+# Functions exceeding these values are flagged to reduce "Hallucination Zones".
+# Defaults: yellow = 10, red = 15
+acl_yellow = 10
+acl_red = 15
+
+# Minimum percentage of functions that must have type hints (0-100).
+# Agents need types to call functions correctly without guessing signatures.
+# Default: 90
+type_safety = 90

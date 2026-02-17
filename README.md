@@ -51,6 +51,36 @@ agent-score . --fix
 
 ```
 
+## ⚙️ Configuration
+
+`agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
+
+### Priority
+Settings are resolved in the following order (highest to lowest):
+1. **CLI Flags** (e.g., `--agent`, `--verbosity`)
+2. **Configuration File** (`pyproject.toml` or `.agent-scorecard.json`)
+3. **Defaults**
+
+### pyproject.toml
+Add a `[tool.agent-scorecard]` section to your `pyproject.toml` to customize thresholds and output:
+
+```toml
+[tool.agent-scorecard]
+verbosity = "summary"
+
+[tool.agent-scorecard.thresholds]
+acl_yellow = 10
+acl_red = 15
+type_safety = 90
+```
+
+### Verbosity Levels
+| Level | Description |
+| :--- | :--- |
+| `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. |
+| `summary` | (Default) Displays Environment Health table and rows for files with issues. |
+| `detailed` | Provides a full breakdown of every file, including those that pass. |
+
 ## 📊 The Scoring System
 
 Your codebase starts at **100 points**. Penalties are applied for:
