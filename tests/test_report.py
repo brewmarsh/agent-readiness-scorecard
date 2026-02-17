@@ -28,7 +28,6 @@ def test_generate_markdown_report():
         },
     ]
 
-    # RESOLUTION: We call the function with the specific arguments defined in report.py
     # generate_markdown_report(stats, final_score, path, profile, project_issues)
     report_content = generate_markdown_report(
         stats=file_results,
@@ -75,6 +74,6 @@ def test_generate_recommendations_report():
     assert "Type Coverage < 90% in untyped.py" in rec_content
 
     assert "Context window overflow." in rec_content
-    assert "Agent guesses commands." in rec_content
+    assert "Agent guesses build/test commands." in rec_content
     assert "Infinite recursion loops." in rec_content
-    assert "Hallucination of signatures." in rec_content
+    assert "Hallucination of function signatures." in rec_content

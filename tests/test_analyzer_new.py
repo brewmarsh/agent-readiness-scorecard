@@ -1,7 +1,9 @@
 import textwrap
 from src.agent_scorecard.analyzer import get_function_stats
 
+# TODO: Add type hints for Agent clarity
 def test_get_function_stats(tmp_path):
+    """TODO: Add docstring for AI context."""
     code = textwrap.dedent("""
     def simple():
         return 1

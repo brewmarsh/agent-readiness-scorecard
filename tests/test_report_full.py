@@ -1,8 +1,10 @@
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
+# TODO: Add type hints for Agent clarity
 def test_report_full(tmp_path):
     # Create file with high ACL
+    """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
     code += "    x = 0\n"
     for i in range(400):

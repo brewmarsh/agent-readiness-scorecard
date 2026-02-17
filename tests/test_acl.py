@@ -4,6 +4,7 @@ from src.agent_scorecard.analyzer import calculate_acl
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
+# TODO: Add type hints for Agent clarity
 def test_acl_calculation_logic():
     """Tests the ACL calculation formula."""
     # Formula: ACL = CC + (LOC / 20)
