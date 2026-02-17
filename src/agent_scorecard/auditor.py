@@ -1,7 +1,6 @@
 import os
 import ast
 import tiktoken
-# RESOLUTION: Accept expanded typing from Beta branch
 from typing import Dict, Any, List, Optional, Set
 
 def check_directory_entropy(path: str) -> Dict[str, Any]:
@@ -48,7 +47,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """Returns a flat dictionary of directories exceeding the file count threshold."""
-    entropy_stats = {}
+    entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
         return entropy_stats
 
@@ -72,7 +71,7 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     if hasattr(ast, "unparse"):
         # Python 3.9+ logic: Replace body with 'pass' to get just the signature
         orig_body = getattr(node, 'body', [])
-        node.body = [ast.Pass()]
+        setattr(node, 'body', [ast.Pass()])
         try:
             unparsed = ast.unparse(node)
             lines = unparsed.splitlines()
@@ -81,17 +80,19 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
         except Exception:
             pass
         finally:
-            node.body = orig_body
+            setattr(node, 'body', orig_body)
     else:
         # Fallback for older Python versions
         deco_list = [f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator" 
-                     for deco in node.decorator_list]
+                     for deco in getattr(node, 'decorator_list', [])]
 
         if isinstance(node, ast.ClassDef):
             sig = f"class {node.name}:"
-        else:
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
             sig = f"{prefix} {node.name}(...):"
+        else:
+            return None
 
         return "\n".join(deco_list + [sig]) if deco_list else sig
     return None
@@ -102,10 +103,10 @@ def get_python_signatures(filepath: str) -> str:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
         tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError):
+    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return ""
 
-    signatures = []
+    signatures: List[str] = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
              sig = _extract_signature_from_node(node)
@@ -162,7 +163,10 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     results = {"agents_md": False, "linter_config": False, "lock_file": False}
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
-    root_files = os.listdir(base_dir) if os.path.exists(base_dir) else []
+    if not os.path.exists(base_dir):
+        return results
+
+    root_files = os.listdir(base_dir)
 
     # 1. AGENTS.md check
     results["agents_md"] = any(f.lower() == "agents.md" for f in root_files)

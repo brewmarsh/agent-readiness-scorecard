@@ -1,6 +1,5 @@
 import os
 from typing import List, Dict, Any, Optional
-from . import analyzer
 
 def _generate_summary_section(final_score: float, profile: Dict[str, Any], project_issues: Optional[List[str]]) -> str:
     """Creates the executive summary section of the report."""
@@ -34,13 +33,13 @@ def _generate_acl_section(stats: List[Dict[str, Any]]) -> str:
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
-    top_acl = sorted(all_functions, key=lambda x: x['acl'], reverse=True)[:10]
+    top_acl = sorted(all_functions, key=lambda x: x.get('acl', 0), reverse=True)[:10]
 
     if top_acl:
         targets += "| Function | File | ACL | Status |\n"
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
-            if fn['acl'] > 10:
+            if fn.get('acl', 0) > 10:
                 status = "🔴 Red" if fn['acl'] > 20 else "🟡 Yellow"
                 targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
         targets += "\n"
@@ -56,11 +55,12 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]]) -> str:
     types_section += "| File | Type Safety Index | Status |\n"
     types_section += "| :--- | :---------------: | :----- |\n"
 
-    sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
+    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
 
     for res in sorted_types:
-        status = "✅" if res["type_coverage"] >= 90 else "❌"
-        types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
+        coverage = res.get("type_coverage", 0)
+        status = "✅" if coverage >= 90 else "❌"
+        types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
     types_section += "\n"
     return types_section
 
@@ -88,23 +88,24 @@ def _build_craft_prompt(issue_type: str, file_path: str, details: str) -> str:
 def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
     """Provides actionable prompts for an AI Agent to use for refactoring."""
     prompts = "## 🤖 Agent Prompts for Remediation\n\n"
-    problematic_files = [f for f in stats if f["score"] < 90]
+    problematic_files = [f for f in stats if f.get("score", 100) < 90]
 
     for f_res in problematic_files:
         file_path = f_res["file"]
         file_issues = []
 
         metrics = f_res.get("function_metrics", [])
-        red_functions = [m for m in metrics if m["acl"] > 20]
+        red_functions = [m for m in metrics if m.get("acl", 0) > 20]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
             prompt = _build_craft_prompt("ACL", file_path, f"Functions {fn_names} have Red ACL (>20)")
             file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20).\n\n{prompt}")
 
-        if f_res["type_coverage"] < 90:
-             prompt = _build_craft_prompt("Type Safety", file_path, f"Coverage is {f_res['type_coverage']:.0f}%")
-             file_issues.append(f"- **Type Safety**: Coverage is {f_res['type_coverage']:.0f}%.\n\n{prompt}")
+        coverage = f_res.get("type_coverage", 0)
+        if coverage < 90:
+             prompt = _build_craft_prompt("Type Safety", file_path, f"Coverage is {coverage:.0f}%")
+             file_issues.append(f"- **Type Safety**: Coverage is {coverage:.0f}%.\n\n{prompt}")
 
         if file_issues:
             prompts += f"### File: `{file_path}`\n"
@@ -120,8 +121,9 @@ def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
     table += "| File | Score | Issues |\n"
     table += "| :--- | :---: | :--- |\n"
     for res in stats:
-        status = "✅" if res["score"] >= 70 else "❌"
-        table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+        score = res.get("score", 0)
+        status = "✅" if score >= 70 else "❌"
+        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
     return table
 
 def generate_markdown_report(stats: List[Dict[str, Any]], final_score: float, path: str, profile: Dict[str, Any], project_issues: Optional[List[str]] = None) -> str:
@@ -152,7 +154,7 @@ def generate_advisor_report(stats: List[Dict[str, Any]], dependency_stats: Dict[
         report += "| File | ACL | Complexity | LOC |\n"
         report += "|---|---|---|---|\n"
         for s in high_acl_files:
-            report += f"| `{s['file']}` | **{s['acl']:.1f}** | {s['complexity']:.1f} | {s['loc']} |\n"
+            report += f"| `{s['file']}` | **{s.get('acl', 0):.1f}** | {s.get('complexity', 0):.1f} | {s.get('loc', 0)} |\n"
     else:
         report += "✅ No Hallucination Zones detected.\n"
     report += "\n"
@@ -182,7 +184,7 @@ def generate_advisor_report(stats: List[Dict[str, Any]], dependency_stats: Dict[
     if high_token_files:
         report += "### 🪙 Token Budget (> 32k tokens)\n"
         for f in high_token_files:
-             report += f"- `{f['file']}`: {f['tokens']} tokens\n"
+             report += f"- `{f['file']}`: {f.get('tokens', 0)} tokens\n"
 
     if entropy_stats:
         report += "### 📂 Directory Entropy (Files > 50)\n"
@@ -197,25 +199,22 @@ def generate_advisor_report(stats: List[Dict[str, Any]], dependency_stats: Dict[
 def generate_recommendations_report(results: Any) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic project improvements."""
     recommendations = []
-    file_list = results.get("file_results", []) if isinstance(results, dict) else results
+    file_list = []
+    missing_docs = []
+
+    if isinstance(results, dict):
+        file_list = results.get("file_results", [])
+        missing_docs = results.get("missing_docs", [])
+    elif isinstance(results, list):
+        file_list = results
 
     for res in file_list:
-        if res["complexity"] > 20:
+        if res.get("complexity", 0) > 20:
             recommendations.append({
                 "Finding": f"High Complexity in {res['file']}",
                 "Agent Impact": "Context window overflow.",
                 "Recommendation": "Refactor into pure functions."
             })
-
-    if isinstance(results, dict) and results.get("missing_docs"):
-        if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
-            recommendations.append({
-                "Finding": "Missing AGENTS.md",
-                "Agent Impact": "Agent guesses commands.",
-                "Recommendation": "Create AGENTS.md with build steps."
-            })
-
-    for res in file_list:
         if "Circular dependency detected" in res.get("issues", ""):
             recommendations.append({
                 "Finding": f"Circular Dependency in {res['file']}",
@@ -228,6 +227,13 @@ def generate_recommendations_report(results: Any) -> str:
                 "Agent Impact": "Hallucination of signatures.",
                 "Recommendation": "Add explicit type hints."
             })
+
+    if any(doc.lower() == "agents.md" for doc in missing_docs):
+        recommendations.append({
+            "Finding": "Missing AGENTS.md",
+            "Agent Impact": "Agent guesses commands.",
+            "Recommendation": "Create AGENTS.md with build steps."
+        })
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"

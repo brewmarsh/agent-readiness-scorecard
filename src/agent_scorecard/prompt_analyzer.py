@@ -1,5 +1,10 @@
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TypedDict, Optional
+
+class PromptAnalysisResult(TypedDict):
+    score: int
+    results: Dict[str, bool]
+    improvements: List[str]
 
 class PromptAnalyzer:
     """Analyzes text prompts for LLM best practices using structural heuristics."""
@@ -38,10 +43,10 @@ class PromptAnalyzer:
         }
     }
 
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, text: str) -> PromptAnalysisResult:
         """Evaluates a raw string against key prompt engineering dimensions."""
-        results = {}
-        improvements = []
+        results: Dict[str, bool] = {}
+        improvements: List[str] = []
         score = 0
 
         if not text or not text.strip():
