@@ -1,6 +1,7 @@
 import os
 import textwrap
 import pytest
+from unittest.mock import patch
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
@@ -20,7 +21,9 @@ class TestFixCommand:
                 """))
 
             # Run fix command with default agent (generic)
-            result = runner.invoke(cli, ["fix", "."])
+            with patch("src.agent_scorecard.fix.LLM.generate") as mock_gen:
+                mock_gen.return_value = "def foo():\n    \"\"\"Fixed!\"\"\"\n    pass"
+                result = runner.invoke(cli, ["fix", "."])
 
             assert result.exit_code == 0
             assert "Applying Fixes" in result.output
@@ -32,9 +35,9 @@ class TestFixCommand:
             # Check if python file was modified
             with open("src/test.py", "r") as f:
                 content = f.read()
-            assert "TODO: Add docstring" in content
-            # Note: The exact string depends on constants, but checking for substring is robust enough.
-            assert "TODO: Add type hints" in content
+            assert "Fixed!" in content
+            # Ensure the mock was called
+            assert mock_gen.called
 
     def test_fix_command_specific_path(self, runner):
         with runner.isolated_filesystem():
@@ -47,7 +50,9 @@ class TestFixCommand:
                 """))
 
             # Run fix command on subdir with jules agent (requires agents.md)
-            result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
+            with patch("src.agent_scorecard.fix.LLM.generate") as mock_gen:
+                mock_gen.return_value = "def bar(x: int) -> int:\n    \"\"\"Fixed bar!\"\"\"\n    return x"
+                result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
 
             assert result.exit_code == 0
             # Should create docs in subdir because apply_fixes creates docs in the given path if it's a directory
@@ -56,7 +61,7 @@ class TestFixCommand:
 
             with open("subdir/test.py", "r") as f:
                 content = f.read()
-            assert "TODO: Add docstring" in content
+            assert "Fixed bar!" in content
 
     def test_fix_command_invalid_agent(self, runner):
         with runner.isolated_filesystem():

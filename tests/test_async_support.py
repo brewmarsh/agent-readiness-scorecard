@@ -1,5 +1,6 @@
 from pathlib import Path
 from click.testing import CliRunner
+from unittest.mock import patch
 # RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
 from src.agent_scorecard.main import cli
 from src.agent_scorecard.analyzer import check_type_hints
@@ -27,12 +28,14 @@ async def process_data(data):
 
     runner = CliRunner()
     # Run 'fix' command
-    result = runner.invoke(cli, ["fix", str(p)])
+    with patch("src.agent_scorecard.fix.LLM.generate") as mock_gen:
+        mock_gen.return_value = "async def process_data(data):\n    \"\"\"Fixed async!\"\"\"\n    pass"
+        result = runner.invoke(cli, ["fix", str(p)])
+
     assert result.exit_code == 0
 
     content = p.read_text()
-    assert '"""TODO: Add docstring for AI context."""' in content
-    assert '# TODO: Add type hints for Agent clarity' in content
+    assert "Fixed async!" in content
 
 def test_score_async_function(tmp_path: Path):
     """Test that 'score' command detects issues in async functions."""

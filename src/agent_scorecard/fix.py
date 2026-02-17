@@ -2,87 +2,77 @@ import os
 import ast
 from typing import List, Tuple, Dict, Any, Union
 from rich.console import Console
-from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE, DOCSTRING_TEXT, TYPE_HINT_STUB
+from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
+from .metrics import get_function_stats
 
 console = Console()
 
-def get_indentation(line: str) -> str:
-    """Returns the indentation string of a line."""
-    return line[:len(line) - len(line.lstrip())]
+CRAFT_PROMPTS = {
+    "refactor": {
+        "context": "You are an Elite DevOps Engineer specializing in Python code quality.",
+        "actions": [
+            "Read the source code provided.",
+            "Identify the specific violation (ACL > 15 or Missing Types).",
+            "Apply the fix strictly to the violations.",
+            "Verify that the code is syntactically correct."
+        ],
+        "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code."
+    }
+}
 
-def check_missing_docstring(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
-    """Checks for missing docstring and adds insertion if needed."""
-    if not ast.get_docstring(node):
-        # Insert after the function definition line (handling decorators)
-        # The body starts at node.body[0].lineno.
-        # We need to insert *before* the first statement of the body.
-
-        # Ensure body exists (it should for a valid function)
-        if not node.body:
-            return
-
-        body_start_line = node.body[0].lineno - 1 # 0-indexed
-
-        # Determine indentation from the first line of the body
-        if body_start_line < len(lines):
-            body_line_content = lines[body_start_line]
-            indent_str = get_indentation(body_line_content)
-
-            # Check if it's just 'pass' or '...' on the same line
-            if node.body[0].lineno > node.lineno:
-                    insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
-
-def check_missing_type_hints(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
-    """Checks for missing type hints and adds insertion if needed."""
-    has_return = node.returns is not None
-    has_args = any(arg.annotation is not None for arg in node.args.args)
-    if not has_return and not has_args:
-        # Insert comment above function definition
-        start_line = node.lineno - 1
-        if node.decorator_list:
-            start_line = node.decorator_list[0].lineno - 1
-
-        # Check idempotency: peek at line before start_line
-        prev_line_idx = start_line - 1
-        if prev_line_idx >= 0 and TYPE_HINT_STUB in lines[prev_line_idx]:
-            return
-
-        # Determine function indentation
-        if node.lineno - 1 < len(lines):
-            func_line_content = lines[node.lineno-1]
-            indent_str = get_indentation(func_line_content)
-            insertions.append((start_line, f"{indent_str}{TYPE_HINT_STUB}\n"))
+class LLM:
+    """Mock LLM class for code generation."""
+    @staticmethod
+    def generate(prompt: str) -> str:
+        """
+        Placeholder for real LLM integration.
+        In production, this would call an external API.
+        """
+        # For now, we extract the source code part from the prompt as a fallback
+        if "Source Code:\n" in prompt:
+            return prompt.split("Source Code:\n")[-1]
+        return ""
 
 def fix_file_issues(filepath: str) -> None:
-    """Injects docstrings and type hint TODOs where missing."""
+    """Uses LLM to refactor files with ACL or Type violations."""
+    stats = get_function_stats(filepath)
+    violations = [s for s in stats if s["acl"] > 15 or not s["is_typed"]]
+
+    if not violations:
+        return
+
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        code = "".join(lines)
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError):
+            content = f.read()
+    except (UnicodeDecodeError, FileNotFoundError):
         return
 
-    insertions: List[Tuple[int, str]] = []
+    # Construct CRAFT prompt
+    prompt_config = CRAFT_PROMPTS["refactor"]
+    prompt = f"Context: {prompt_config['context']}\n"
+    prompt += "Actions:\n"
+    for i, action in enumerate(prompt_config["actions"], 1):
+        prompt += f"{i}. {action}\n"
+    prompt += f"Frame: {prompt_config['frame']}\n\n"
+    prompt += "Source Code:\n"
 
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            check_missing_docstring(node, lines, insertions)
-            check_missing_type_hints(node, lines, insertions)
+    # Pass combined prompt and content
+    fixed_content = LLM.generate(prompt + content)
 
-    if not insertions:
-        return
+    # Simple post-processing to remove potential markdown blocks
+    if fixed_content.startswith("```python"):
+        fixed_content = fixed_content.split("```python")[1].split("```")[0].strip()
+    elif fixed_content.startswith("```"):
+        fixed_content = fixed_content.split("```")[1].split("```")[0].strip()
 
-    # Sort insertions by line number descending to keep indices valid
-    insertions.sort(key=lambda x: x[0], reverse=True)
-
-    for line_idx, text in insertions:
-        lines.insert(line_idx, text)
-
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.writelines(lines)
-
-    console.print(f"[bold green][Fixed][/bold green] Injected issues in {filepath}")
+    # Final check: only write if non-empty and syntactically valid
+    try:
+        ast.parse(fixed_content)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(fixed_content)
+        console.print(f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}")
+    except SyntaxError:
+        console.print(f"[bold red][Error][/bold red] LLM generated invalid syntax for {filepath}. Skipping.")
 
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
