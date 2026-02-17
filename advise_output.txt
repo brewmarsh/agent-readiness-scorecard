@@ -1,0 +1,23 @@
+╭──────────────────────╮
+│ Running Advisor Mode │
+╰──────────────────────╯
+# 🧠 Agent Advisor Report
+
+Analysis based on the **Physics of Agent-Code Interaction**.
+
+## 1. Agent Cognitive Load (ACL)
+Agents have a limited reasoning budget. High ACL burns tokens on logic instead
+of task execution.
+*Formula: ACL = Complexity + (LOC / 20)*
+
+### 🚨 Hallucination Zones (ACL > 15)
+| File | ACL | Complexity | LOC |
+|---|---|---|---|
+| `src/agent_scorecard/main.py` | **28.4** | 6.1 | 222 |
+| `src/agent_scorecard/fix.py` | **15.8** | 6.4 | 86 |
+| `src/agent_scorecard/analyzer.py` | **15.2** | 5.9 | 204 |
+
+## 2. Dependency Entanglement
+✅ No Circular Dependencies detected.
+
+## 3. Context Economics
