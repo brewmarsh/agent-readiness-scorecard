@@ -1,4 +1,6 @@
 from pathlib import Path
+from unittest.mock import patch
+import textwrap
 from click.testing import CliRunner
 # RESOLUTION: Use 'src' prefix and import from 'analyzer' instead of deleted 'checks' module
 from src.agent_scorecard.main import cli
@@ -26,13 +28,21 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    # Run 'fix' command
-    result = runner.invoke(cli, ["fix", str(p)])
-    assert result.exit_code == 0
+    # Mock LLM.generate to return fixed code
+    fixed_code = textwrap.dedent("""
+        async def process_data(data: dict) -> None:
+            \"\"\"Processes data async.\"\"\"
+            pass
+    """).strip()
+
+    with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+        # Run 'fix' command
+        result = runner.invoke(cli, ["fix", str(p)])
+        assert result.exit_code == 0
 
     content = p.read_text()
-    assert '"""TODO: Add docstring for AI context."""' in content
-    assert '# TODO: Add type hints for Agent clarity' in content
+    assert 'Processes data async.' in content
+    assert 'data: dict' in content
 
 def test_score_async_function(tmp_path: Path):
     """Test that 'score' command detects issues in async functions."""
@@ -43,7 +53,7 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["score", str(p)])
+    result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
 
     # RESOLUTION: Updated assertion to match scoring.py output format
     assert "Type Safety Index 0%" in result.output

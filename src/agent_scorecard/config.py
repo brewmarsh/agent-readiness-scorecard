@@ -2,30 +2,32 @@ import os
 import copy
 from typing import Dict, Any, TypedDict
 
+# Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
 try:
     import tomllib  # type: ignore
 except ImportError:
     try:
         import tomli as tomllib  # type: ignore
     except ImportError:
-        # Fallback if neither is available (should not happen in target environment)
         tomllib = None
 
 class Config(TypedDict):
     verbosity: str
     thresholds: Dict[str, Any]
 
+# Unified defaults from both branches
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
-        "acl": 15,
+        "acl_yellow": 10,  # Warning threshold
+        "acl_red": 20,     # Critical failure threshold
         "complexity": 10,
         "type_safety": 90,
     }
 }
 
 def _deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge two dictionaries."""
+    """Recursively merge user settings into the default configuration."""
     result = copy.deepcopy(base)
     for key, value in over.items():
         if isinstance(value, dict) and key in result and isinstance(result[key], dict):
@@ -51,9 +53,10 @@ def load_config(path: str = ".") -> Config:
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
+                # Matches the [tool.agent-scorecard] namespace
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # If parsing fails, we fall back to defaults
+            # Fallback to DEFAULT_CONFIG if file is malformed
             pass
 
     return _deep_merge(DEFAULT_CONFIG, user_config)  # type: ignore
