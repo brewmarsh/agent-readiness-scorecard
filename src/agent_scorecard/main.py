@@ -91,7 +91,6 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
 
     console.print(health_table)
     
-    # Unified alert messaging
     if not health["agents_md"]:
         console.print("[bold red]Missing Critical Agent Docs: AGENTS.md[/bold red]")
     if entropy["warning"]:
@@ -216,6 +215,10 @@ def check_prompts(input_path: str, plain: bool) -> None:
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
         if score >= 80:
             console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
+        elif result.get("improvements"):
+            console.print("\n[bold yellow]Suggestions:[/bold yellow]")
+            for imp in result["improvements"]:
+                console.print(f"💡 {imp}")
 
     if score < 80:
         sys.exit(1)
@@ -254,9 +257,12 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown.")
 def advise(path: str, output_file: Optional[str]) -> None:
-    """Detailed advice based on Agent Physics."""
+    """Detailed advice based on Agent Physics using absolute paths for CI reliability."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
+    if output_file:
+        output_file = os.path.abspath(output_file)
+
     cfg = load_config(path)
     results = analyzer.perform_analysis(path, "generic", thresholds=cfg.get("thresholds"))
     
@@ -286,11 +292,11 @@ def advise(path: str, output_file: Optional[str]) -> None:
     )
 
     if output_file:
-        abs_output_path = os.path.abspath(output_file)
-        final_output = report_md if stats else "# Agent Advisor Report\n\nNo Python files found."
-        with open(abs_output_path, "w", encoding="utf-8") as f:
+        # GUARANTEE: Output file is created even if stats is empty to prevent downstream CI failure
+        final_output = report_md if stats else "# Agent Advisor Report\n\nNo Python files found for analysis."
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(final_output)
-        console.print(f"[bold green]Advisor Report saved to {abs_output_path}[/bold green]")
+        console.print(f"[bold green]Advisor Report saved to {output_file}[/bold green]")
     else:
         from rich.markdown import Markdown
         console.print(Markdown(report_md))

@@ -216,7 +216,9 @@ def perform_analysis(
             "loc": loc,
             "complexity": complexity,
             "type_coverage": type_safety,
-            "function_metrics": metrics
+            "function_metrics": metrics,
+            "tokens": count_tokens(filepath),
+            "acl": max([m["acl"] for m in metrics]) if metrics else 0
         })
 
     penalty, project_issues = get_project_issues(path, all_py_files, profile)
