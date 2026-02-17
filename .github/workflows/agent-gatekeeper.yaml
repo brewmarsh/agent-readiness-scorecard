@@ -1,0 +1,56 @@
+name: 🛡️ Agent Quality Gate
+
+on:
+  pull_request:
+    branches: [ main, beta ]
+
+jobs:
+  agent-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Security & Logic Audit
+        # This step uses an LLM action to process our CRAFT prompts
+        # You can use 'actions-ml/llm-reviewer' or similar integrations
+        uses: actions-ml/llm-reviewer@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          context_persona: "Senior AppSec & QA Engineer"
+          # Logic: Check requirements to prevent regressions
+          # Frame: Do not hallucinate; only report High/Medium risks.
+          prompt: |
+            # Context
+            You are a Senior AppSec and QA Engineer for the 'agent-scorecard' public tool.
+
+            # Request
+            Perform a Security, Logic, and API review on the provided diff. 
+            Ensure that requirements are checked to prevent regressions.
+
+            # Actions
+            1. Audit for 'eval', 'exec', or insecure subprocess calls.
+            2. Verify that Agent Cognitive Load (ACL) logic remains intact.
+            3. Check that public CLI arguments are documented and intuitive.
+
+            # Frame
+            Compare changes against the existing core modules. 
+            If targeting 'main', be 2x stricter on breaking changes.
+
+            # Template
+            ## 🛡️ Audit Results
+            - **Security Status**: [PASS/FAIL]
+            - **Regression Risk**: [None/Low/High]
+            - **Public API Impact**: [Breaking/Non-breaking]
+
+      - name: Run Existing Scorecard
+        run: |
+          pip install .
+          agent-score . --verbosity summary --report pr_health.md
+
+      - name: Post Summary to PR
+        uses: maroon-cloud/markdown-summary-action@v1
+        with:
+          path: pr_health.md
