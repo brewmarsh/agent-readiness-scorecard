@@ -4,12 +4,13 @@ import subprocess
 import click
 import tiktoken
 from importlib.metadata import version, PackageNotFoundError
+from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Import common modules
-from . import analyzer, report, auditor
+# Import core modules
+from . import analyzer, report, auditor, metrics
 from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
@@ -26,7 +27,7 @@ except PackageNotFoundError:
 
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
-    """Invokes a default command if a subcommand is not found."""
+    """Invokes a default command (score) if a subcommand is not found."""
     def resolve_command(self, ctx, args):
         try:
             return super().resolve_command(ctx, args)
@@ -42,6 +43,8 @@ class DefaultGroup(click.Group):
 def cli() -> None:
     """Main entry point for the agent-scorecard CLI."""
     pass
+
+# --- HELPERS ---
 
 def get_changed_files(base_ref: str = "origin/main") -> list:
     """Uses git diff to return a list of changed Python files."""
@@ -64,11 +67,10 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         apply_fixes(path, profile)
         console.print("")
 
-    # Run Analysis
     results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
-    # 1. Environment Health & Auditor Checks
+    # 1. Environment Health
     health_table = Table(title="Environment Health")
     health_table.add_column("Check", style="cyan")
     health_table.add_column("Status", justify="right")
@@ -79,20 +81,12 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
     entropy = auditor.check_directory_entropy(path)
-    if entropy["warning"] and entropy.get("max_files", 0) > 50:
-        entropy_status = f"Max {entropy['max_files']} files/dir"
-    else:
-        entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    entropy_status = f"Max {entropy['max_files']} files/dir" if entropy["warning"] and entropy.get("max_files", 0) > 50 else f"{entropy['avg_files']:.1f} files/dir"
+    health_table.add_row("Directory Entropy", f"[{'yellow' if entropy['warning'] else 'green'}]{entropy_status}[/]")
 
-    entropy_color = "yellow" if entropy["warning"] else "green"
-    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
-
-    tokens = auditor.check_critical_context_tokens(path)
-    token_status = f"{tokens['token_count']:,} tokens"
-    if tokens["alert"]:
-        health_table.add_row("Critical Token Count", f"[red]ALERT ({token_status})[/red]")
-    else:
-        health_table.add_row("Critical Token Count", f"[green]PASS ({token_status})[/green]")
+    tokens_check = auditor.check_critical_context_tokens(path)
+    token_status = f"{tokens_check['token_count']:,} tokens"
+    health_table.add_row("Critical Token Count", f"[{'red' if tokens_check['alert'] else 'green'}]{'ALERT' if tokens_check['alert'] else 'PASS'} ({token_status})[/]")
 
     if results.get("dep_analysis", {}).get("cycles"):
         health_table.add_row("Circular Dependencies", f"[red]DETECTED ({len(results['dep_analysis']['cycles'])})[/red]")
@@ -129,9 +123,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         console.print(f"[bold green][Generated][/bold green] Badge saved to ./{output_path}")
 
     if report_path:
-        report_content = report.generate_markdown_report(
-            results["file_results"], results["final_score"], path, profile, results.get("project_issues")
-        )
+        report_content = report.generate_markdown_report(results["file_results"], results["final_score"], path, profile, results.get("project_issues"))
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_content)
         console.print(f"\n[bold green]Report saved to {report_path}[/bold green]")
@@ -139,42 +131,33 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
     if results["final_score"] < 70:
         sys.exit(1)
 
+# --- CLI COMMANDS ---
+
 @cli.command(name="check-prompts")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
 def check_prompts(input_path, plain):
     """Checks a prompt file for LLM best practices."""
-    if input_path == "-":
-        content = sys.stdin.read()
-    else:
-        with open(input_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
+    content = sys.stdin.read() if input_path == "-" else open(input_path, "r", encoding="utf-8").read()
     analyzer_inst = PromptAnalyzer()
     result = analyzer_inst.analyze(content)
     score = result["score"]
 
     if plain:
         click.echo(f"Score: {score}")
-        for sug in result.get('improvements', result.get('suggestions', [])):
+        for sug in result.get('improvements', []):
             click.echo(f"Suggestion: {sug}")
     else:
         table = Table(title=f"Prompt Analysis: {os.path.basename(input_path) if input_path != '-' else 'Stdin'}")
         table.add_column("Heuristic", style="cyan")
         table.add_column("Status", justify="right")
-
-        order = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]
-        for key in order:
+        for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]:
             if key in result.get("results", {}):
                 status = "[green]✅ PASS[/green]" if result["results"][key] else "[red]❌ FAIL[/red]"
                 table.add_row(key.replace("_", " ").title(), status)
-
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
-        if score >= 80:
-            console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
-
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
@@ -189,7 +172,6 @@ def check_prompts(input_path, plain):
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
     if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
@@ -198,11 +180,11 @@ def fix(path: str, agent: str) -> None:
 
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--agent", default="generic", help="Profile to use: generic, jules, copilot.")
-@click.option("--fix", is_flag=True, help="Automatically fix common issues.")
-@click.option("--badge", is_flag=True, help="Generate an SVG badge for the score.")
-@click.option("--report", "report_path", type=click.Path(), help="Save the report to a Markdown file.")
-@click.option("--diff", "diff_base", help="Only score files changed vs this git ref.")
+@click.option("--agent", default="generic", help="Profile to use.")
+@click.option("--fix", is_flag=True, help="Automatically fix issues.")
+@click.option("--badge", is_flag=True, help="Generate SVG badge.")
+@click.option("--report", "report_path", type=click.Path(), help="Save report.")
+@click.option("--diff", "diff_base", help="Score only changed files.")
 def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
     limit_to_files = get_changed_files(diff_base) if diff_base else None
@@ -210,46 +192,46 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--output", "-o", "output_file", type=click.Path(), help="Save the report to a Markdown file.")
+@click.option("--output", "-o", "output_file", type=click.Path(), help="Save report to Markdown.")
 def advise(path, output_file):
-    """Generates a Markdown report with actionable advice based on Agent Physics."""
+    """Generates an Advisor Report using absolute paths and guaranteed file creation."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    # Run analysis
-    results = analyzer.perform_analysis(path, agent="generic")
-    
-    # Enrich stats for advisor
-    stats = []
+    if output_file:
+        output_file = os.path.abspath(output_file)
+
     try:
-        enc = tiktoken.get_encoding("cl100k_base")
-    except Exception:
-        enc = None
+        results = analyzer.perform_analysis(path, agent="generic")
+        advisor_stats = []
+        
+        # Enrich stats for Advisor (merging logic from both branches)
+        for f_res in results["file_results"]:
+            f_metrics = f_res.get("function_metrics", [])
+            max_acl = max([m["acl"] for m in f_metrics]) if f_metrics else 0
+            
+            full_filepath = os.path.join(path, f_res["file"])
+            if not os.path.exists(full_filepath):
+                full_filepath = f_res["file"]
 
-    for f_res in results["file_results"]:
-        # Calculate max ACL for the file
-        max_acl = 0
-        if f_res.get("function_metrics"):
-            max_acl = max(m["acl"] for m in f_res["function_metrics"])
+            advisor_stats.append({
+                **f_res,
+                "acl": max_acl,
+                "tokens": metrics.count_tokens(full_filepath)
+            })
 
-        # Calculate tokens for the file (signatures)
-        file_path = os.path.join(path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path)), f_res["file"])
-        token_count = 0
-        if enc:
-            signatures = auditor.get_python_signatures(file_path)
-            token_count = len(enc.encode(signatures))
+        graph = analyzer.get_import_graph(path)
+        dep_stats = analyzer.get_inbound_imports(graph)
+        cycles = analyzer.detect_cycles(graph)
+        entropy_stats = auditor.get_crowded_directories(path, threshold=50)
 
-        stats.append({
-            **f_res,
-            "acl": max_acl,
-            "tokens": token_count
-        })
+        if not advisor_stats:
+            report_md = "# Agent Advisor Report\n\nNo Python files found for analysis."
+        else:
+            report_md = report.generate_advisor_report(advisor_stats, dep_stats, entropy_stats, cycles)
 
-    dep_analysis = results.get("dep_analysis", {})
-    cycles = dep_analysis.get("cycles", [])
-    god_modules = dep_analysis.get("god_modules", {})
-    entropy_stats = auditor.get_crowded_directories(path, threshold=50)
-
-    report_md = report.generate_advisor_report(stats, god_modules, entropy_stats, cycles)
+    except Exception as e:
+        report_md = f"# Agent Advisor Report\n\nError during analysis: {str(e)}"
+        console.print(f"[red]Error: {e}[/red]")
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
