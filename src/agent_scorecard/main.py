@@ -71,12 +71,16 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
     health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
     entropy = auditor.check_directory_entropy(path)
-    entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+    # Resolution: Combined entropy formatting with status labels
     if entropy["warning"] and entropy.get("max_files", 0) > 50:
         entropy_status = f"Max {entropy['max_files']} files/dir"
+        entropy_label = "WARN"
+    else:
+        entropy_status = f"{entropy['avg_files']:.1f} files/dir"
+        entropy_label = "WARN" if entropy["warning"] else "PASS"
 
     entropy_color = "yellow" if entropy["warning"] else "green"
-    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_status}[/{entropy_color}]")
+    health_table.add_row("Directory Entropy", f"[{entropy_color}]{entropy_label} ({entropy_status})[/{entropy_color}]")
 
     tokens = auditor.check_critical_context_tokens(path)
     token_status = f"{tokens['token_count']:,} tokens"
