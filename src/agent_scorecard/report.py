@@ -34,7 +34,7 @@ def _generate_acl_section(stats: List[Dict[str, Any]], thresholds: Dict[str, Any
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
-    top_acl = sorted(all_functions, key=lambda x: x['acl'], reverse=True)[:10]
+    top_acl = sorted(all_functions, key=lambda x: x.get('acl', 0), reverse=True)[:10]
 
     if top_acl:
         targets += "| Function | File | ACL | Status |\n"
@@ -57,10 +57,11 @@ def _generate_type_safety_section(stats: List[Dict[str, Any]], thresholds: Dict[
     types_section += "| File | Type Safety Index | Status |\n"
     types_section += "| :--- | :---------------: | :----- |\n"
 
-    sorted_types = sorted(stats, key=lambda x: x["type_coverage"])
+    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
     for res in sorted_types:
-        status = "✅" if res["type_coverage"] >= type_safety_threshold else "❌"
-        types_section += f"| {res['file']} | {res['type_coverage']:.0f}% | {status} |\n"
+        coverage = res.get("type_coverage", 0)
+        status = "✅" if coverage >= type_safety_threshold else "❌"
+        types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
     
     return types_section + "\n"
 
@@ -78,18 +79,17 @@ def _format_craft_prompt(context: str, request: str, actions: List[str], frame: 
     )
 
 def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str, Any], project_issues: Optional[List[str]] = None) -> str:
-    """Generates structured CRAFT prompts for systemic and file-level remediation."""
+    """Generates structured CRAFT prompts for remediation."""
     acl_yellow = thresholds.get("acl_yellow", 10)
     acl_red = thresholds.get("acl_red", 20)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
-    prompts += "Copy and paste these prompts into an LLM to resolve identified issues.\n\n"
 
     # 1. Project-Wide Remediation
     if project_issues:
         for issue in project_issues:
-            if "God Modules Detected" in issue:
+            if "God Module" in issue:
                 mods = issue.split(": ")[1].split(", ")
                 for mod in mods:
                     prompts += f"### Project Issue: God Module `{mod}`\n"
@@ -106,11 +106,11 @@ def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str,
                     ) + "\n\n"
 
     # 2. File-Specific Remediation
-    problematic_files = [f for f in stats if f["score"] < 90]
+    problematic_files = [f for f in stats if f.get("score", 0) < 90]
     for f_res in problematic_files:
         file_path = f_res["file"]
         metrics = f_res.get("function_metrics", [])
-        red_functions = [m for m in metrics if m["acl"] > acl_red]
+        red_functions = [m for m in metrics if m.get("acl", 0) > acl_red]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
@@ -121,13 +121,13 @@ def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str,
                 actions=[
                     f"Target functions with Red ACL (>{acl_red}): {fn_names}.",
                     "Extract nested logic into smaller private helper functions.",
-                    f"Target an ACL score < {acl_yellow} for all refactored units."
+                    f"Target an ACL score < {acl_yellow} for all units."
                 ],
                 frame="Keep functions under 50 lines. Ensure all tests pass.",
                 template="Markdown code blocks for the refactored functions."
             ) + "\n\n"
 
-        if f_res["type_coverage"] < type_safety_threshold:
+        if f_res.get("type_coverage", 0) < type_safety_threshold:
             prompts += f"### File: `{file_path}` - Low Type Safety\n"
             prompts += _format_craft_prompt(
                 context="You are a Python Developer focused on static analysis.",
@@ -141,9 +141,6 @@ def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str,
                 template="The full updated content of the Python file."
             ) + "\n\n"
 
-    if not problematic_files and not (project_issues and any("God Modules" in i for i in project_issues)):
-        prompts += "✅ Codebase is optimized for AI Agents. No immediate prompts needed.\n\n"
-    
     return prompts
 
 def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
@@ -152,8 +149,9 @@ def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
     table += "| File | Score | Issues |\n"
     table += "| :--- | :---: | :--- |\n"
     for res in stats:
-        status = "✅" if res["score"] >= 70 else "❌"
-        table += f"| {res['file']} | {res['score']} {status} | {res['issues']} |\n"
+        score = res.get("score", 0)
+        status = "✅" if score >= 70 else "❌"
+        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
     return table
 
 def generate_markdown_report(stats: List[Dict[str, Any]], final_score: float, path: str, profile: Dict[str, Any], project_issues: Optional[List[str]] = None, thresholds: Optional[Dict[str, Any]] = None) -> str:
@@ -180,12 +178,22 @@ def generate_advisor_report(stats: List[Dict[str, Any]], dependency_stats: Dict[
     if high_acl_files:
         report += "### 🚨 Hallucination Zones (ACL > 15)\n| File | ACL | Complexity | LOC |\n|---|---|---|---|\n"
         for s in high_acl_files:
-            report += f"| `{s['file']}` | **{s['acl']:.1f}** | {s['complexity']:.1f} | {s['loc']} |\n"
+            report += f"| `{s['file']}` | **{s.get('acl', 0):.1f}** | {s.get('complexity', 0):.1f} | {s.get('loc', 0)} |\n"
     else:
         report += "✅ No Hallucination Zones detected.\n"
     
+    # Context Economics
+    report += "\n## 2. Context Economics\n"
+    high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
+    if high_token_files:
+        report += "### 🪙 Token Budget (> 32k tokens)\n"
+        for f in high_token_files:
+             report += f"- `{f['file']}`: {f.get('tokens', 0)} tokens\n"
+    else:
+        report += "✅ All files within context window limits.\n"
+
     # Dependency Entanglement
-    report += "\n## 2. Dependency Entanglement\n"
+    report += "\n## 3. Dependency Entanglement\n"
     god_modules = sorted({k: v for k, v in dependency_stats.items() if v > 50}.items(), key=lambda x: x[1], reverse=True)
     if god_modules:
         report += "### 🕸 God Modules\n| File | Inbound Refs |\n|---|---|\n"
@@ -196,42 +204,30 @@ def generate_advisor_report(stats: List[Dict[str, Any]], dependency_stats: Dict[
         report += "### 🔄 Circular Dependencies\n"
         for cycle in cycles:
              report += f"- {' -> '.join(cycle)} -> {cycle[0]}\n"
-    
-    # Entropy
-    if entropy_stats:
-        report += "\n### 📂 Directory Entropy\n| Directory | File Count |\n|---|---|\n"
-        for k, v in sorted(entropy_stats.items(), key=lambda x: x[1], reverse=True):
-            report += f"| `{k}/` | {v} |\n"
+    else:
+        report += "✅ No Circular Dependencies detected.\n"
 
     return report
 
 def generate_recommendations_report(results: Any) -> str:
-    """Creates a RECOMMENDATIONS.md file to guide systemic project improvements."""
+    """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
+    missing_docs = results.get("missing_docs", []) if isinstance(results, dict) else []
 
     for res in file_list:
-        # 1. Complexity Checks
         if res.get("complexity", 0) > 20:
-            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context window overflow.", "Recommendation": "Refactor into pure functions."})
+            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context overflow.", "Recommendation": "Refactor into pure functions."})
         
-        # 2. Dependency Checks
         issues_text = str(res.get("issues", ""))
         if "Circular dependency" in issues_text:
-            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use Dependency Injection to break cycle."})
+            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use Dependency Injection."})
 
-        # 3. Type Safety Checks
         if res.get("type_coverage", 100) < 90:
-            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints to function signatures."})
+            recommendations.append({"Finding": f"Low Type Coverage: {res['file']}", "Agent Impact": "Hallucination.", "Recommendation": "Add PEP 484 hints."})
 
-    # 4. Documentation Checks
-    if isinstance(results, dict) and results.get("missing_docs"):
-        if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
-            recommendations.append({
-                "Finding": "Missing AGENTS.md",
-                "Agent Impact": "Agent guesses repository structure.",
-                "Recommendation": "Create AGENTS.md with specific build and test context."
-            })
+    if any(doc.lower() == "agents.md" for doc in missing_docs):
+        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Agent guesses structure.", "Recommendation": "Create AGENTS.md with specific context."})
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"

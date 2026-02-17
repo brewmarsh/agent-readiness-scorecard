@@ -1,11 +1,38 @@
 import os
 import ast
-import mccabe
-from collections import Counter
-from typing import List, Dict, Any, Tuple, Set, Optional
+from typing import List, Dict, Any, Tuple, Set, Optional, TypedDict
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
+
+# --- TYPE DEFINITIONS ---
+
+class FileAnalysisResult(TypedDict):
+    file: str
+    score: int
+    issues: str
+    loc: int
+    complexity: float
+    type_coverage: float
+    function_metrics: List[Dict[str, Any]]
+    tokens: int
+    acl: float
+
+class DepAnalysisResult(TypedDict):
+    cycles: List[List[str]]
+    god_modules: Dict[str, int]
+
+class DirectoryStat(TypedDict):
+    path: str
+    file_count: int
+
+class AnalysisResult(TypedDict):
+    file_results: List[FileAnalysisResult]
+    final_score: float
+    missing_docs: List[str]
+    project_issues: List[str]
+    dep_analysis: DepAnalysisResult
+    directory_stats: List[DirectoryStat]
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -46,7 +73,7 @@ def _collect_python_files(path: str) -> List[str]:
 
 def _parse_imports(filepath: str) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
-    imported_names = set()
+    imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -72,7 +99,7 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
         full_paths = _collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
-    graph = {f: set() for f in all_py_files}
+    graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
@@ -92,7 +119,7 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
 
 def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     """Returns {file: count} of inbound imports to identify 'God Modules'."""
-    inbound = {node: 0 for node in graph}
+    inbound: Dict[str, int] = {node: 0 for node in graph}
     for source, targets in graph.items():
         for target in targets:
             if target in inbound:
@@ -102,14 +129,14 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     return inbound
 
 def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """Returns list of cycles (list of nodes in cycle) using DFS."""
-    cycles = []
-    visited_global = set()
-    path_set = set()
+    """Returns list of unique cycles using DFS and canonicalization."""
+    cycles: List[List[str]] = []
+    visited_global: Set[str] = set()
+    path_set: Set[str] = set()
     nodes = sorted(graph.keys())
 
-    def visit(node: str, current_path: List[str]):
-        """Recursively visits nodes to find cycles."""
+    def visit(node: str, current_path: List[str]) -> None:
+        """Recursively visits nodes to find import cycles."""
         visited_global.add(node)
         path_set.add(node)
         current_path.append(node)
@@ -134,8 +161,9 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
-    unique_cycles = []
-    seen_cycle_sets = set()
+    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
+    unique_cycles: List[List[str]] = []
+    seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
         if len(cycle) < 2:
             continue
@@ -148,9 +176,9 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     return unique_cycles
 
 def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) -> Tuple[int, List[str]]:
-    """Analyzes the project as a whole for documentation, god modules, and architecture."""
+    """Analyzes global project health: docs, god modules, and entropy."""
     penalty = 0
-    issues = []
+    issues: List[str] = []
 
     missing_docs = scan_project_docs(path, profile.get("required_files", []))
     if missing_docs:
@@ -182,15 +210,14 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
 
     return penalty, issues
 
-# RESOLUTION: Combined parameters to support both Agent Profiles and Threshold overrides
 def perform_analysis(
     path: str, 
     agent: str = "generic", 
-    limit_to_files: Optional[List[str]] = None, 
+    limit_to_files: Optional[List[str]] = None,
     profile: Optional[Dict[str, Any]] = None,
     thresholds: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    """Orchestrates the full project analysis from file scores to project-wide metrics."""
+) -> AnalysisResult:
+    """Orchestrates the full project analysis pipeline."""
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
     
@@ -200,8 +227,8 @@ def perform_analysis(
     if limit_to_files:
         py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
 
-    file_results = []
-    file_scores = []
+    file_results: List[FileAnalysisResult] = []
+    file_scores: List[int] = []
 
     for filepath in py_files:
         # Pass thresholds to allow pyproject.toml overrides per file
@@ -218,7 +245,7 @@ def perform_analysis(
             "type_coverage": type_safety,
             "function_metrics": metrics,
             "tokens": count_tokens(filepath),
-            "acl": max([m["acl"] for m in metrics]) if metrics else 0
+            "acl": max([m["acl"] for m in metrics]) if metrics else 0.0
         })
 
     penalty, project_issues = get_project_issues(path, all_py_files, profile)
@@ -232,12 +259,12 @@ def perform_analysis(
     cycles = detect_cycles(graph)
     god_modules = {mod: count for mod, count in inbound.items() if count > 50}
 
-    dep_analysis = {
+    dep_analysis: DepAnalysisResult = {
         "cycles": cycles,
         "god_modules": god_modules
     }
 
-    directory_stats = []
+    directory_stats: List[DirectoryStat] = []
     entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
     for p, count in entropy.items():
         directory_stats.append({
