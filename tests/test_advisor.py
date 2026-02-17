@@ -12,13 +12,17 @@ from src.agent_scorecard.report import generate_advisor_report
 
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
 
+# TODO: Add type hints for Agent clarity
 def test_calculate_acl():
     # ACL = CC + (LOC / 20)
+    """TODO: Add docstring for AI context."""
     assert calculate_acl(10, 100) == 10 + (100 / 20) # 15.0
     assert calculate_acl(0, 0) == 0
 
+# TODO: Add type hints for Agent clarity
 def test_get_directory_entropy(tmp_path):
     # Create 25 files in tmp_path
+    """TODO: Add docstring for AI context."""
     for i in range(25):
         (tmp_path / f"file_{i}.txt").touch()
 
@@ -36,8 +40,10 @@ def test_get_directory_entropy(tmp_path):
     assert entropy[base_name] == 25 # only files in root
     assert "subdir" not in entropy
 
+# TODO: Add type hints for Agent clarity
 def test_dependency_analysis(tmp_path):
     # main.py imports utils, utils imports shared
+    """TODO: Add docstring for AI context."""
     (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
     (tmp_path / "utils.py").write_text("import shared", encoding="utf-8")
     (tmp_path / "shared.py").write_text("# no imports", encoding="utf-8")
@@ -54,8 +60,10 @@ def test_dependency_analysis(tmp_path):
     assert inbound.get("shared.py") == 1
     assert inbound.get("main.py") == 0
 
+# TODO: Add type hints for Agent clarity
 def test_cycle_detection(tmp_path):
     # a.py <-> b.py
+    """TODO: Add docstring for AI context."""
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
     (tmp_path / "b.py").write_text("import a", encoding="utf-8")
 
@@ -67,6 +75,7 @@ def test_cycle_detection(tmp_path):
     assert "a.py" in flat_cycle
     assert "b.py" in flat_cycle
 
+# TODO: Add type hints for Agent clarity
 def test_generate_advisor_report_standalone():
     """Tests the standalone Advisor Report used in 'agent-score advise' command."""
     stats = [
@@ -92,6 +101,7 @@ def test_generate_advisor_report_standalone():
 
 # --- Advisor Mode Tests (Integration Tests) ---
 
+# TODO: Add type hints for Agent clarity
 def test_function_stats_parsing(tmp_path):
     """Tests that we can parse a file and extract function stats correctly."""
     code = textwrap.dedent("""
@@ -117,6 +127,7 @@ def test_function_stats_parsing(tmp_path):
     assert func["loc"] >= 20
     assert func["acl"] > 2
 
+# TODO: Add type hints for Agent clarity
 def test_unified_score_report_content(tmp_path):
     """Tests the Markdown report generated during the 'score' command."""
     # Setup a project that triggers advisor warnings

@@ -28,7 +28,6 @@ def test_generate_markdown_report():
         },
     ]
 
-    # RESOLUTION: We call the function with the specific arguments defined in report.py
     # generate_markdown_report(stats, final_score, path, profile, project_issues)
     report_content = generate_markdown_report(
         stats=file_results,
@@ -69,12 +68,12 @@ def test_generate_recommendations_report():
 
     rec_content = generate_recommendations_report(results)
 
-    assert "High Complexity in heavy.py" in rec_content
+    assert "High Complexity: heavy.py" in rec_content
     assert "Missing AGENTS.md" in rec_content
-    assert "Circular Dependency in circular.py" in rec_content
-    assert "Type Coverage < 90% in untyped.py" in rec_content
+    assert "Circular Dependency: circular.py" in rec_content
+    assert "Low Type Safety: untyped.py" in rec_content
 
     assert "Context window overflow." in rec_content
-    assert "Agent guesses commands." in rec_content
-    assert "Infinite recursion loops." in rec_content
+    assert "Agent guesses repository structure." in rec_content
+    assert "Recursive loops." in rec_content
     assert "Hallucination of signatures." in rec_content

@@ -11,7 +11,7 @@ def get_loc(filepath: str) -> int:
         return 0
 
 def get_complexity_score(filepath: str) -> float:
-    """Returns average cyclomatic complexity."""
+    """Returns average cyclomatic complexity for all functions in a file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -29,7 +29,7 @@ def get_complexity_score(filepath: str) -> float:
     return sum(complexities) / len(complexities)
 
 def check_type_hints(filepath: str) -> float:
-    """Returns type hint coverage percentage."""
+    """Returns type hint coverage percentage for functions and async functions."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -51,7 +51,10 @@ def check_type_hints(filepath: str) -> float:
     return (typed_functions / len(functions)) * 100.0
 
 def calculate_acl(complexity: float, loc: int) -> float:
-    """Calculates Agent Cognitive Load (ACL). Formula: ACL = CC + (LLOC / 20)"""
+    """
+    Calculates Agent Cognitive Load (ACL). 
+    Formula: ACL = Cyclomatic Complexity + (Logical Lines of Code / 20)
+    """
     return complexity + (loc / 20.0)
 
 def count_tokens(filepath: str) -> int:
@@ -64,7 +67,7 @@ def count_tokens(filepath: str) -> int:
         return 0
 
 def get_function_stats(filepath: str) -> List[Dict[str, Any]]:
-    """Returns statistics for each function in the file."""
+    """Returns statistics for each function in the file including ACL and Type coverage."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -76,13 +79,13 @@ def get_function_stats(filepath: str) -> List[Dict[str, Any]]:
     visitor.preorder(tree, visitor)
     complexity_map = {graph.lineno: graph.complexity() for graph in visitor.graphs.values()}
 
-    stats = []
+    stats: List[Dict[str, Any]] = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             start_line = node.lineno
             end_line = getattr(node, 'end_lineno', start_line)
             loc = end_line - start_line + 1
-            complexity = complexity_map.get(start_line, 1)
+            complexity = float(complexity_map.get(start_line, 1))
             acl = calculate_acl(complexity, loc)
 
             stats.append({

@@ -2,8 +2,10 @@ import textwrap
 from pathlib import Path
 from src.agent_scorecard.analyzer import get_import_graph, get_inbound_imports
 
+# TODO: Add type hints for Agent clarity
 def test_analyze_imports_internal_only(tmp_path):
     # Create internal module
+    """TODO: Add docstring for AI context."""
     (tmp_path / "internal.py").write_text("x = 1", encoding="utf-8")
 
     # Create client importing internal and external

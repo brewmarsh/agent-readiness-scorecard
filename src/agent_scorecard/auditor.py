@@ -115,6 +115,16 @@ def get_python_signatures(filepath: str) -> str:
 
     return "\n".join(signatures)
 
+def count_python_tokens(filepath: str) -> int:
+    """Calculates the token count of a single Python file using tiktoken."""
+    try:
+        enc = tiktoken.get_encoding("cl100k_base")
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        return len(enc.encode(content))
+    except Exception:
+        return 0
+
 def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     """
     Counts tokens for the project's 'Critical Context':
