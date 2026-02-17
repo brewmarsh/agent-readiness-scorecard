@@ -16,6 +16,7 @@ from .metrics import (  # noqa: F401
     get_complexity_score,
     get_function_stats,
     check_type_hints,
+    count_tokens,
 )
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
@@ -36,7 +37,6 @@ def _collect_python_files(path: str) -> List[str]:
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
             parts = root.split(os.sep)
-            # Ignore hidden directories like .git or .venv
             if any(p.startswith(".") and p != "." for p in parts):
                 continue
             for file in files:
@@ -76,7 +76,6 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
-        # RESOLUTION: Use the abstracted helper from the Beta branch
         imported_names = _parse_imports(full_path)
         
         for name in imported_names:
@@ -134,7 +133,6 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
-    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
     unique_cycles = []
     seen_cycle_sets = set()
     for cycle in cycles:
@@ -153,14 +151,12 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
     penalty = 0
     issues = []
 
-    # 1. Documentation Check
     missing_docs = scan_project_docs(path, profile.get("required_files", []))
     if missing_docs:
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
-    # 2. God Module Detection
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -169,7 +165,6 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
         penalty += len(god_modules) * 10
         issues.append(msg)
 
-    # 3. Directory Entropy (Structural Complexity)
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
@@ -177,7 +172,6 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
-    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
@@ -187,9 +181,18 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
 
     return penalty, issues
 
-def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] = None, thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+# RESOLUTION: Combined parameters to support both Agent Profiles and Threshold overrides
+def perform_analysis(
+    path: str, 
+    agent: str = "generic", 
+    limit_to_files: Optional[List[str]] = None, 
+    profile: Optional[Dict[str, Any]] = None,
+    thresholds: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """Orchestrates the full project analysis from file scores to project-wide metrics."""
-    profile = PROFILES[agent]
+    if profile is None:
+        profile = PROFILES.get(agent, PROFILES["generic"])
+    
     py_files = _collect_python_files(path)
     all_py_files = py_files[:]
 
@@ -200,6 +203,7 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
     file_scores = []
 
     for filepath in py_files:
+        # Pass thresholds to allow pyproject.toml overrides per file
         score, issues, loc, complexity, type_safety, metrics = score_file(filepath, profile, thresholds=thresholds)
         file_scores.append(score)
 
@@ -214,14 +218,12 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
             "function_metrics": metrics
         })
 
-    # Project Level Analysis
     penalty, project_issues = get_project_issues(path, all_py_files, profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
-    # Advanced Dependency Analysis
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     cycles = detect_cycles(graph)
@@ -232,7 +234,6 @@ def perform_analysis(path: str, agent: str, limit_to_files: Optional[List[str]] 
         "god_modules": god_modules
     }
 
-    # Directory Entropy via Auditor
     directory_stats = []
     entropy = auditor.get_crowded_directories(path if os.path.isdir(path) else os.path.dirname(path), threshold=50)
     for p, count in entropy.items():

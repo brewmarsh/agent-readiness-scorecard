@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
 from typing import List, Dict, Any, Optional
@@ -11,6 +12,7 @@ from rich.panel import Panel
 # Import core modules
 from . import analyzer, report, auditor, config
 from .prompt_analyzer import PromptAnalyzer
+from .config import load_config
 from .constants import PROFILES
 from .fix import apply_fixes
 from .scoring import generate_badge
@@ -87,6 +89,11 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
         health_table.add_row("Circular Dependencies", "[green]NONE[/green]")
 
     console.print(health_table)
+    
+    if not health["agents_md"]:
+        console.print("[bold red]Missing Critical Agent Docs: AGENTS.md[/bold red]")
+    if entropy["warning"]:
+        console.print("[bold yellow]High Directory Entropy warning[/bold yellow]")
     console.print("")
 
 def _print_file_analysis(results: Dict[str, Any], verbosity: str) -> None:
@@ -146,14 +153,20 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Opti
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
-    profile = PROFILES[agent]
+    
+    # Merge config thresholds into the selected profile for analysis logic
+    profile = copy.deepcopy(PROFILES[agent])
+    if thresholds:
+        if "thresholds" not in profile:
+            profile["thresholds"] = {}
+        profile["thresholds"].update(thresholds)
 
     if fix:
         if verbosity != "quiet":
             console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         apply_fixes(path, profile)
 
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, thresholds=thresholds)
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, profile=profile, thresholds=thresholds)
 
     if verbosity != "quiet":
         console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
@@ -169,7 +182,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Opti
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
 def check_prompts(input_path: str, plain: bool) -> None:
-    """Analyzes prompts for persona, CoT, and delimiter hygiene."""
+    """Analyzes prompts for best practices."""
     if input_path == "-":
         content = sys.stdin.read()
     else:
@@ -188,18 +201,14 @@ def check_prompts(input_path: str, plain: bool) -> None:
         table = Table(title=f"Prompt Analysis: {os.path.basename(input_path) if input_path != '-' else 'Stdin'}")
         table.add_column("Heuristic", style="cyan")
         table.add_column("Status", justify="right")
-
         order = ["role_definition", "cognitive_scaffolding", "delimiter_hygiene", "few_shot", "negative_constraints"]
         for key in order:
             if key in result.get("results", {}):
                 status = "[green]✅ PASS[/green]" if result["results"][key] else "[red]❌ FAIL[/red]"
                 table.add_row(key.replace("_", " ").title(), status)
-
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
-        if score >= 80:
-            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
     if score < 80:
         sys.exit(1)
@@ -208,11 +217,12 @@ def check_prompts(input_path: str, plain: bool) -> None:
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
-    """Automatically fix common issues using CRAFT framework prompts."""
-    if agent not in PROFILES:
-        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
-        agent = "generic"
-    profile = PROFILES[agent]
+    """Automatically fix common issues in the codebase."""
+    cfg = load_config(path)
+    profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
+    if cfg.get("thresholds"):
+        profile.setdefault("thresholds", {}).update(cfg["thresholds"])
+
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
@@ -223,14 +233,13 @@ def fix(path: str, agent: str) -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
-@click.option("--diff", "diff_base", help="Score only files changed vs this git ref.")
+@click.option("--diff", "diff_base", help="Score only changed files.")
 @click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity.")
 def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str, verbosity: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
-    cfg = config.load_config(path)
+    cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
     thresholds = cfg.get("thresholds")
-
     limit_to_files = get_changed_files(diff_base) if diff_base else None
     run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files, verbosity=final_verbosity, thresholds=thresholds)
 
@@ -241,39 +250,28 @@ def advise(path: str, output_file: Optional[str]) -> None:
     """Detailed advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     
-    results = analyzer.perform_analysis(path, "generic")
+    cfg = load_config(path)
+    results = analyzer.perform_analysis(path, "generic", thresholds=cfg.get("thresholds"))
     
-    # Enrich file results with token counts for the advisor report
     stats = []
     for res in results.get("file_results", []):
         full_path = os.path.join(path, res["file"])
         tokens_info = auditor.check_critical_context_tokens(full_path)
         max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0])
-        
         stats.append({
-            "file": res["file"],
-            "acl": max_acl,
-            "complexity": res["complexity"],
-            "loc": res["loc"],
-            "tokens": tokens_info["token_count"]
+            "file": res["file"], "acl": max_acl, "complexity": res["complexity"],
+            "loc": res["loc"], "tokens": tokens_info["token_count"]
         })
 
-    # Prepare other stats
     entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
-
     report_md = report.generate_advisor_report(
-        stats=stats,
-        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
-        entropy_stats=entropy_stats,
-        cycles=results.get('dep_analysis', {}).get('cycles', [])
+        stats=stats, dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
+        entropy_stats=entropy_stats, cycles=results.get('dep_analysis', {}).get('cycles', [])
     )
 
-    # GUARANTEE: Ensure the file is written even if results are empty to prevent CI failure
     if output_file:
         abs_output_path = os.path.abspath(output_file)
-        # Handle cases where stats might be empty
-        final_output = report_md if stats else "# Agent Advisor Report\n\nNo Python files found for analysis."
-        
+        final_output = report_md if stats else "# Agent Advisor Report\n\nNo Python files found."
         with open(abs_output_path, "w", encoding="utf-8") as f:
             f.write(final_output)
         console.print(f"[bold green]Advisor Report saved to {abs_output_path}[/bold green]")
