@@ -2,6 +2,7 @@ import os
 import tempfile
 from agent_scorecard import auditor
 
+
 # TODO: Add type hints for Agent clarity
 def test_check_directory_entropy():
     """TODO: Add docstring for AI context."""
@@ -26,6 +27,7 @@ def test_check_directory_entropy():
         assert result["avg_files"] == 5.0
         assert result["warning"] is False
 
+
 # TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_warning():
     """TODO: Add docstring for AI context."""
@@ -38,6 +40,7 @@ def test_check_directory_entropy_warning():
         result = auditor.check_directory_entropy(tmpdir)
         assert result["avg_files"] == 20.0
         assert result["warning"] is True
+
 
 # TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_max_files():
@@ -60,6 +63,7 @@ def test_check_directory_entropy_max_files():
         assert result["warning"] is True
         assert result["max_files"] == 60
         assert god_dir in result["crowded_dirs"]
+
 
 # TODO: Add type hints for Agent clarity
 def test_get_python_signatures():
@@ -88,6 +92,7 @@ class MyClass:
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
 
 # TODO: Add type hints for Agent clarity
 def test_get_python_signatures_with_decorators():
@@ -120,6 +125,7 @@ class DecoratedClass:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+
 # TODO: Add type hints for Agent clarity
 def test_get_python_signatures_multiline():
     """TODO: Add docstring for AI context."""
@@ -142,6 +148,7 @@ def multiline_func(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+
 # TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens():
     """TODO: Add docstring for AI context."""
@@ -155,6 +162,7 @@ def test_check_critical_context_tokens():
         result = auditor.check_critical_context_tokens(tmpdir)
         assert result["token_count"] > 0
         assert result["alert"] is False
+
 
 # TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens_single_file():
@@ -176,10 +184,12 @@ def test_check_critical_context_tokens_single_file():
 
         # Test just signature tokens
         import tiktoken
+
         enc = tiktoken.get_encoding("cl100k_base")
         sig_tokens = len(enc.encode("def foo():"))
 
         assert result["token_count"] > sig_tokens
+
 
 # TODO: Add type hints for Agent clarity
 def test_check_environment_health():
@@ -208,6 +218,7 @@ def test_check_environment_health():
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["lock_file"] is True
+
 
 # TODO: Add type hints for Agent clarity
 def test_check_environment_health_pyproject_ruff():

@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import Dict, Any
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
@@ -12,13 +12,15 @@ CRAFT_PROMPTS = {
         "Read the source code provided.",
         "Identify the specific violation (ACL > 15 or Missing Types).",
         "Apply the fix strictly to the violations.",
-        "Verify that the code is syntactically correct."
+        "Verify that the code is syntactically correct.",
     ],
-    "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code."
+    "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code.",
 }
+
 
 class LLM:
     """Standard interface for LLM interaction."""
+
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """
         Generates fixed code using an LLM.
@@ -29,6 +31,7 @@ class LLM:
         if "Source Code:\n" in user_prompt:
             return user_prompt.split("Source Code:\n")[-1]
         return ""
+
 
 def fix_file_issues(filepath: str) -> None:
     """Uses CRAFT prompts and LLM to fix code quality violations."""
@@ -50,7 +53,7 @@ def fix_file_issues(filepath: str) -> None:
         return
 
     system_prompt = f"{CRAFT_PROMPTS['persona']}\n\n{CRAFT_PROMPTS['frame']}"
-    action_str = "\n".join([f"- {step}" for step in CRAFT_PROMPTS['action_steps']])
+    action_str = "\n".join([f"- {step}" for step in CRAFT_PROMPTS["action_steps"]])
     user_prompt = f"Action Steps:\n{action_str}\n\nSource Code:\n{content}"
 
     llm = LLM()
@@ -59,7 +62,10 @@ def fix_file_issues(filepath: str) -> None:
     if fixed_code and fixed_code.strip() != content.strip():
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(fixed_code)
-        console.print(f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}")
+        console.print(
+            f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}"
+        )
+
 
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
@@ -74,7 +80,9 @@ def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
                 filepath = os.path.join(path, req)
                 content = ""
                 if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(project_name=os.path.basename(os.path.abspath(path)))
+                    content = AGENT_CONTEXT_TEMPLATE.format(
+                        project_name=os.path.basename(os.path.abspath(path))
+                    )
                 elif req.lower() == "instructions.md":
                     content = INSTRUCTIONS_TEMPLATE
                 elif req.lower() == "readme.md":

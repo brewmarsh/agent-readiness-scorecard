@@ -1,6 +1,7 @@
 import textwrap
 from pathlib import Path
-from src.agent_scorecard.analyzer import get_import_graph, get_inbound_imports
+from agent_scorecard.analyzer import get_import_graph, get_inbound_imports
+
 
 # TODO: Add type hints for Agent clarity
 def test_analyze_imports_internal_only(tmp_path):
@@ -33,16 +34,18 @@ def test_analyze_imports_internal_only(tmp_path):
     # In graph: 'client.py': {'internal.py'}
     # In inbound: 'internal.py': 1
 
-    assert inbound.get('internal.py', 0) >= 1
+    assert inbound.get("internal.py", 0) >= 1
 
     # os and sys should NOT be in the graph or inbound (as they are external)
-    assert 'os' not in inbound
-    assert 'sys' not in inbound
-    assert 'os.py' not in inbound
+    assert "os" not in inbound
+    assert "sys" not in inbound
+    assert "os.py" not in inbound
+
 
 if __name__ == "__main__":
     import shutil
     import tempfile
+
     path = Path(tempfile.mkdtemp())
     try:
         test_analyze_imports_internal_only(path)

@@ -9,22 +9,25 @@ except ImportError:
     try:
         import tomli as tomllib  # type: ignore
     except ImportError:
-        tomllib = None
+        tomllib = None  # type: ignore
+
 
 class Config(TypedDict):
     verbosity: str
     thresholds: Dict[str, Any]
+
 
 # Unified defaults from both branches
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
         "acl_yellow": 10,  # Warning threshold
-        "acl_red": 20,     # Critical failure threshold
+        "acl_red": 20,  # Critical failure threshold
         "complexity": 10,
         "type_safety": 90,
-    }
+    },
 }
+
 
 def _deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
@@ -35,6 +38,7 @@ def _deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
         else:
             result[key] = value
     return result
+
 
 def load_config(path: str = ".") -> Config:
     """

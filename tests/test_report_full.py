@@ -1,5 +1,6 @@
 from click.testing import CliRunner
-from src.agent_scorecard.main import cli
+from agent_scorecard.main import cli
+
 
 # TODO: Add type hints for Agent clarity
 def test_report_full(tmp_path):
@@ -18,14 +19,13 @@ def test_report_full(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["score", str(tmp_path), "--report", str(report_file)])
 
-    assert result.exit_code == 1 # Fails because score is low
+    assert result.exit_code == 1  # Fails because score is low
 
     content = report_file.read_text(encoding="utf-8")
 
     assert "# Agent Scorecard Report" in content
     assert "high_acl.py" in content
     assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in content
-
 
     assert "Type Safety Index" in content
     assert "Agent Prompts for Remediation" in content

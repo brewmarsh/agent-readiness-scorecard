@@ -1,46 +1,56 @@
 import re
-from typing import List, Dict, Any, TypedDict, Optional
+from typing import List, Dict, TypedDict
+
 
 class PromptAnalysisResult(TypedDict):
     score: int
     results: Dict[str, bool]
     improvements: List[str]
 
+
+class HeuristicConfig(TypedDict, total=False):
+    pattern: str
+    improvement: str
+    critical: bool
+    weight: int
+    penalty: int
+
+
 class PromptAnalyzer:
     """Analyzes text prompts for LLM best practices using structural heuristics."""
 
     # Centralized heuristics dictionary for easier maintenance and testing
-    HEURISTICS = {
+    HEURISTICS: Dict[str, HeuristicConfig] = {
         "role_definition": {
             "pattern": r"(?i)(you are|act as|your role)",
             "improvement": "Add a clear persona (e.g., 'You are a Python Expert') to ground the model's latent space.",
             "critical": True,
-            "weight": 25
+            "weight": 25,
         },
         "cognitive_scaffolding": {
             "pattern": r"(?i)(step by step|reasoning|think|plan|step \d+|phase \d+)",
             "improvement": "Add Chain-of-Thought instructions ('Think step by step') to improve complex reasoning.",
             "critical": False,
-            "weight": 25
+            "weight": 25,
         },
         "delimiter_hygiene": {
             "pattern": r"(?i)(<[^>]+>|'''|\"\"\"|```|\{\{.*?\}\})",
             "improvement": "Use delimiters (like XML tags or triple quotes) to separate instructions from input data.",
             "critical": False,
-            "weight": 25
+            "weight": 25,
         },
         "few_shot": {
             "pattern": r"(?i)(example:|input:.*?output:)",
             "improvement": "Include 1-3 examples (Few-Shot) to guide the model on format and style.",
             "critical": False,
-            "weight": 25
+            "weight": 25,
         },
         "negative_constraints": {
             "pattern": r"(?i)(not|don't|do not|never)",
             "improvement": "Refactor negative constraints ('Don't do X') into positive instructions ('Do Y instead') for better adherence.",
             "critical": False,
-            "penalty": 10
-        }
+            "penalty": 10,
+        },
     }
 
     def analyze(self, text: str) -> PromptAnalysisResult:
@@ -50,11 +60,7 @@ class PromptAnalyzer:
         score = 0
 
         if not text or not text.strip():
-            return {
-                "score": 0,
-                "results": {},
-                "improvements": ["Prompt is empty."]
-            }
+            return {"score": 0, "results": {}, "improvements": ["Prompt is empty."]}
 
         # 1. Standard heuristics (Simple Regex)
         # We process the first three dimensions using standard regex matching
@@ -77,20 +83,16 @@ class PromptAnalyzer:
 
         # 3. Context-Aware Negative Constraint Detection
         if self._check_negative_constraints(text):
-            results["negative_constraints"] = False # Issue found
+            results["negative_constraints"] = False  # Issue found
             score -= self.HEURISTICS["negative_constraints"]["penalty"]
             improvements.append(self.HEURISTICS["negative_constraints"]["improvement"])
         else:
-            results["negative_constraints"] = True # No issue
+            results["negative_constraints"] = True  # No issue
 
         # Clamp score between 0 and 100
         score = max(0, min(100, score))
 
-        return {
-            "score": score,
-            "results": results,
-            "improvements": improvements
-        }
+        return {"score": score, "results": results, "improvements": improvements}
 
     def _check_few_shot(self, text: str) -> bool:
         """Heuristic for detecting few-shot examples with context awareness."""
@@ -127,8 +129,8 @@ class PromptAnalyzer:
                 continue
 
             # Get the line containing the match for context
-            start_of_line = text.rfind('\n', 0, match.start()) + 1
-            end_of_line = text.find('\n', match.end())
+            start_of_line = text.rfind("\n", 0, match.start()) + 1
+            end_of_line = text.find("\n", match.end())
             if end_of_line == -1:
                 end_of_line = len(text)
             line_content = text[start_of_line:end_of_line].strip()
@@ -141,6 +143,6 @@ class PromptAnalyzer:
             if not re.match(r"^(\*|\-|\d+\.)", line_content):
                 continue
 
-            return True # Violation found
+            return True  # Violation found
 
         return False
