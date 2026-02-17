@@ -1,32 +1,62 @@
 import os
-import json
-from typing import Dict, Any
+import copy
+from typing import Dict, Any, TypedDict
 
-def load_config(path: str = ".") -> Dict[str, Any]:
-    """Loads configuration from .agent-scorecard.json if it exists."""
-    default_config = {
-        "verbosity": "summary",
-        "thresholds": {
-            "acl_yellow": 10,
-            "acl_red": 20,
-            "type_safety": 90
-        }
+# Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+try:
+    import tomllib  # type: ignore
+except ImportError:
+    try:
+        import tomli as tomllib  # type: ignore
+    except ImportError:
+        tomllib = None
+
+class Config(TypedDict):
+    verbosity: str
+    thresholds: Dict[str, Any]
+
+# Unified defaults from both branches
+DEFAULT_CONFIG: Config = {
+    "verbosity": "summary",
+    "thresholds": {
+        "acl_yellow": 10,  # Warning threshold
+        "acl_red": 20,     # Critical failure threshold
+        "complexity": 10,
+        "type_safety": 90,
     }
+}
 
-    config_file = os.path.join(path, ".agent-scorecard.json")
-    if os.path.exists(config_file):
+def _deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge user settings into the default configuration."""
+    result = copy.deepcopy(base)
+    for key, value in over.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+def load_config(path: str = ".") -> Config:
+    """
+    Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
+    Looks for the [tool.agent-scorecard] section.
+    """
+    if os.path.isfile(path):
+        search_dir = os.path.dirname(os.path.abspath(path))
+    else:
+        search_dir = path
+
+    config_path = os.path.join(search_dir, "pyproject.toml")
+    user_config = {}
+
+    if tomllib and os.path.exists(config_path):
         try:
-            with open(config_file, "r") as f:
-                user_config = json.load(f)
-
-                # Deep merge or just update
-                if "thresholds" in user_config and isinstance(user_config["thresholds"], dict):
-                    default_config["thresholds"].update(user_config["thresholds"])
-
-                if "verbosity" in user_config:
-                    default_config["verbosity"] = user_config["verbosity"]
+            with open(config_path, "rb") as f:
+                data = tomllib.load(f)
+                # Matches the [tool.agent-scorecard] namespace
+                user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback to defaults on parse error
+            # Fallback to DEFAULT_CONFIG if file is malformed
             pass
 
-    return default_config
+    return _deep_merge(DEFAULT_CONFIG, user_config)  # type: ignore

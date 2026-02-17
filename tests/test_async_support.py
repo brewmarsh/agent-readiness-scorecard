@@ -1,4 +1,6 @@
 from pathlib import Path
+from unittest.mock import patch
+import textwrap
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 from src.agent_scorecard.analyzer import check_type_hints
@@ -24,13 +26,23 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    # Run 'fix' command (via score command with --fix option)
-    result = runner.invoke(cli, ["score", str(p), "--fix"])
-    assert result.exit_code == 0
+    
+    # RESOLUTION: Use mocking to simulate the LLM refactoring the code
+    fixed_code = textwrap.dedent("""
+        async def process_data(data: dict) -> None:
+            \"\"\"Processes data async.\"\"\"
+            pass
+    """).strip()
+
+    # Mocking the LLM ensures tests run locally without network access
+    with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+        # We invoke the standalone 'fix' command established in the Beta branch
+        result = runner.invoke(cli, ["fix", str(p)])
+        assert result.exit_code == 0
 
     content = p.read_text()
-    assert '"""TODO: Add docstring for AI context."""' in content
-    assert '# TODO: Add type hints for Agent clarity' in content
+    assert 'Processes data async.' in content
+    assert 'data: dict' in content
 
 def test_score_async_function(tmp_path: Path):
     """Test that 'score' command detects issues in async functions."""
@@ -41,6 +53,7 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
+    # Ensure we test the detailed output to find the specific index string
     result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
 
     assert "Type Safety Index 0%" in result.output
