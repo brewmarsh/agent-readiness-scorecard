@@ -86,7 +86,7 @@ def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str,
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
     prompts += "Copy and paste these prompts into an LLM to resolve identified issues.\n\n"
 
-    # 1. Project-Wide Remediation (God Modules)
+    # 1. Project-Wide Remediation
     if project_issues:
         for issue in project_issues:
             if "God Modules Detected" in issue:
@@ -211,20 +211,20 @@ def generate_recommendations_report(results: Any) -> str:
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
 
     for res in file_list:
-        # Check Complexity
+        # 1. Complexity Checks
         if res.get("complexity", 0) > 20:
             recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context window overflow.", "Recommendation": "Refactor into pure functions."})
         
-        # Check Dependencies
+        # 2. Dependency Checks
         issues_text = str(res.get("issues", ""))
         if "Circular dependency" in issues_text:
-            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use Dependency Injection to break cycles."})
+            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use Dependency Injection to break cycle."})
 
-        # Check Type Safety
+        # 3. Type Safety Checks
         if res.get("type_coverage", 100) < 90:
             recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints to function signatures."})
 
-    # Documentation Checks (Global Issues)
+    # 4. Documentation Checks
     if isinstance(results, dict) and results.get("missing_docs"):
         if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
             recommendations.append({
