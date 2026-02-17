@@ -86,7 +86,7 @@ def _generate_prompts_section(stats: List[Dict[str, Any]], thresholds: Dict[str,
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
     prompts += "Copy and paste these prompts into an LLM to resolve identified issues.\n\n"
 
-    # 1. Project-Wide Remediation
+    # 1. Project-Wide Remediation (God Modules)
     if project_issues:
         for issue in project_issues:
             if "God Modules Detected" in issue:
@@ -218,13 +218,13 @@ def generate_recommendations_report(results: Any) -> str:
         # Check Dependencies
         issues_text = str(res.get("issues", ""))
         if "Circular dependency" in issues_text:
-            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Infinite recursion loops.", "Recommendation": "Use Dependency Injection."})
+            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use Dependency Injection to break cycles."})
 
         # Check Type Safety
         if res.get("type_coverage", 100) < 90:
-            recommendations.append({"Finding": f"Low Type Coverage: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints."})
+            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints to function signatures."})
 
-    # Documentation Checks (Proxy Label logic)
+    # Documentation Checks (Global Issues)
     if isinstance(results, dict) and results.get("missing_docs"):
         if any(doc.lower() == "agents.md" for doc in results["missing_docs"]):
             recommendations.append({

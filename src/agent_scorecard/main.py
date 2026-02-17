@@ -71,7 +71,6 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
     health_table.add_row("Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]")
 
     entropy = auditor.check_directory_entropy(path)
-    # Resolution: Combined entropy formatting with status labels
     if entropy["warning"] and entropy.get("max_files", 0) > 50:
         entropy_status = f"Max {entropy['max_files']} files/dir"
         entropy_label = "WARN"
@@ -105,9 +104,9 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
 def _print_project_issues(results: Dict[str, Any]) -> None:
     """Prints project-wide issues found during analysis."""
     if results.get("project_issues"):
-        console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
+        console.print("\n[bold red]Project Issues Detected:[/bold red]")
         for issue in results["project_issues"]:
-            console.print(f"⚠️ {issue}")
+            console.print(f"- {issue}")
 
 def _print_score(results: Dict[str, Any]) -> None:
     """Prints the final formatted agent score."""
