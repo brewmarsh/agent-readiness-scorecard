@@ -91,6 +91,7 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
 
     console.print(health_table)
     
+    # Unified alert messaging
     if not health["agents_md"]:
         console.print("[bold red]Missing Critical Agent Docs: AGENTS.md[/bold red]")
     if entropy["warning"]:
@@ -98,14 +99,14 @@ def _print_environment_health(path: str, results: Dict[str, Any], verbosity: str
     console.print("")
 
 def _print_project_issues(results: Dict[str, Any]) -> None:
-    """Prints project-wide issues."""
+    """Prints project-wide issues found during analysis."""
     if results.get("project_issues"):
         console.print("\n[bold yellow]Project-Wide Issues:[/bold yellow]")
         for issue in results["project_issues"]:
             console.print(f"⚠️ {issue}")
 
 def _print_score(results: Dict[str, Any]) -> None:
-    """Prints the final agent score."""
+    """Prints the final formatted agent score."""
     score_color = "green" if results['final_score'] >= 70 else "red"
     console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
@@ -134,7 +135,7 @@ def _print_file_analysis(results: Dict[str, Any], verbosity: str) -> None:
         console.print("[green]All files passed Agent Readiness checks.[/green]")
 
 def _generate_artifacts(results: Dict[str, Any], path: str, profile: Dict[str, Any], badge: bool, report_path: Optional[str], thresholds: Dict[str, Any], verbosity: str) -> None:
-    """Handles generation of SVG badges and Markdown reports."""
+    """Handles the production of external score reports and badges."""
     if badge:
         output_path = "agent_score.svg"
         with open(output_path, "w", encoding="utf-8") as f:
@@ -159,12 +160,9 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Opti
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     
-    # Merge config thresholds into the selected profile for analysis logic
     profile = copy.deepcopy(PROFILES[agent])
     if thresholds:
-        if "thresholds" not in profile:
-            profile["thresholds"] = {}
-        profile["thresholds"].update(thresholds)
+        profile.setdefault("thresholds", {}).update(thresholds)
 
     if fix:
         if verbosity != "quiet":
@@ -189,7 +187,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: Opti
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
 def check_prompts(input_path: str, plain: bool) -> None:
-    """Analyzes prompts for best practices."""
+    """Analyzes prompts for persona, CoT, and delimiter hygiene."""
     if input_path == "-":
         content = sys.stdin.read()
     else:
@@ -216,6 +214,8 @@ def check_prompts(input_path: str, plain: bool) -> None:
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
+        if score >= 80:
+            console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
 
     if score < 80:
         sys.exit(1)
@@ -224,7 +224,7 @@ def check_prompts(input_path: str, plain: bool) -> None:
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
-    """Automatically fix common issues in the codebase."""
+    """Automatically fix common issues using CRAFT framework prompts."""
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     if cfg.get("thresholds"):
@@ -264,16 +264,25 @@ def advise(path: str, output_file: Optional[str]) -> None:
     for res in results.get("file_results", []):
         full_path = os.path.join(path, res["file"])
         tokens_info = auditor.check_critical_context_tokens(full_path)
+        
+        # Pull max ACL and complexity from function metrics
         max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0])
+        max_comp = max([m["complexity"] for m in res.get("function_metrics", [])] or [res.get("complexity", 0)])
+        
         stats.append({
-            "file": res["file"], "acl": max_acl, "complexity": res["complexity"],
-            "loc": res["loc"], "tokens": tokens_info["token_count"]
+            "file": res["file"], 
+            "acl": max_acl, 
+            "complexity": max_comp,
+            "loc": res["loc"], 
+            "tokens": tokens_info["token_count"]
         })
 
     entropy_stats = {d['path']: d['file_count'] for d in results.get('directory_stats', [])}
     report_md = report.generate_advisor_report(
-        stats=stats, dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
-        entropy_stats=entropy_stats, cycles=results.get('dep_analysis', {}).get('cycles', [])
+        stats=stats, 
+        dependency_stats=results.get('dep_analysis', {}).get('god_modules', {}),
+        entropy_stats=entropy_stats, 
+        cycles=results.get('dep_analysis', {}).get('cycles', [])
     )
 
     if output_file:
