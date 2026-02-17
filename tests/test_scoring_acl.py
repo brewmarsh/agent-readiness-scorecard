@@ -1,11 +1,13 @@
 from src.agent_scorecard.scoring import score_file
 from src.agent_scorecard.constants import PROFILES
 
+# TODO: Add type hints for Agent clarity
 def test_score_file_acl_penalty(tmp_path):
     # Create a file with high ACL function
     # ACL = CC + LOC/20
     # Let's make LOC high ~300 lines -> 15.
 
+    """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
     code += "    x = 0\n"
     # 320 lines of assignment

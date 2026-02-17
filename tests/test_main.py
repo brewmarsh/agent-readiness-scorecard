@@ -10,6 +10,7 @@ from src.agent_scorecard.scoring import generate_badge
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:
+    """TODO: Add docstring for AI context."""
     d = tmp_path / "subdir"
     d.mkdir()
     p = d / "hello.py"
@@ -28,6 +29,7 @@ def complex_func(n):
 
 @pytest.fixture
 def typed_file(tmp_path: Path) -> Path:
+    """TODO: Add docstring for AI context."""
     p = tmp_path / "typed.py"
     p.write_text("""
 def add(a: int, b: int) -> int:
@@ -37,6 +39,7 @@ def add(a: int, b: int) -> int:
 
 def test_get_loc(sample_file: Path) -> None:
     # Manual count: 8 lines
+    """TODO: Add docstring for AI context."""
     assert get_loc(str(sample_file)) == 8
 
 def test_analyze_complexity(sample_file: Path) -> None:
@@ -44,6 +47,7 @@ def test_analyze_complexity(sample_file: Path) -> None:
     # complex_func: 4 (1 + 3 ifs)
     # Avg: 2.5
     # RESOLUTION: Use new function name
+    """TODO: Add docstring for AI context."""
     avg = get_complexity_score(str(sample_file))
     assert avg == 2.5
 
@@ -58,6 +62,7 @@ def test_analyze_complexity(sample_file: Path) -> None:
 def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
     # RESOLUTION: Use new function name
+    """TODO: Add docstring for AI context."""
     cov = check_type_hints(str(sample_file))
     assert cov == 0
 
@@ -74,6 +79,7 @@ def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     assert penalty == 0
 
 def test_scan_project_docs(tmp_path: Path) -> None:
+    """TODO: Add docstring for AI context."""
     required = ["agents.md", "instructions.md"]
     missing = scan_project_docs(str(tmp_path), required)
     assert "agents.md" in missing
@@ -86,6 +92,7 @@ def test_scan_project_docs(tmp_path: Path) -> None:
 
 def test_generate_badge() -> None:
     # >= 90: Bright Green
+    """TODO: Add docstring for AI context."""
     svg = generate_badge(95)
     assert "#4c1" in svg
     assert "95/100" in svg
