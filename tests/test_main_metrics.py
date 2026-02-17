@@ -1,8 +1,10 @@
 from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
+# TODO: Add type hints for Agent clarity
 def test_main_metrics_god_module(tmp_path):
     # Create 55 files importing 'god_module'
+    """TODO: Add docstring for AI context."""
     (tmp_path / "god_module.py").write_text("x = 1")
 
     for i in range(55):
@@ -14,8 +16,10 @@ def test_main_metrics_god_module(tmp_path):
     assert "God Modules Detected" in result.output
     assert "god_module" in result.output
 
+# TODO: Add type hints for Agent clarity
 def test_main_metrics_directory_entropy(tmp_path):
     # Create 55 files in one directory
+    """TODO: Add docstring for AI context."""
     for i in range(55):
         (tmp_path / f"file_{i}.txt").write_text("content") # .txt files are counted by count_directory_files
         # Note: main.py uses py_files to find directories, so at least one .py file is needed

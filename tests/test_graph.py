@@ -3,7 +3,9 @@ import tempfile
 import networkx as nx
 from agent_scorecard.graph import build_dependency_graph, analyze_graph
 
+# TODO: Add type hints for Agent clarity
 def test_build_dependency_graph():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a small package structure
         pkg_dir = os.path.join(tmpdir, "mypkg")
@@ -31,7 +33,9 @@ def test_build_dependency_graph():
         # main.py depends on utils.py
         assert graph.has_edge(os.path.abspath(main_py), os.path.abspath(utils_py))
 
+# TODO: Add type hints for Agent clarity
 def test_circular_dependency():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         a_py = os.path.join(tmpdir, "a.py")
         b_py = os.path.join(tmpdir, "b.py")
@@ -50,7 +54,9 @@ def test_circular_dependency():
         assert os.path.abspath(a_py) in cycle
         assert os.path.abspath(b_py) in cycle
 
+# TODO: Add type hints for Agent clarity
 def test_god_module():
+    """TODO: Add docstring for AI context."""
     graph = nx.DiGraph()
     god_node = "god.py"
     graph.add_node(god_node)

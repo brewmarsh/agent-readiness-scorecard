@@ -1,6 +1,7 @@
 import pytest
 from src.agent_scorecard.prompt_analyzer import PromptAnalyzer
 
+# TODO: Add type hints for Agent clarity
 def test_prompt_analyzer_perfect():
     """Test a prompt that satisfies all positive heuristics without penalties."""
     analyzer = PromptAnalyzer()
@@ -26,6 +27,7 @@ def test_prompt_analyzer_perfect():
     assert results["results"]["negative_constraints"] is True 
     assert len(results["improvements"]) == 0
 
+# TODO: Add type hints for Agent clarity
 def test_prompt_analyzer_low_score_clamping():
     """Test that scores are clamped to 0 when penalties exceed positive points."""
     analyzer = PromptAnalyzer()
@@ -41,6 +43,7 @@ def test_prompt_analyzer_low_score_clamping():
     # 4 missing positive improvements + 1 negative constraint improvement = 5
     assert len(results["improvements"]) == 5
 
+# TODO: Add type hints for Agent clarity
 def test_negative_constraints_context_awareness():
     """Verify that negative constraints are only flagged in imperative contexts (lists)."""
     analyzer = PromptAnalyzer()
@@ -54,6 +57,7 @@ def test_negative_constraints_context_awareness():
     assert analyzer.analyze(padding + "\nI do not like this.")["results"]["negative_constraints"] is True
     assert analyzer.analyze(padding + "\nIt is not working.")["results"]["negative_constraints"] is True
 
+# TODO: Add type hints for Agent clarity
 def test_empty_prompt():
     """Test handling of empty or whitespace strings."""
     analyzer = PromptAnalyzer()
@@ -66,6 +70,7 @@ def test_empty_prompt():
     assert res_space["score"] == 0
     assert "Prompt is empty." in res_space["improvements"]
 
+# TODO: Add type hints for Agent clarity
 def test_delimiter_variants():
     """Verify different delimiter patterns are recognized."""
     analyzer = PromptAnalyzer()
@@ -77,6 +82,7 @@ def test_delimiter_variants():
     # XML-style tags
     assert analyzer.analyze("<instructions>do this</instructions>")["results"]["delimiter_hygiene"] is True
 
+# TODO: Add type hints for Agent clarity
 def test_cot_relaxed_variants():
     """Verify variations of Chain-of-Thought phrasing."""
     analyzer = PromptAnalyzer()

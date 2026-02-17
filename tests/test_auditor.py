@@ -2,7 +2,9 @@ import os
 import tempfile
 from agent_scorecard import auditor
 
+# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a few folders and files
         os.makedirs(os.path.join(tmpdir, "folder1"))
@@ -24,7 +26,9 @@ def test_check_directory_entropy():
         assert result["avg_files"] == 5.0
         assert result["warning"] is False
 
+# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_warning():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         for i in range(20):
             with open(os.path.join(tmpdir, f"file{i}.txt"), "w") as f:
@@ -35,7 +39,9 @@ def test_check_directory_entropy_warning():
         assert result["avg_files"] == 20.0
         assert result["warning"] is True
 
+# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_max_files():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a "God Directory" with 60 files
         god_dir = os.path.join(tmpdir, "god_dir")
@@ -55,7 +61,9 @@ def test_check_directory_entropy_max_files():
         assert result["max_files"] == 60
         assert god_dir in result["crowded_dirs"]
 
+# TODO: Add type hints for Agent clarity
 def test_get_python_signatures():
+    """TODO: Add docstring for AI context."""
     code = """
 def func1(a: int) -> str:
     return str(a)
@@ -81,7 +89,9 @@ class MyClass:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+# TODO: Add type hints for Agent clarity
 def test_get_python_signatures_with_decorators():
+    """TODO: Add docstring for AI context."""
     code = """
 @deco1
 @deco2(x=1)
@@ -110,7 +120,9 @@ class DecoratedClass:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+# TODO: Add type hints for Agent clarity
 def test_get_python_signatures_multiline():
+    """TODO: Add docstring for AI context."""
     code = """
 def multiline_func(
     a: int,
@@ -130,7 +142,9 @@ def multiline_func(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+# TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
             f.write("Hello world")
@@ -142,7 +156,9 @@ def test_check_critical_context_tokens():
         assert result["token_count"] > 0
         assert result["alert"] is False
 
+# TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens_single_file():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         readme_path = os.path.join(tmpdir, "README.md")
         with open(readme_path, "w") as f:
@@ -165,7 +181,9 @@ def test_check_critical_context_tokens_single_file():
 
         assert result["token_count"] > sig_tokens
 
+# TODO: Add type hints for Agent clarity
 def test_check_environment_health():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Initial: everything False
         res = auditor.check_environment_health(tmpdir)
@@ -191,7 +209,9 @@ def test_check_environment_health():
         res = auditor.check_environment_health(tmpdir)
         assert res["lock_file"] is True
 
+# TODO: Add type hints for Agent clarity
 def test_check_environment_health_pyproject_ruff():
+    """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "pyproject.toml"), "w") as f:
             f.write("[tool.ruff]\nline-length = 88")
