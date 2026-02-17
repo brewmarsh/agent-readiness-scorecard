@@ -3,6 +3,7 @@ import sys
 import subprocess
 import copy
 import click
+import tiktoken
 from importlib.metadata import version, PackageNotFoundError
 from typing import List, Dict, Any, Optional
 from rich.console import Console
@@ -199,8 +200,12 @@ def check_prompts(input_path: str, plain: bool) -> None:
 
     if plain:
         click.echo(f"Score: {score}")
-        for sug in result.get('improvements', []):
-            click.echo(f"Suggestion: {sug}")
+        if result.get('improvements'):
+            click.echo("Refactored Suggestions:")
+            for sug in result['improvements']:
+                click.echo(f"- {sug}")
+        if score < 80:
+            click.echo("FAILED: Prompt score too low.")
     else:
         table = Table(title=f"Prompt Analysis: {os.path.basename(input_path) if input_path != '-' else 'Stdin'}")
         table.add_column("Heuristic", style="cyan")
