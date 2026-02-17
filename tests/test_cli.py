@@ -3,6 +3,7 @@ from click.testing import CliRunner
 from src.agent_scorecard.main import cli
 
 def test_cli_happy_path():
+    """Test standard CLI execution (smoke test)."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -20,6 +21,7 @@ def test_cli_happy_path():
         assert "Final Agent Score" in result.output
 
 def test_cli_profiles_jules_fail_missing_agents_md():
+    """Test jules profile fails if agents.md is missing."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
@@ -30,6 +32,7 @@ def test_cli_profiles_jules_fail_missing_agents_md():
         assert "Missing Critical Agent Docs" in result.output
 
 def test_cli_fix_flag():
+    """Test --fix flag behavior."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a blank python file
@@ -47,6 +50,7 @@ def test_cli_fix_flag():
         assert os.path.exists("instructions.md")
 
 def test_cli_badge_generation():
+    """Test SVG badge generation."""
     runner = CliRunner()
     with runner.isolated_filesystem():
          # Create a dummy python file
@@ -61,6 +65,7 @@ def test_cli_badge_generation():
         assert "Badge saved" in result.output
 
 def test_cli_advise_command():
+    """Test advise command output."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create dummy python file
