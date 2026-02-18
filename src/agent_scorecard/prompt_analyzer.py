@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any, TypedDict, cast
+from typing import List, Dict, TypedDict, cast
 
 
 class HeuristicConfig(TypedDict, total=False):
@@ -85,7 +85,9 @@ class PromptAnalyzer:
         if self._check_negative_constraints(text):
             results["negative_constraints"] = False  # Issue found
             score -= cast(int, self.HEURISTICS["negative_constraints"]["penalty"])
-            improvements.append(cast(str, self.HEURISTICS["negative_constraints"]["improvement"]))
+            improvements.append(
+                cast(str, self.HEURISTICS["negative_constraints"]["improvement"])
+            )
         else:
             results["negative_constraints"] = True  # No issue
 
