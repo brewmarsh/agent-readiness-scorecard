@@ -51,7 +51,9 @@ def test_scoring_with_acl_penalty(tmp_path: Path):
     )
 
     # RESOLUTION: Verify the specific output format from scoring.py
-    # New logic uses "Yellow ACL functions" in details and keeps names in func_metrics
-    assert "Yellow ACL functions" in details
-    assert "(-5)" in details
+    # 322 LOC / 20 + 1 CC = 17.1 ACL -> Red ACL (>15)
+    assert "Red ACL functions" in details
+    assert "(-15)" in details
+    # Also has bloated file penalty
+    assert "Bloated File" in details
     assert any(m["name"] == "big_function" for m in func_metrics)

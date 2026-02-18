@@ -332,7 +332,8 @@ def check_prompts(input_path: str, plain: bool) -> None:
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
         if score >= 80:
             console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
-        elif result.get("improvements"):
+        
+        if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
                 console.print(f"💡 {imp}")

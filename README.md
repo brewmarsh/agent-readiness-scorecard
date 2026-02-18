@@ -86,9 +86,12 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **Complexity** | -10 pts if McCabe > 10 | If code is hard to read, it's hard to refactor safely. |
-| **Missing Types** | -20 pts if coverage < 50% | Agents need types to call functions correctly. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: $CC + (LOC / 20)$. Target <= 10. |
+| **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
+| **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
+| **High Entropy** | -5 pts per directory | Folders with > 50 files confuse retrieval tools. |
+| **Circular Deps** | -5 pts per cycle | Causes infinite recursion in agent planning. |
 
 ## 🛠 Project Structure
 

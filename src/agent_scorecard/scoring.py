@@ -24,20 +24,28 @@ def score_file(
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
-    # Return perfect score for empty files/files with no functions
-    if not metrics:
-        return 100, "", loc, 0.0, 100.0, []
-
     score = 100
     details = []
 
-    # Resolution: Extract granular thresholds
+    # 2. Bloated Files Penalty (QA Logic Guard Integration)
+    # -1 pt per 10 lines > 200. High LLOC correlates with agent "drift".
+    if loc > 200:
+        bloat_penalty = (loc - 200) // 10
+        if bloat_penalty > 0:
+            score -= bloat_penalty
+            details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
+
+    # If no functions, return current score (potentially with bloat penalty)
+    if not metrics:
+        return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
+
+    # 3. Extract granular thresholds
     acl_yellow = thresholds.get("acl_yellow", 10)
     acl_red = thresholds.get("acl_red", 20)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
-    # 1. ACL Scoring (Agent Cognitive Load)
-    # Red functions incur higher penalties as they represent "hallucination zones"
+    # 4. ACL Scoring (Agent Cognitive Load)
+    # Red functions represent "hallucination zones" for agents.
     red_count = sum(1 for m in metrics if m["acl"] > acl_red)
     yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
 
@@ -51,7 +59,7 @@ def score_file(
         score -= penalty
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
-    # 2. Type Safety Index
+    # 5. Type Safety Index
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 

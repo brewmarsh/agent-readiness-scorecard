@@ -15,7 +15,9 @@ def _generate_summary_section(
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+        summary += (
+            "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+        )
 
     if project_issues:
         summary += "### ⚠️ Project Issues\n"

@@ -164,7 +164,7 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
 def get_project_issues(
     path: str, py_files: List[str], profile: Dict[str, Any]
 ) -> Tuple[int, List[str]]:
-    """Analyzes global project health: docs, god modules, and entropy."""
+    """Analyzes global project health: docs, environment, god modules, and entropy."""
     penalty = 0
     issues: List[str] = []
 
@@ -175,6 +175,14 @@ def get_project_issues(
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
+    # 1a. Environment Health (malformed config logic)
+    health = auditor.check_environment_health(path)
+    if not health.get("pyproject_valid", True):
+        msg = "Malformed pyproject.toml detected"
+        penalty += 20
+        issues.append(msg)
+
+    # 2. Dependency Analysis
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -183,6 +191,7 @@ def get_project_issues(
         penalty += len(god_modules) * 10
         issues.append(msg)
 
+    # 3. Directory Entropy
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
@@ -190,6 +199,7 @@ def get_project_issues(
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
+    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
