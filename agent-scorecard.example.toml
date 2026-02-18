@@ -1,23 +1,39 @@
 # agent-scorecard.example.toml
 # This file shows all available configuration options for agent-scorecard.
-# You can also place these settings in your pyproject.toml under [tool.agent-scorecard].
+# You can copy this into your pyproject.toml under the [tool.agent-scorecard] section.
 
-# Verbosity level of the output.
+[tool.agent-scorecard]
+# The default agent profile to use for scoring.
+# Available: "generic", "jules", "copilot"
+agent = "generic"
+
+# The verbosity level of the CLI output.
 # Options:
-#   "quiet":   Suppresses health table and file list; prints only Final Score and Project Issues.
-#   "summary": (Default) Displays environment health table and rows for files with issues.
-#   "detailed": Provides a full breakdown of every file analyzed, including those that pass.
+#   "quiet":   Minimal output; Final Score and critical failures only.
+#   "summary": (Default) Displays environment health table and files with issues.
+#   "detailed": Full breakdown of every file, function metrics, and ACL data.
 verbosity = "summary"
 
-[thresholds]
+# List of directories or files to exclude from the analysis.
+exclude = [".venv", "tests", "build", "dist"]
+
+# A list of files that must exist in the project root.
+# Missing files result in significant scoring penalties.
+required_files = ["README.md", "AGENTS.md", "instructions.md"]
+
+# Whether to automatically generate an SVG badge after scoring.
+badge = false
+
+# Default path where the Markdown remediation report should be saved.
+report = "agent_report.md"
+
+[tool.agent-scorecard.thresholds]
 # Agent Cognitive Load (ACL) thresholds.
-# ACL is calculated as: Complexity + (Lines of Code / 20).
-# Functions exceeding these values are flagged to reduce "Hallucination Zones".
-# Defaults: yellow = 10, red = 15
+# ACL = Cyclomatic Complexity + (Lines of Code / 20).
+# Functions exceeding these values are flagged as "Hallucination Zones".
 acl_yellow = 10
 acl_red = 15
 
 # Minimum percentage of functions that must have type hints (0-100).
-# Agents need types to call functions correctly without guessing signatures.
-# Default: 90
+# Agents require types to accurately call functions and avoid logic errors.
 type_safety = 90

@@ -14,6 +14,7 @@ dependencies = [
     "click",
     "tiktoken",
     "networkx",
+    "tomli; python_version < '3.11'",
 ]
 requires-python = ">=3.8"
 
@@ -23,7 +24,29 @@ agent-score = "agent_scorecard.main:cli"
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "ruff",
+    "mypy",
+    "bandit",
+    "pip-audit",
+    "pre-commit",
+    "types-requests",
+    "types-click",
+    "types-toml",
+    "types-tabulate",
+    "types-networkx"
 ]
 
 [tool.setuptools_scm]
 write_to = "src/agent_scorecard/_version.py"
+
+[tool.agent-scorecard]
+agent = "generic"
+verbosity = "summary"
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = "mccabe"
+ignore_missing_imports = true

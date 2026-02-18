@@ -21,12 +21,12 @@ If you discover a potential security vulnerability in this project, please notif
 
 ### What to include:
 * A description of the vulnerability and its potential impact.
-* Step-by-step instructions to reproduce the issue (PoC).
+* Step-by-step instructions to reproduce the issue (Proof of Concept).
 * Any suggested remediation or fix.
 
 ## Our Process
 
-* **Acknowledgement**: You will receive an acknowledgement of your report within 48 hours.
+* **Acknowledgement**: You will receive an response within 48 hours. If you do not hear from us, please follow up to ensure the message was received.
 * **Status Updates**: We will provide regular updates on our progress as we work toward a resolution.
 * **Disclosure**: Once the vulnerability is fixed, we will publish a Security Advisory and credit you for the discovery (unless you prefer to remain anonymous).
 
