@@ -27,8 +27,8 @@ def score_file(
     score = 100
     details = []
 
-    # 2. Bloated Files Penalty (QA Logic Guard Integration)
-    # -1 pt per 10 lines > 200. High LLOC correlates with agent "drift".
+    # 2. Bloated Files Penalty
+    # -1 pt per 10 lines > 200. High LLOC increases hallucination risk for agents.
     if loc > 200:
         bloat_penalty = (loc - 200) // 10
         if bloat_penalty > 0:
@@ -45,7 +45,7 @@ def score_file(
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     # 4. ACL Scoring (Agent Cognitive Load)
-    # Red functions represent "hallucination zones" for agents.
+    # Red functions represent "hallucination zones" where agents lose tracking.
     red_count = sum(1 for m in metrics if m["acl"] > acl_red)
     yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
 

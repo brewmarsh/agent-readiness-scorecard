@@ -9,30 +9,38 @@ except ImportError:
     try:
         import tomli as tomllib  # type: ignore
     except ImportError:
-        tomllib = None  # type: ignore
+        # Fallback for environments where neither is installed yet
+        tomllib = None
+
+
+class Thresholds(TypedDict, total=False):
+    acl_yellow: int
+    acl_red: int
+    complexity: int
+    type_safety: int
 
 
 class Config(TypedDict):
     verbosity: str
-    thresholds: Dict[str, Any]
+    thresholds: Thresholds
 
 
-# Unified defaults from both branches
+# Unified defaults representing core Agent Physics
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
-        "acl_yellow": 10,  # Warning threshold
-        "acl_red": 20,  # Critical failure threshold
-        "complexity": 10,
-        "type_safety": 90,
+        "acl_yellow": 10,  # Warning threshold for cognitive load
+        "acl_red": 20,     # Critical failure threshold
+        "complexity": 10,  # McCabe complexity limit
+        "type_safety": 90, # Minimum type hint coverage %
     },
 }
 
 
-def _deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
     result = copy.deepcopy(base)
-    for key, value in over.items():
+    for key, value in override.items():
         if isinstance(value, dict) and key in result and isinstance(result[key], dict):
             result[key] = _deep_merge(result[key], value)
         else:
@@ -57,10 +65,15 @@ def load_config(path: str = ".") -> Config:
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-                # Matches the [tool.agent-scorecard] namespace
+                # Parse settings from the standardized PEP 518 [tool] table
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback to DEFAULT_CONFIG if file is malformed
+            # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return _deep_merge(DEFAULT_CONFIG, user_config)  # type: ignore
+    return cast(Config, _deep_merge(DEFAULT_CONFIG, user_config))
+
+
+def cast(t, v):
+    """Helper for type hinting merged dictionaries."""
+    return v
