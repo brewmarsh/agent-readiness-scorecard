@@ -74,4 +74,6 @@ def load_config(path: str = ".") -> Config:
 
     from typing import cast as typing_cast
 
-    return typing_cast(Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )
