@@ -1,88 +1,71 @@
 import os
-import ast
-from typing import List, Tuple, Dict, Any, Union
+from typing import Dict, Any
 from rich.console import Console
-from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE, DOCSTRING_TEXT, TYPE_HINT_STUB
+from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
+from .metrics import get_function_stats
 
 console = Console()
 
-def get_indentation(line: str) -> str:
-    """Returns the indentation string of a line."""
-    return line[:len(line) - len(line.lstrip())]
+CRAFT_PROMPTS = {
+    "persona": "You are an Elite DevOps Engineer specializing in Python code quality.",
+    "action_steps": [
+        "Read the source code provided.",
+        "Identify the specific violation (ACL > 15 or Missing Types).",
+        "Apply the fix strictly to the violations.",
+        "Verify that the code is syntactically correct.",
+    ],
+    "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code.",
+}
 
-def check_missing_docstring(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
-    """Checks for missing docstring and adds insertion if needed."""
-    if not ast.get_docstring(node):
-        # Insert after the function definition line (handling decorators)
-        # The body starts at node.body[0].lineno.
-        # We need to insert *before* the first statement of the body.
 
-        # Ensure body exists (it should for a valid function)
-        if not node.body:
-            return
+class LLM:
+    """Standard interface for LLM interaction."""
 
-        body_start_line = node.body[0].lineno - 1 # 0-indexed
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Generates fixed code using an LLM.
+        Note: This is a placeholder for real LLM integration.
+        """
+        # In a real implementation, this would call OpenAI/Anthropic etc.
+        # For now, we return the original code (simulating no changes).
+        if "Source Code:\n" in user_prompt:
+            return user_prompt.split("Source Code:\n")[-1]
+        return ""
 
-        # Determine indentation from the first line of the body
-        if body_start_line < len(lines):
-            body_line_content = lines[body_start_line]
-            indent_str = get_indentation(body_line_content)
-
-            # Check if it's just 'pass' or '...' on the same line
-            if node.body[0].lineno > node.lineno:
-                    insertions.append((body_start_line, f"{indent_str}{DOCSTRING_TEXT}\n"))
-
-def check_missing_type_hints(node: Union[ast.FunctionDef, ast.AsyncFunctionDef], lines: List[str], insertions: List[Tuple[int, str]]) -> None:
-    """Checks for missing type hints and adds insertion if needed."""
-    has_return = node.returns is not None
-    has_args = any(arg.annotation is not None for arg in node.args.args)
-    if not has_return and not has_args:
-        # Insert comment above function definition
-        start_line = node.lineno - 1
-        if node.decorator_list:
-            start_line = node.decorator_list[0].lineno - 1
-
-        # Check idempotency: peek at line before start_line
-        prev_line_idx = start_line - 1
-        if prev_line_idx >= 0 and TYPE_HINT_STUB in lines[prev_line_idx]:
-            return
-
-        # Determine function indentation
-        if node.lineno - 1 < len(lines):
-            func_line_content = lines[node.lineno-1]
-            indent_str = get_indentation(func_line_content)
-            insertions.append((start_line, f"{indent_str}{TYPE_HINT_STUB}\n"))
 
 def fix_file_issues(filepath: str) -> None:
-    """Injects docstrings and type hint TODOs where missing."""
+    """Uses CRAFT prompts and LLM to fix code quality violations."""
+    try:
+        stats = get_function_stats(filepath)
+    except Exception:
+        return
+
+    # Violations: ACL > 15 or missing type hints (is_typed=False)
+    violations = [s for s in stats if s["acl"] > 15 or not s.get("is_typed", True)]
+
+    if not violations:
+        return
+
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        code = "".join(lines)
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError):
+            content = f.read()
+    except Exception:
         return
 
-    insertions: List[Tuple[int, str]] = []
+    system_prompt = f"{CRAFT_PROMPTS['persona']}\n\n{CRAFT_PROMPTS['frame']}"
+    action_str = "\n".join([f"- {step}" for step in CRAFT_PROMPTS["action_steps"]])
+    user_prompt = f"Action Steps:\n{action_str}\n\nSource Code:\n{content}"
 
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            check_missing_docstring(node, lines, insertions)
-            check_missing_type_hints(node, lines, insertions)
+    llm = LLM()
+    fixed_code = llm.generate(system_prompt, user_prompt)
 
-    if not insertions:
-        return
+    if fixed_code and fixed_code.strip() != content.strip():
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(fixed_code)
+        console.print(
+            f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}"
+        )
 
-    # Sort insertions by line number descending to keep indices valid
-    insertions.sort(key=lambda x: x[0], reverse=True)
-
-    for line_idx, text in insertions:
-        lines.insert(line_idx, text)
-
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.writelines(lines)
-
-    console.print(f"[bold green][Fixed][/bold green] Injected issues in {filepath}")
 
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
@@ -97,7 +80,9 @@ def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
                 filepath = os.path.join(path, req)
                 content = ""
                 if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(project_name=os.path.basename(os.path.abspath(path)))
+                    content = AGENT_CONTEXT_TEMPLATE.format(
+                        project_name=os.path.basename(os.path.abspath(path))
+                    )
                 elif req.lower() == "instructions.md":
                     content = INSTRUCTIONS_TEMPLATE
                 elif req.lower() == "readme.md":

@@ -1,17 +1,39 @@
-.PHONY: audit security-scan lint-prompts
+.PHONY: install lint format type-check test audit lint-prompts security-scan clean
 
-# Run all quality and security checks
+install:
+	uv sync --all-extras
+
+lint:
+	uv run ruff check .
+	uv run ruff format --check .
+
+format:
+	uv run ruff check --fix .
+	uv run ruff format .
+
+type-check:
+	uv run mypy src
+	uv run mypy tests
+
+test:
+	uv run pytest
+
+# Unified audit gate for security and agent-readiness
 audit: security-scan lint-prompts
-	@echo "✅ Audit complete. Code is safe to push."
+	@echo "✅ Audit complete. Code and prompts are safe to push."
 
-# Check for known vulnerabilities in dependencies and code
 security-scan:
 	@echo "🔍 Running Bandit (SAST)..."
-	bandit -r src/ -ll
-	@echo "🔍 Running Safety (Dependency Check)..."
-	safety check
+	uv run bandit -r src/ -ll
+	@echo "🔍 Running pip-audit..."
+	uv run pip-audit
 
-# Lint your internal agent prompts
 lint-prompts:
-	@echo "📝 Validating internal prompts..."
-	agent-score check-prompts src/agent_scorecard/prompts/*.txt
+	@echo "📝 Validating internal agent prompts..."
+	uv run agent-score check-prompts src/agent_scorecard/prompts/*.txt
+
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
