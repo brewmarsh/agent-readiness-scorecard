@@ -1,30 +1,53 @@
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Optional
 from .metrics import get_loc, get_function_stats
+from .types import FunctionMetric
 
-def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
-    """Calculates score based on the selected profile and new Agent Readiness spec."""
+def score_file(
+    filepath: str, 
+    profile: Dict[str, Any], 
+    thresholds: Optional[Dict[str, Any]] = None
+) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
+    """
+    Calculates score based on the selected profile and Agent Readiness spec.
+    Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
+    """
+    # 1. Initialize Thresholds
+    p_thresholds = profile.get("thresholds", {})
+
+    if thresholds is None:
+        thresholds = {
+            "acl_yellow": p_thresholds.get("acl_yellow", 10),
+            "acl_red": p_thresholds.get("acl_red", 20),
+            "type_safety": p_thresholds.get("type_safety", 90),
+        }
+
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
     score = 100
     details = []
 
-    # 1. Bloated Files Penalty
-    # -1 pt per 10 lines > 200
+    # 2. Bloated Files Penalty (QA Logic Guard Integration)
+    # -1 pt per 10 lines > 200. High LLOC correlates with agent "drift".
     if loc > 200:
         bloat_penalty = (loc - 200) // 10
         if bloat_penalty > 0:
             score -= bloat_penalty
             details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
 
+    # If no functions, return current score (potentially with bloat penalty)
     if not metrics:
-        # If no functions, return score (potentially with bloat penalty)
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
-    # 2. ACL Scoring (Agent Cognitive Load)
-    # Thresholds: Green <= 10, Yellow 10.1-15, Red > 15
-    red_count = sum(1 for m in metrics if m["acl"] > 15)
-    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 15)
+    # 3. Extract granular thresholds
+    acl_yellow = thresholds.get("acl_yellow", 10)
+    acl_red = thresholds.get("acl_red", 20)
+    type_safety_threshold = thresholds.get("type_safety", 90)
+
+    # 4. ACL Scoring (Agent Cognitive Load)
+    # Red functions represent "hallucination zones" for agents.
+    red_count = sum(1 for m in metrics if m["acl"] > acl_red)
+    yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
 
     if red_count > 0:
         penalty = red_count * 15
@@ -36,23 +59,32 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
         score -= penalty
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
-    # 3. Type Safety Index
-    # Target based on profile for a "Pass"
-    min_type_cov = profile.get("min_type_coverage", 90)
+    # 5. Type Safety Index
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 
-    if type_safety_index < min_type_cov:
+    if type_safety_index < type_safety_threshold:
         penalty = 20
         score -= penalty
-        details.append(f"Type Safety Index {type_safety_index:.0f}% < {min_type_cov}% (-{penalty})")
+        details.append(
+            f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+        )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 
-    return max(score, 0), ", ".join(details), loc, avg_complexity, type_safety_index, metrics
+    # Ensure score doesn't dip below 0
+    return (
+        max(score, 0),
+        ", ".join(details),
+        loc,
+        avg_complexity,
+        type_safety_index,
+        metrics,
+    )
+
 
 def generate_badge(score: float) -> str:
-    """Generates an SVG badge for the agent score."""
+    """Generates an SVG badge based on the final agent readiness score."""
     if score >= 90:
         color = "#4c1"  # Bright Green
     elif score >= 70:
@@ -63,15 +95,12 @@ def generate_badge(score: float) -> str:
         color = "#e05d44"  # Red
 
     score_str = f"{int(score)}/100"
-
-    # Constants for SVG generation
-    left_width = 70
+    left_width = 85
     right_width = 50
     total_width = left_width + right_width
     height = 20
     border_radius = 3
 
-    # SVG template using f-strings
     svg_template = f"""
 <svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="{height}" role="img" aria-label="Agent Score: {score_str}">
     <title>Agent Score: {score_str}</title>
@@ -88,8 +117,8 @@ def generate_badge(score: float) -> str:
         <rect width="{total_width}" height="{height}" fill="url(#s)"/>
     </g>
     <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-        <text aria-hidden="true" x="{left_width * 10 / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(left_width - 10) * 10}">Agent Score</text>
-        <text x="{left_width * 10 / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="{(left_width - 10) * 10}">Agent Score</text>
+        <text aria-hidden="true" x="{left_width * 10 / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(left_width - 10) * 10}">Agent Readiness</text>
+        <text x="{left_width * 10 / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="{(left_width - 10) * 10}">Agent Readiness</text>
         <text aria-hidden="true" x="{(left_width + right_width / 2) * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(right_width - 10) * 10}">{score_str}</text>
         <text x="{(left_width + right_width / 2) * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="{(right_width - 10) * 10}">{score_str}</text>
     </g>
