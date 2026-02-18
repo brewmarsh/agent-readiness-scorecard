@@ -211,7 +211,7 @@ def check_environment_health(path: str) -> Dict[str, Any]:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
             try:
-                import tomllib as toml_tool
+                import tomllib as toml_tool  # type: ignore
             except ImportError:
                 import tomli as toml_tool  # type: ignore
 

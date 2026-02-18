@@ -5,7 +5,7 @@ from typing import Dict, Any, TypedDict, cast as typing_cast
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
 tomllib: Any = None
 try:
-    import tomllib as _tomllib
+    import tomllib as _tomllib  # type: ignore
 
     tomllib = _tomllib
 except ImportError:
