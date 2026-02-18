@@ -1,9 +1,8 @@
 import textwrap
-import os
 from pathlib import Path
 from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
-from agent_scorecard import analyzer, auditor
+from agent_scorecard import analyzer
 
 def test_bloated_files_penalty(tmp_path: Path):
     """Verify that files over 200 lines get a penalty."""

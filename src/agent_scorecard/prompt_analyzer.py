@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any, TypedDict, cast
+from typing import List, Dict, TypedDict, cast
 
 
 class HeuristicConfig(TypedDict, total=False):

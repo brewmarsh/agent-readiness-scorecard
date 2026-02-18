@@ -1,6 +1,5 @@
 import os
 import tempfile
-import pytest
 from agent_scorecard.config import load_config, DEFAULT_CONFIG
 
 def test_load_config_defaults():

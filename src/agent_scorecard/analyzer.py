@@ -1,12 +1,10 @@
 import os
 import ast
-import mccabe
-from collections import Counter
-from typing import List, Dict, Any, Tuple, Set, Optional, TypedDict, cast
+from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
-from .types import FunctionMetric, FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
+from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401

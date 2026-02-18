@@ -4,13 +4,13 @@ import subprocess
 import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
-from typing import List, Dict, Any, Optional, Union, cast, Tuple
+from typing import List, Dict, Any, Optional, Union, cast
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
 # Import core modules
-from . import analyzer, report, auditor, metrics
+from . import analyzer, report, auditor
 from .prompt_analyzer import PromptAnalyzer
 from .config import load_config
 from .constants import PROFILES

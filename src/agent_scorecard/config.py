@@ -30,7 +30,7 @@ DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
         "acl_yellow": 10,  # Warning threshold for cognitive load
-        "acl_red": 20,     # Critical failure threshold
+        "acl_red": 15,     # Critical failure threshold
         "complexity": 10,  # McCabe complexity limit
         "type_safety": 90, # Minimum type hint coverage %
     },
