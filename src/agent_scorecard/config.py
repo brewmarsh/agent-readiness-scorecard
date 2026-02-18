@@ -6,10 +6,12 @@ from typing import Dict, Any, TypedDict, cast as typing_cast
 tomllib: Any = None
 try:
     import tomllib as _tomllib
+
     tomllib = _tomllib
 except ImportError:
     try:
         import tomli as _tomli
+
         tomllib = _tomli
     except ImportError:
         pass
@@ -73,7 +75,9 @@ def load_config(path: str = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return typing_cast(Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )
 
 
 def cast(t: Any, v: Any) -> Any:

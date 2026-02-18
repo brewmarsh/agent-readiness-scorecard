@@ -422,7 +422,9 @@ def advise(path: str, output_file: Optional[str]) -> None:
     cfg = load_config(path)
     try:
         results = analyzer.perform_analysis(
-            path, "generic", thresholds=cast(Optional[Dict[str, Any]], cfg.get("thresholds"))
+            path,
+            "generic",
+            thresholds=cast(Optional[Dict[str, Any]], cfg.get("thresholds")),
         )
         stats: List[AdvisorFileResult] = []
         for res in results.get("file_results", []):
