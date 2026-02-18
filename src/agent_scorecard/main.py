@@ -393,7 +393,7 @@ def score(
     """Scores a codebase based on AI-agent compatibility."""
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
-    thresholds = cfg.get("thresholds")
+    thresholds = cast(Optional[Dict[str, Any]], cfg.get("thresholds"))
     limit_to_files = get_changed_files(diff_base) if diff_base else None
     run_scoring(
         path,
@@ -422,7 +422,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
     cfg = load_config(path)
     try:
         results = analyzer.perform_analysis(
-            path, "generic", thresholds=cfg.get("thresholds")
+            path, "generic", thresholds=cast(Optional[Dict[str, Any]], cfg.get("thresholds"))
         )
         stats: List[AdvisorFileResult] = []
         for res in results.get("file_results", []):

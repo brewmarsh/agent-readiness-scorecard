@@ -210,13 +210,13 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            import tomllib
+            try:
+                import tomllib as toml_tool
+            except ImportError:
+                import tomli as toml_tool  # type: ignore
 
             with open(filepath, "rb") as f:
-                tomllib.load(f)
-        except ImportError:
-            # Fallback for Python < 3.11 without toml package
-            pass
+                toml_tool.load(f)
         except Exception:
             results["pyproject_valid"] = False
 

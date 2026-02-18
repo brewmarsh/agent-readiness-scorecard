@@ -4,7 +4,7 @@ from typing import List, Dict, TypedDict
 class FunctionMetric(TypedDict):
     name: str
     lineno: int
-    complexity: int
+    complexity: float
     loc: int
     acl: float
     is_typed: bool
@@ -18,11 +18,12 @@ class FileAnalysisResult(TypedDict):
     complexity: float
     type_coverage: float
     function_metrics: List[FunctionMetric]
+    tokens: int
+    acl: float
 
 
 class AdvisorFileResult(FileAnalysisResult):
-    acl: float
-    tokens: int
+    pass
 
 
 class DepAnalysis(TypedDict):
