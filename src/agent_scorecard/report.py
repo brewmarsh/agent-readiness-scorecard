@@ -1,6 +1,4 @@
-import os
 from typing import List, Dict, Any, Optional, Union, cast
-from . import analyzer
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
 

@@ -17,7 +17,7 @@ def score_file(
     if thresholds is None:
         thresholds = {
             "acl_yellow": p_thresholds.get("acl_yellow", 10),
-            "acl_red": p_thresholds.get("acl_red", 20),
+            "acl_red": p_thresholds.get("acl_red", 15),
             "type_safety": p_thresholds.get("type_safety", 90),
         }
 
@@ -41,7 +41,7 @@ def score_file(
 
     # 3. Extract granular thresholds
     acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
+    acl_red = thresholds.get("acl_red", 15)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     # 4. ACL Scoring (Agent Cognitive Load)
