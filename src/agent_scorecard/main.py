@@ -4,18 +4,19 @@ import subprocess
 import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
-from typing import List, Dict, Any, Optional, Union, cast
+from typing import List, Dict, Any, Optional, Union, cast, Tuple
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
 # Import core modules
-from . import analyzer, report, auditor
+from . import analyzer, report, auditor, metrics
 from .prompt_analyzer import PromptAnalyzer
 from .config import load_config
 from .constants import PROFILES
 from .fix import apply_fixes
 from .scoring import generate_badge
+from .types import AnalysisResult, AdvisorFileResult
 
 console = Console()
 
@@ -49,7 +50,6 @@ def cli() -> None:
 
 # --- HELPERS ---
 
-
 def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     """Uses git diff to return a list of changed Python files."""
     try:
@@ -65,12 +65,13 @@ def get_changed_files(base_ref: str = "origin/main") -> List[str]:
             f"[yellow]Warning: git diff failed (exit code {e.returncode}). Scoring all files instead.[/yellow]"
         )
         return []
-    except Exception:
+    except Exception as e:
+        console.print(f"[yellow]Warning: Unexpected error while checking git diff: {e}[/yellow]")
         return []
 
 
 def _print_environment_health(
-    path: str, results: Union[Dict[str, Any], analyzer.AnalysisResult], verbosity: str
+    path: str, results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
     """Prints the environment health table if verbosity allows."""
     if verbosity == "quiet":
@@ -128,9 +129,7 @@ def _print_environment_health(
     console.print("")
 
 
-def _print_project_issues(
-    results: Union[Dict[str, Any], analyzer.AnalysisResult],
-) -> None:
+def _print_project_issues(results: Union[Dict[str, Any], AnalysisResult]) -> None:
     """Prints project-wide issues found during analysis."""
     if results.get("project_issues"):
         console.print("\n[bold red]Project Issues Detected:[/bold red]")
@@ -138,7 +137,7 @@ def _print_project_issues(
             console.print(f"- {issue}")
 
 
-def _print_score(results: Union[Dict[str, Any], analyzer.AnalysisResult]) -> None:
+def _print_score(results: Union[Dict[str, Any], AnalysisResult]) -> None:
     """Prints the final formatted agent score."""
     score_color = "green" if results["final_score"] >= 70 else "red"
     console.print(
@@ -147,7 +146,7 @@ def _print_score(results: Union[Dict[str, Any], analyzer.AnalysisResult]) -> Non
 
 
 def _print_file_analysis(
-    results: Union[Dict[str, Any], analyzer.AnalysisResult], verbosity: str
+    results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
     """Prints the file analysis table based on verbosity settings."""
     if verbosity == "quiet":
@@ -178,7 +177,7 @@ def _print_file_analysis(
 
 
 def _generate_artifacts(
-    results: Union[Dict[str, Any], analyzer.AnalysisResult],
+    results: Union[Dict[str, Any], AnalysisResult],
     path: str,
     profile: Dict[str, Any],
     badge: bool,
@@ -419,12 +418,15 @@ def advise(path: str, output_file: Optional[str]) -> None:
         results = analyzer.perform_analysis(
             path, "generic", thresholds=cfg.get("thresholds")
         )
-        stats = []
+        stats: List[AdvisorFileResult] = []
         for res in results.get("file_results", []):
             full_path = os.path.join(path, res["file"])
+            if not os.path.exists(full_path):
+                 full_path = res["file"]
+            
             tokens_info = auditor.check_critical_context_tokens(full_path)
 
-            # Pull max ACL and complexity from function metrics
+            # Pull max ACL and complexity from function metrics for Advisor richness
             max_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0.0])
             max_comp = max(
                 [m["complexity"] for m in res.get("function_metrics", [])]
@@ -432,20 +434,19 @@ def advise(path: str, output_file: Optional[str]) -> None:
             )
 
             stats.append(
-                {
-                    "file": res["file"],
+                cast(AdvisorFileResult, {
+                    **res,
                     "acl": max_acl,
                     "complexity": max_comp,
-                    "loc": res["loc"],
                     "tokens": tokens_info["token_count"],
-                }
+                })
             )
 
         entropy_stats = {
             d["path"]: d["file_count"] for d in results.get("directory_stats", [])
         }
         report_md = report.generate_advisor_report(
-            stats=stats,
+            stats=cast(List[Dict[str, Any]], stats),
             dependency_stats=results.get("dep_analysis", {}).get("god_modules", {}),
             entropy_stats=entropy_stats,
             cycles=results.get("dep_analysis", {}).get("cycles", []),

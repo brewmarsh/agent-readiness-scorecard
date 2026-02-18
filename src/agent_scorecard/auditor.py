@@ -66,15 +66,24 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     Extracts function/class signatures from an AST node.
     This provides the 'skeleton' of the code for token counting.
     """
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return None
+
     if hasattr(ast, "unparse"):
         # Python 3.9+ logic: Replace body with 'pass' to get just the signature
+        # Use getattr/setattr for maximum compatibility with various AST implementations
         orig_body = getattr(node, "body", [])
         setattr(node, "body", [ast.Pass()])
         try:
             unparsed = ast.unparse(node)
             lines = unparsed.splitlines()
             if lines:
-                return "\n".join(lines[:-1]).strip() or lines[0]
+                # For functions/classes, unparse usually includes the signature and 'pass'
+                # We want just the signature.
+                sig = "\n".join(lines[:-1]).strip()
+                if not sig:  # Fallback if it's a single line
+                    sig = lines[0]
+                return sig
         except Exception:
             pass
         finally:

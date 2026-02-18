@@ -1,11 +1,5 @@
 import re
-from typing import List, Dict, TypedDict
-
-
-class PromptAnalysisResult(TypedDict):
-    score: int
-    results: Dict[str, bool]
-    improvements: List[str]
+from typing import List, Dict, Any, TypedDict, cast
 
 
 class HeuristicConfig(TypedDict, total=False):
@@ -14,6 +8,12 @@ class HeuristicConfig(TypedDict, total=False):
     critical: bool
     weight: int
     penalty: int
+
+
+class PromptAnalysisResult(TypedDict):
+    score: int
+    results: Dict[str, bool]
+    improvements: List[str]
 
 
 class PromptAnalyzer:
@@ -63,29 +63,29 @@ class PromptAnalyzer:
             return {"score": 0, "results": {}, "improvements": ["Prompt is empty."]}
 
         # 1. Standard heuristics (Simple Regex)
-        # We process the first three dimensions using standard regex matching
         for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene"]:
-            h = self.HEURISTICS[key]
-            if re.search(h["pattern"], text):
+            h = cast(HeuristicConfig, self.HEURISTICS[key])
+            pattern = cast(str, h["pattern"])
+            if re.search(pattern, text):
                 results[key] = True
-                score += h["weight"]
+                score += cast(int, h["weight"])
             else:
                 results[key] = False
-                improvements.append(h["improvement"])
+                improvements.append(cast(str, h["improvement"]))
 
         # 2. Context-Aware Few-Shot Detection
         if self._check_few_shot(text):
             results["few_shot"] = True
-            score += self.HEURISTICS["few_shot"]["weight"]
+            score += cast(int, self.HEURISTICS["few_shot"]["weight"])
         else:
             results["few_shot"] = False
-            improvements.append(self.HEURISTICS["few_shot"]["improvement"])
+            improvements.append(cast(str, self.HEURISTICS["few_shot"]["improvement"]))
 
         # 3. Context-Aware Negative Constraint Detection
         if self._check_negative_constraints(text):
             results["negative_constraints"] = False  # Issue found
-            score -= self.HEURISTICS["negative_constraints"]["penalty"]
-            improvements.append(self.HEURISTICS["negative_constraints"]["improvement"])
+            score -= cast(int, self.HEURISTICS["negative_constraints"]["penalty"])
+            improvements.append(cast(str, self.HEURISTICS["negative_constraints"]["improvement"]))
         else:
             results["negative_constraints"] = True  # No issue
 
@@ -96,10 +96,11 @@ class PromptAnalyzer:
 
     def _check_few_shot(self, text: str) -> bool:
         """Heuristic for detecting few-shot examples with context awareness."""
-        h = self.HEURISTICS["few_shot"]
+        h = cast(HeuristicConfig, self.HEURISTICS["few_shot"])
+        pattern = cast(str, h["pattern"])
 
         # 1. Standard patterns (Example: or Input/Output)
-        if re.search(h["pattern"], text, re.DOTALL):
+        if re.search(pattern, text, re.DOTALL):
             return True
 
         # 2. Markdown Header with "Example" or "Examples"
@@ -117,13 +118,15 @@ class PromptAnalyzer:
         return False
 
     def _check_negative_constraints(self, text: str) -> bool:
-        """Heuristic for detecting negative constraints with context awareness.
+        """
+        Heuristic for detecting negative constraints with context awareness.
         Returns True if a penalty-worthy violation is found.
         """
-        h = self.HEURISTICS["negative_constraints"]
+        h = cast(HeuristicConfig, self.HEURISTICS["negative_constraints"])
+        pattern = cast(str, h["pattern"])
         threshold_20 = len(text) * 0.2
 
-        for match in re.finditer(h["pattern"], text):
+        for match in re.finditer(pattern, text):
             # Rule 1: Ignore negative words in the first 20% (Context setting phase)
             if match.start() < threshold_20:
                 continue

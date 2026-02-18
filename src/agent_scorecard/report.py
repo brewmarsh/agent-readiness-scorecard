@@ -1,4 +1,7 @@
-from typing import List, Dict, Any, Optional
+import os
+from typing import List, Dict, Any, Optional, Union, cast
+from . import analyzer
+from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
 
 def _generate_summary_section(
@@ -12,9 +15,7 @@ def _generate_summary_section(
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        summary += (
-            "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
-        )
+        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
 
     if project_issues:
         summary += "### ⚠️ Project Issues\n"
@@ -25,7 +26,7 @@ def _generate_summary_section(
 
 
 def _generate_acl_section(
-    stats: List[Dict[str, Any]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
 ) -> str:
     """Analyzes and reports on functions with high cognitive load."""
     acl_yellow = thresholds.get("acl_yellow", 10)
@@ -48,9 +49,10 @@ def _generate_acl_section(
         targets += "| Function | File | ACL | Status |\n"
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
-            if fn["acl"] > acl_yellow:
-                status = "🔴 Red" if fn["acl"] > acl_red else "🟡 Yellow"
-                targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
+            acl_val = cast(float, fn.get("acl", 0))
+            if acl_val > acl_yellow:
+                status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
+                targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
@@ -58,7 +60,7 @@ def _generate_acl_section(
 
 
 def _generate_type_safety_section(
-    stats: List[Dict[str, Any]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
 ) -> str:
     """Summarizes type hint coverage across the project."""
     type_safety_threshold = thresholds.get("type_safety", 90)
@@ -94,7 +96,7 @@ def _format_craft_prompt(
 
 
 def _generate_prompts_section(
-    stats: List[Dict[str, Any]],
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
     project_issues: Optional[List[str]] = None,
 ) -> str:
@@ -172,7 +174,7 @@ def _generate_prompts_section(
     return prompts
 
 
-def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
+def _generate_file_table_section(stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]]) -> str:
     """Creates a full breakdown of analysis for every file."""
     table = "### 📂 Full File Analysis\n\n"
     table += "| File | Score | Issues |\n"
@@ -185,7 +187,7 @@ def _generate_file_table_section(stats: List[Dict[str, Any]]) -> str:
 
 
 def generate_markdown_report(
-    stats: List[Dict[str, Any]],
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     final_score: float,
     path: str,
     profile: Dict[str, Any],
@@ -214,7 +216,7 @@ def generate_markdown_report(
 
 
 def generate_advisor_report(
-    stats: List[Dict[str, Any]],
+    stats: Union[List[AdvisorFileResult], List[Dict[str, Any]]],
     dependency_stats: Dict[str, int],
     entropy_stats: Dict[str, int],
     cycles: List[List[str]],
@@ -279,7 +281,7 @@ def generate_advisor_report(
     return report
 
 
-def generate_recommendations_report(results: Any) -> str:
+def generate_recommendations_report(results: Union[AnalysisResult, List[FileAnalysisResult], Any]) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
     file_list = (

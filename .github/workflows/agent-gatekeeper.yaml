@@ -1,0 +1,41 @@
+name: 🛡️ Agent Quality Gate
+
+on:
+  pull_request:
+    branches: [ main, beta ]
+
+jobs:
+  agent-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e "."
+
+      - name: Run Agent Scorecard
+        run: |
+          agent-score . --verbosity summary --report pr_health.md
+
+      - name: Post Summary to GITHUB_STEP_SUMMARY
+        if: always()
+        run: |
+          if [ -f pr_health.md ]; then
+            cat pr_health.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No scorecard report generated." >> $GITHUB_STEP_SUMMARY
+          fi

@@ -1,9 +1,12 @@
 import os
 import ast
+import mccabe
+from collections import Counter
 from typing import List, Dict, Any, Tuple, Set, Optional, TypedDict, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
+from .types import FunctionMetric, FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -14,40 +17,6 @@ from .metrics import (  # noqa: F401
     check_type_hints,
     count_tokens,
 )
-
-# --- TYPE DEFINITIONS ---
-
-
-class FileAnalysisResult(TypedDict):
-    file: str
-    score: int
-    issues: str
-    loc: int
-    complexity: float
-    type_coverage: float
-    function_metrics: List[Dict[str, Any]]
-    tokens: int
-    acl: float
-
-
-class DepAnalysisResult(TypedDict):
-    cycles: List[List[str]]
-    god_modules: Dict[str, int]
-
-
-class DirectoryStat(TypedDict):
-    path: str
-    file_count: int
-
-
-class AnalysisResult(TypedDict):
-    file_results: List[FileAnalysisResult]
-    final_score: float
-    missing_docs: List[str]
-    project_issues: List[str]
-    dep_analysis: DepAnalysisResult
-    directory_stats: List[DirectoryStat]
-
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -199,6 +168,7 @@ def get_project_issues(
     penalty = 0
     issues: List[str] = []
 
+    # 1. Documentation Check
     missing_docs = scan_project_docs(path, cast(List[str], profile.get("required_files", [])))
     if missing_docs:
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
@@ -256,7 +226,7 @@ def perform_analysis(
 
     for filepath in py_files:
         # Pass thresholds to allow pyproject.toml overrides per file
-        score, issues, loc, complexity, type_safety, metrics = score_file(
+        score, issues, loc, complexity, type_safety, metrics_data = score_file(
             filepath, profile, thresholds=thresholds
         )
         file_scores.append(score)
@@ -272,9 +242,9 @@ def perform_analysis(
                 "loc": loc,
                 "complexity": complexity,
                 "type_coverage": type_safety,
-                "function_metrics": metrics,
+                "function_metrics": metrics_data,
                 "tokens": count_tokens(filepath),
-                "acl": max([m["acl"] for m in metrics]) if metrics else 0.0,
+                "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
             }
         )
 
@@ -289,7 +259,7 @@ def perform_analysis(
     cycles = detect_cycles(graph)
     god_modules = {mod: count for mod, count in inbound.items() if count > 50}
 
-    dep_analysis: DepAnalysisResult = {"cycles": cycles, "god_modules": god_modules}
+    dep_analysis_val: DepAnalysis = {"cycles": cycles, "god_modules": god_modules}
 
     directory_stats: List[DirectoryStat] = []
     entropy = auditor.get_crowded_directories(
@@ -303,6 +273,6 @@ def perform_analysis(
         "final_score": final_score,
         "missing_docs": scan_project_docs(path, cast(List[str], profile.get("required_files", []))),
         "project_issues": project_issues,
-        "dep_analysis": dep_analysis,
+        "dep_analysis": dep_analysis_val,
         "directory_stats": directory_stats,
     }

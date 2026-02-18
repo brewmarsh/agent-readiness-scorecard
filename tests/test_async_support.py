@@ -56,7 +56,10 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    # Ensure we test the detailed output to find the specific index string
+    
+    # Resolution: Test the detailed output to find the specific index string 
+    # as established in the configuration-heavy Beta branch.
     result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
 
+    assert result.exit_code == 0
     assert "Type Safety Index 0%" in result.output

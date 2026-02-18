@@ -1,6 +1,7 @@
 import ast
 import mccabe
 from typing import List, Dict, Any
+from .types import FunctionMetric
 
 
 def get_loc(filepath: str) -> int:
@@ -78,7 +79,7 @@ def count_tokens(filepath: str) -> int:
         return 0
 
 
-def get_function_stats(filepath: str) -> List[Dict[str, Any]]:
+def get_function_stats(filepath: str) -> List[FunctionMetric]:
     """Returns statistics for each function in the file including ACL and Type coverage."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -93,7 +94,7 @@ def get_function_stats(filepath: str) -> List[Dict[str, Any]]:
         graph.lineno: graph.complexity() for graph in visitor.graphs.values()
     }
 
-    stats: List[Dict[str, Any]] = []
+    stats: List[FunctionMetric] = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             start_line = node.lineno

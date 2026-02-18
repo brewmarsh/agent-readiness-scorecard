@@ -1,16 +1,17 @@
 from typing import Dict, Any, Tuple, List, Optional
 from .metrics import get_loc, get_function_stats
-
+from .types import FunctionMetric
 
 def score_file(
-    filepath: str, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]] = None
-) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+    filepath: str, 
+    profile: Dict[str, Any], 
+    thresholds: Optional[Dict[str, Any]] = None
+) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # Extract from profile or use defaults if thresholds arg is missing
     p_thresholds = profile.get("thresholds", {})
 
     if thresholds is None:
@@ -23,19 +24,20 @@ def score_file(
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
+    # Return perfect score for empty files/files with no functions
     if not metrics:
         return 100, "", loc, 0.0, 100.0, []
 
     score = 100
     details = []
 
-    # Resolution: Use the granular thresholds provided by the beta branch/config
+    # Resolution: Extract granular thresholds
     acl_yellow = thresholds.get("acl_yellow", 10)
     acl_red = thresholds.get("acl_red", 20)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     # 1. ACL Scoring (Agent Cognitive Load)
-    # Penalties are weighted: Red functions are more harmful than Yellow
+    # Red functions incur higher penalties as they represent "hallucination zones"
     red_count = sum(1 for m in metrics if m["acl"] > acl_red)
     yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
 
@@ -75,7 +77,6 @@ def score_file(
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge based on the final agent readiness score."""
-    #
     if score >= 90:
         color = "#4c1"  # Bright Green
     elif score >= 70:
