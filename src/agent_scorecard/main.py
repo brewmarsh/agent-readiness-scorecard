@@ -4,13 +4,13 @@ import subprocess
 import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
-from typing import List, Dict, Any, Optional, Union, cast, Tuple
+from typing import List, Dict, Any, Optional, Union, cast
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
 # Import core modules
-from . import analyzer, report, auditor, metrics
+from . import analyzer, report, auditor
 from .prompt_analyzer import PromptAnalyzer
 from .config import load_config
 from .constants import PROFILES
@@ -50,6 +50,7 @@ def cli() -> None:
 
 # --- HELPERS ---
 
+
 def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     """Uses git diff to return a list of changed Python files."""
     try:
@@ -66,7 +67,9 @@ def get_changed_files(base_ref: str = "origin/main") -> List[str]:
         )
         return []
     except Exception as e:
-        console.print(f"[yellow]Warning: Unexpected error while checking git diff: {e}[/yellow]")
+        console.print(
+            f"[yellow]Warning: Unexpected error while checking git diff: {e}[/yellow]"
+        )
         return []
 
 
@@ -332,7 +335,7 @@ def check_prompts(input_path: str, plain: bool) -> None:
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
         if score >= 80:
             console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
-        
+
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
@@ -350,7 +353,9 @@ def fix(path: str, agent: str) -> None:
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     if cfg.get("thresholds"):
-        cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(cfg["thresholds"])
+        cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(
+            cfg["thresholds"]
+        )
 
     console.print(
         Panel(
@@ -423,8 +428,8 @@ def advise(path: str, output_file: Optional[str]) -> None:
         for res in results.get("file_results", []):
             full_path = os.path.join(path, res["file"])
             if not os.path.exists(full_path):
-                 full_path = res["file"]
-            
+                full_path = res["file"]
+
             tokens_info = auditor.check_critical_context_tokens(full_path)
 
             # Pull max ACL and complexity from function metrics for Advisor richness
@@ -435,12 +440,15 @@ def advise(path: str, output_file: Optional[str]) -> None:
             )
 
             stats.append(
-                cast(AdvisorFileResult, {
-                    **res,
-                    "acl": max_acl,
-                    "complexity": max_comp,
-                    "tokens": tokens_info["token_count"],
-                })
+                cast(
+                    AdvisorFileResult,
+                    {
+                        **res,
+                        "acl": max_acl,
+                        "complexity": max_comp,
+                        "tokens": tokens_info["token_count"],
+                    },
+                )
             )
 
         entropy_stats = {

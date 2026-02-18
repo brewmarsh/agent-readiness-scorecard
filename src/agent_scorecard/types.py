@@ -1,5 +1,6 @@
 from typing import List, Dict, TypedDict
 
+
 class FunctionMetric(TypedDict):
     name: str
     lineno: int
@@ -7,6 +8,7 @@ class FunctionMetric(TypedDict):
     loc: int
     acl: float
     is_typed: bool
+
 
 class FileAnalysisResult(TypedDict):
     file: str
@@ -17,17 +19,21 @@ class FileAnalysisResult(TypedDict):
     type_coverage: float
     function_metrics: List[FunctionMetric]
 
+
 class AdvisorFileResult(FileAnalysisResult):
     acl: float
     tokens: int
+
 
 class DepAnalysis(TypedDict):
     cycles: List[List[str]]
     god_modules: Dict[str, int]
 
+
 class DirectoryStat(TypedDict):
     path: str
     file_count: int
+
 
 class AnalysisResult(TypedDict):
     file_results: List[FileAnalysisResult]
