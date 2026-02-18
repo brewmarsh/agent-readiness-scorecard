@@ -7,31 +7,33 @@
 # Available: "generic", "jules", "copilot"
 agent = "generic"
 
-# The minimum type coverage percentage required for a "Pass" in type safety.
-# Default: 90
-min_type_coverage = 90
-
-# A list of files that must exist in the project root.
-# Missing files will result in scoring penalties.
-required_files = ["README.md", "AGENTS.md", "instructions.md"]
-
-# Agent Cognitive Load (ACL) thresholds.
-# ACL = Cyclomatic Complexity + (Lines of Code / 20)
-# Functions exceeding these values receive penalties.
-acl_threshold_yellow = 10
-acl_threshold_red = 20
-
 # The verbosity level of the CLI output.
-# 0: Quiet - Minimal output, primarily the final score.
-# 1: Default - Summary table and project issues.
-# 2: Verbose - Detailed per-function metrics and ACL breakdowns.
-verbosity = 1
+# Options:
+#   "quiet":   Minimal output; Final Score and critical failures only.
+#   "summary": (Default) Displays environment health table and files with issues.
+#   "detailed": Full breakdown of every file, function metrics, and ACL data.
+verbosity = "summary"
 
 # List of directories or files to exclude from the analysis.
-exclude = [".venv", "tests", "build"]
+exclude = [".venv", "tests", "build", "dist"]
+
+# A list of files that must exist in the project root.
+# Missing files result in significant scoring penalties.
+required_files = ["README.md", "AGENTS.md", "instructions.md"]
 
 # Whether to automatically generate an SVG badge after scoring.
 badge = false
 
-# Default path where the Markdown report should be saved.
+# Default path where the Markdown remediation report should be saved.
 report = "agent_report.md"
+
+[tool.agent-scorecard.thresholds]
+# Agent Cognitive Load (ACL) thresholds.
+# ACL = Cyclomatic Complexity + (Lines of Code / 20).
+# Functions exceeding these values are flagged as "Hallucination Zones".
+acl_yellow = 10
+acl_red = 15
+
+# Minimum percentage of functions that must have type hints (0-100).
+# Agents require types to accurately call functions and avoid logic errors.
+type_safety = 90

@@ -1,10 +1,11 @@
-# 🤖 Agent Scorecard
+## 🤖 Agent Scorecard
 
 **Is your codebase ready for the AI workforce?**
 
-`agent-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin). 
+`agent-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin).
 
 AI Agents struggle with:
+
 * **Massive Contexts:** Large files confuse models and waste token limits.
 * **Ambiguity:** Missing type hints lead to hallucinated parameters.
 * **Hidden Logic:** Complex code flows (high cyclomatic complexity) make it hard for agents to reason about changes.
@@ -37,11 +38,6 @@ Different agents have different strengths. Optimize for specific workflows:
 * **`--agent=jules`**: Strict typing and high documentation requirements (expects `agents.md`).
 * **`--agent=copilot`**: Focuses on small file sizes for autocomplete efficiency.
 
-```bash
-agent-score src/ --agent=jules
-
-```
-
 ### 3. Auto-Fix Issues
 
 Bootstrap your repository with the necessary context files and skeleton docstrings:
@@ -51,33 +47,41 @@ agent-score . --fix
 
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-`agent-scorecard` can be configured using a `pyproject.toml` file in your project root.
+`agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
 
 ### Priority
-Configuration is resolved in the following order:
-1. **CLI Flags** (e.g., `--agent`, `--fix`)
-2. **`pyproject.toml`** (the `[tool.agent-scorecard]` section)
-3. **Defaults** (Hardcoded application defaults)
+
+Settings are resolved in the following order (highest to lowest):
+
+1. **CLI Flags** (e.g., `--agent`, `--verbosity`)
+2. **Configuration File** (`pyproject.toml` or `.agent-scorecard.json`)
+3. **Defaults**
 
 ### pyproject.toml Example
 
-Add a section to your `pyproject.toml` to customize the tool's behavior:
+Add a `[tool.agent-scorecard]` section to your `pyproject.toml` to customize thresholds and output:
 
 ```toml
 [tool.agent-scorecard]
 agent = "jules"
-min_type_coverage = 95
-required_files = ["README.md", "AGENTS.md"]
-verbosity = 1
+verbosity = "summary"
+
+[tool.agent-scorecard.thresholds]
+acl_yellow = 10
+acl_red = 15
+type_safety = 90
+
 ```
 
 ### Verbosity Levels
-The tool supports three levels of output detail:
-* **Level 0 (Quiet):** Ideal for CI/CD. Outputs only the final score and critical failures.
-* **Level 1 (Default):** Provides a summary table of file scores and project-wide issues.
-* **Level 2 (Verbose):** Deep-dive mode. Includes per-function metrics, ACL calculations, and specific refactoring suggestions.
+
+| Level | Description |
+| --- | --- |
+| `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. Ideal for CI/CD. |
+| `summary` | (Default) Displays Environment Health table and rows for files with issues. |
+| `detailed` | Deep-dive mode. Provides a full breakdown of every file, including ACL calculations. |
 
 ## 📊 The Scoring System
 
@@ -86,7 +90,7 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: $CC + (LOC / 20)$. Target <= 10. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: . Target <= 10. |
 | **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
 | **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
@@ -107,9 +111,7 @@ my-project/
 
 ## 🛡 Badges
 
-Show off your Agent-Readiness!
-
-*(Run `agent-score --badge` to generate this for your repo)*
+Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_score.svg` for your repo.
 
 ## ⚡ CI/CD & Diff Mode
 
@@ -118,31 +120,24 @@ Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request
 ```bash
 # Score only changes vs the main branch
 agent-score score --diff origin/main
-```
 
-This feature uses `git diff` to identify modified `.py` files and ensures that even if you only check one file, the codebase's global "Agent Physics" (like dependency cycles) remains healthy.
+```
 
 ## 📝 Prompt Engineering Linter
 
-Static analysis for your LLM prompts. Ensure your system prompts follow best practices (Role Definition, Few-Shot, CoT) before deploying them to production.
+Static analysis for your LLM prompts. Ensure your system prompts follow best practices before deploying them to production.
 
 ```bash
 agent-score check-prompts prompts/system_v1.txt
+
 ```
 
 ### Heuristics Checked:
+
 * **Role Definition**: Does the prompt establish a persona?
 * **Cognitive Scaffolding**: Are there "Think step-by-step" instructions?
 * **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
 * **Few-Shot Examples**: Does it include 1-3 examples?
 * **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
 
-## 🤖 Working with Jules
-
-To start a task using the Jules Agent:
-1. Add the `prompt-check` label to your issue or pull request.
-2. The Gatekeeper will analyze your prompt.
-3. If the prompt passes analysis, the `jules` label will be automatically added, and the agent will start.
-4. If it fails, you will receive a comment with suggested improvements.
-
-**Note:** Do not add the `jules` label directly. Always start with `prompt-check`.
+---
