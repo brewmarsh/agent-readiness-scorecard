@@ -11,6 +11,7 @@ from rich.panel import Panel
 
 # Import core modules
 from . import analyzer, report, auditor, metrics
+from .config import load_config
 from .prompt_analyzer import PromptAnalyzer
 
 from .constants import PROFILES
@@ -55,8 +56,11 @@ def get_changed_files(base_ref: str = "origin/main") -> list:
     except Exception:
         return []
 
-def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None) -> None:
+def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str, limit_to_files: list = None, config: dict = None) -> None:
     """Helper to run the scoring logic."""
+    if config is None:
+        config = load_config(path)
+
     if agent not in PROFILES:
         console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
@@ -67,7 +71,7 @@ def run_scoring(path: str, agent: str, fix: bool, badge: bool, report_path: str,
         apply_fixes(path, profile)
         console.print("")
 
-    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files)
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, config=config)
     console.print(Panel(f"[bold cyan]Running Agent Scorecard[/bold cyan]\nProfile: {agent.upper()}\n{profile['description']}", expand=False))
 
     # 1. Environment Health
@@ -187,8 +191,9 @@ def fix(path: str, agent: str) -> None:
 @click.option("--diff", "diff_base", help="Score only changed files.")
 def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_base: str) -> None:
     """Scores a codebase based on AI-agent compatibility."""
+    config = load_config(path)
     limit_to_files = get_changed_files(diff_base) if diff_base else None
-    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files)
+    run_scoring(path, agent, fix, badge, report_path, limit_to_files=limit_to_files, config=config)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
@@ -196,12 +201,13 @@ def score(path: str, agent: str, fix: bool, badge: bool, report_path: str, diff_
 def advise(path, output_file):
     """Generates an Advisor Report using absolute paths and guaranteed file creation."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
+    config = load_config(path)
     
     if output_file:
         output_file = os.path.abspath(output_file)
 
     try:
-        results = analyzer.perform_analysis(path, agent="generic")
+        results = analyzer.perform_analysis(path, agent="generic", config=config)
         advisor_stats = []
         
         # Enrich stats for Advisor (merging logic from both branches)
