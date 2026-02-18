@@ -158,6 +158,8 @@ def check_prompts(input_path, plain):
         console.print(table)
         color = "green" if score >= 80 else "red"
         console.print(f"\nScore: [bold {color}]{score}/100[/bold {color}]")
+        if score >= 80:
+            console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
         if result.get("improvements"):
             console.print("\n[bold yellow]Suggestions:[/bold yellow]")
             for imp in result["improvements"]:
@@ -172,6 +174,7 @@ def check_prompts(input_path, plain):
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues in the codebase."""
     if agent not in PROFILES:
+        console.print(f"[bold red]Unknown agent profile: {agent}. using generic.[/bold red]")
         agent = "generic"
     profile = PROFILES[agent]
     console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))

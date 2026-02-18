@@ -41,7 +41,7 @@ def _generate_acl_section(stats: List[Dict[str, Any]]) -> str:
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
             if fn['acl'] > 10:
-                status = "🔴 Red" if fn['acl'] > 20 else "🟡 Yellow"
+                status = "🔴 Red" if fn['acl'] > 15 else "🟡 Yellow"
                 targets += f"| `{fn['name']}` | `{fn['file']}` | {fn['acl']:.1f} | {status} |\n"
         targets += "\n"
     else:
@@ -95,12 +95,12 @@ def _generate_prompts_section(stats: List[Dict[str, Any]]) -> str:
         file_issues = []
 
         metrics = f_res.get("function_metrics", [])
-        red_functions = [m for m in metrics if m["acl"] > 20]
+        red_functions = [m for m in metrics if m["acl"] > 15]
 
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
-            prompt = _build_craft_prompt("ACL", file_path, f"Functions {fn_names} have Red ACL (>20)")
-            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>20).\n\n{prompt}")
+            prompt = _build_craft_prompt("ACL", file_path, f"Functions {fn_names} have Red ACL (>15)")
+            file_issues.append(f"- **Critical ACL**: Functions {fn_names} have Red ACL (>15).\n\n{prompt}")
 
         if f_res["type_coverage"] < 90:
              prompt = _build_craft_prompt("Type Safety", file_path, f"Coverage is {f_res['type_coverage']:.0f}%")

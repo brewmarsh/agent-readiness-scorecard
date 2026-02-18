@@ -6,17 +6,25 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
 
-    if not metrics:
-        # If no functions, return default 100 score but still report LOC
-        return 100, "", loc, 0.0, 100.0, []
-
     score = 100
     details = []
 
-    # 1. ACL Scoring (Agent Cognitive Load)
-    # Thresholds: Green <= 10, Yellow 11-20, Red > 20
-    red_count = sum(1 for m in metrics if m["acl"] > 20)
-    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 20)
+    # 1. Bloated Files Penalty
+    # -1 pt per 10 lines > 200
+    if loc > 200:
+        bloat_penalty = (loc - 200) // 10
+        if bloat_penalty > 0:
+            score -= bloat_penalty
+            details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
+
+    if not metrics:
+        # If no functions, return score (potentially with bloat penalty)
+        return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
+
+    # 2. ACL Scoring (Agent Cognitive Load)
+    # Thresholds: Green <= 10, Yellow 10.1-15, Red > 15
+    red_count = sum(1 for m in metrics if m["acl"] > 15)
+    yellow_count = sum(1 for m in metrics if 10 < m["acl"] <= 15)
 
     if red_count > 0:
         penalty = red_count * 15
@@ -28,15 +36,16 @@ def score_file(filepath: str, profile: Dict[str, Any]) -> Tuple[int, str, int, f
         score -= penalty
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
-    # 2. Type Safety Index
-    # Target > 90% for a "Pass"
+    # 3. Type Safety Index
+    # Target based on profile for a "Pass"
+    min_type_cov = profile.get("min_type_coverage", 90)
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 
-    if type_safety_index < 90:
+    if type_safety_index < min_type_cov:
         penalty = 20
         score -= penalty
-        details.append(f"Type Safety Index {type_safety_index:.0f}% < 90% (-{penalty})")
+        details.append(f"Type Safety Index {type_safety_index:.0f}% < {min_type_cov}% (-{penalty})")
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 

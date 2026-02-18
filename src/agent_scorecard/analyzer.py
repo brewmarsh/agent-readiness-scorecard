@@ -160,6 +160,13 @@ def get_project_issues(path: str, py_files: List[str], profile: Dict[str, Any]) 
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
+    # 1a. Environment Health (malformed pyproject.toml)
+    health = auditor.check_environment_health(path)
+    if not health.get("pyproject_valid", True):
+        msg = "Malformed pyproject.toml detected"
+        penalty += 20
+        issues.append(msg)
+
     # 2. God Module Detection
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
