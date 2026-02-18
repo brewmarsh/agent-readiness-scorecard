@@ -3,6 +3,7 @@ import copy
 from typing import Dict, Any, TypedDict
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+tomllib: Any
 try:
     import tomllib  # type: ignore
 except ImportError:
@@ -30,9 +31,9 @@ DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
         "acl_yellow": 10,  # Warning threshold for cognitive load
-        "acl_red": 20,     # Critical failure threshold
+        "acl_red": 15,  # Critical failure threshold
         "complexity": 10,  # McCabe complexity limit
-        "type_safety": 90, # Minimum type hint coverage %
+        "type_safety": 90,  # Minimum type hint coverage %
     },
 }
 
@@ -71,9 +72,8 @@ def load_config(path: str = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return cast(Config, _deep_merge(DEFAULT_CONFIG, user_config))
+    from typing import cast as typing_cast
 
-
-def cast(t, v):
-    """Helper for type hinting merged dictionaries."""
-    return v
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )

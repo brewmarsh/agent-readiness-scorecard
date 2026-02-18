@@ -2,10 +2,9 @@ from typing import Dict, Any, Tuple, List, Optional
 from .metrics import get_loc, get_function_stats
 from .types import FunctionMetric
 
+
 def score_file(
-    filepath: str, 
-    profile: Dict[str, Any], 
-    thresholds: Optional[Dict[str, Any]] = None
+    filepath: str, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]] = None
 ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
@@ -17,7 +16,7 @@ def score_file(
     if thresholds is None:
         thresholds = {
             "acl_yellow": p_thresholds.get("acl_yellow", 10),
-            "acl_red": p_thresholds.get("acl_red", 20),
+            "acl_red": p_thresholds.get("acl_red", 15),
             "type_safety": p_thresholds.get("type_safety", 90),
         }
 
@@ -41,7 +40,7 @@ def score_file(
 
     # 3. Extract granular thresholds
     acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
+    acl_red = thresholds.get("acl_red", 15)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     # 4. ACL Scoring (Agent Cognitive Load)

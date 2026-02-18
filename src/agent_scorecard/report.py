@@ -1,6 +1,4 @@
-import os
 from typing import List, Dict, Any, Optional, Union, cast
-from . import analyzer
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
 
@@ -28,7 +26,8 @@ def _generate_summary_section(
 
 
 def _generate_acl_section(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    thresholds: Dict[str, Any],
 ) -> str:
     """Analyzes and reports on functions with high cognitive load."""
     acl_yellow = thresholds.get("acl_yellow", 10)
@@ -54,7 +53,9 @@ def _generate_acl_section(
             acl_val = cast(float, fn.get("acl", 0))
             if acl_val > acl_yellow:
                 status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-                targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                targets += (
+                    f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                )
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
@@ -62,7 +63,8 @@ def _generate_acl_section(
 
 
 def _generate_type_safety_section(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    thresholds: Dict[str, Any],
 ) -> str:
     """Summarizes type hint coverage across the project."""
     type_safety_threshold = thresholds.get("type_safety", 90)
@@ -176,7 +178,9 @@ def _generate_prompts_section(
     return prompts
 
 
-def _generate_file_table_section(stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]]) -> str:
+def _generate_file_table_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+) -> str:
     """Creates a full breakdown of analysis for every file."""
     table = "### 📂 Full File Analysis\n\n"
     table += "| File | Score | Issues |\n"
@@ -283,7 +287,9 @@ def generate_advisor_report(
     return report
 
 
-def generate_recommendations_report(results: Union[AnalysisResult, List[FileAnalysisResult], Any]) -> str:
+def generate_recommendations_report(
+    results: Union[AnalysisResult, List[FileAnalysisResult], Any],
+) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
     file_list = (

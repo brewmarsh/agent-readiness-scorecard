@@ -182,7 +182,12 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
 
 def check_environment_health(path: str) -> Dict[str, Any]:
     """Check for essential agent configuration: AGENTS.md, Linters, and Lock files."""
-    results = {"agents_md": False, "linter_config": False, "lock_file": False, "pyproject_valid": True}
+    results = {
+        "agents_md": False,
+        "linter_config": False,
+        "lock_file": False,
+        "pyproject_valid": True,
+    }
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
     if not os.path.exists(base_dir):
@@ -205,11 +210,16 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            import tomllib
+            # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+            try:
+                import tomllib  # type: ignore
+            except ImportError:
+                import tomli as tomllib  # type: ignore
+
             with open(filepath, "rb") as f:
                 tomllib.load(f)
         except ImportError:
-            # Fallback for Python < 3.11 without toml package
+            # Fallback for environments where neither is installed yet
             pass
         except Exception:
             results["pyproject_valid"] = False
