@@ -26,6 +26,14 @@ INSTRUCTIONS_TEMPLATE = """# Instructions
 TYPE_HINT_STUB = "# TODO: Add type hints for Agent clarity"
 DOCSTRING_TEXT = '"""TODO: Add docstring for AI context."""'
 
+# --- CONSTANTS ---
+DEFAULT_THRESHOLDS = {
+    "acl_yellow": 10,  # Warning threshold for cognitive load
+    "acl_red": 15,  # Critical failure threshold
+    "complexity": 10,  # McCabe complexity limit
+    "type_safety": 90,  # Minimum type hint coverage %
+}
+
 # --- AGENT PROFILES ---
 PROFILES = {
     "generic": {

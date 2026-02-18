@@ -1,23 +1,26 @@
 import textwrap
-import os
 from pathlib import Path
 from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
-from agent_scorecard import analyzer, auditor
+from agent_scorecard import analyzer
+
 
 def test_bloated_files_penalty(tmp_path: Path):
     """Verify that files over 200 lines get a penalty."""
-    content = "x = 1\n" * 310 # 310 lines of code
+    content = "x = 1\n" * 310  # 310 lines of code
     py_file = tmp_path / "bloated.py"
     py_file.write_text(content, encoding="utf-8")
 
     # 310 lines - 200 = 110. 110 // 10 = 11 penalty points.
-    score, details, loc, avg_comp, type_cov, metrics = score_file(str(py_file), PROFILES["generic"])
+    score, details, loc, avg_comp, type_cov, metrics = score_file(
+        str(py_file), PROFILES["generic"]
+    )
 
     assert loc == 310
     assert "Bloated File: 310 lines (-11)" in details
     # Base 100 - 11 = 89
     assert score == 89
+
 
 def test_acl_strictness(tmp_path: Path):
     """Verify ACL thresholds: Red > 15, Yellow 10-15."""
@@ -34,11 +37,14 @@ def test_acl_strictness(tmp_path: Path):
     py_file = tmp_path / "high_acl.py"
     py_file.write_text(content, encoding="utf-8")
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(str(py_file), PROFILES["generic"])
+    score, details, loc, avg_comp, type_cov, metrics = score_file(
+        str(py_file), PROFILES["generic"]
+    )
 
     # metrics[0] should be hall_func
     assert any(m["acl"] == 16.0 for m in metrics)
     assert "1 Red ACL functions (-15)" in details
+
 
 def test_empty_directory(tmp_path: Path):
     """Verify handling of empty directories."""
@@ -54,6 +60,7 @@ def test_empty_directory(tmp_path: Path):
     # final_score = 0 + 85 * 0.2 = 17.
     assert results["final_score"] < 100
 
+
 def test_malformed_pyproject(tmp_path: Path):
     """Verify that malformed pyproject.toml is detected and results in a penalty."""
     bad_toml = "[[[ invalid toml"
@@ -66,6 +73,7 @@ def test_malformed_pyproject(tmp_path: Path):
     # ok.py score: 80 (type penalty). project score: 80 (malformed penalty).
     # final: 80.0
     assert results["final_score"] == 80.0
+
 
 def test_missing_dependencies_parsing(tmp_path: Path):
     """Verify that missing dependencies in imports don't crash the scanner."""

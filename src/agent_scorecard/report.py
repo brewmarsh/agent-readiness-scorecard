@@ -1,6 +1,5 @@
-import os
 from typing import List, Dict, Any, Optional, Union, cast
-from . import analyzer
+from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
 
@@ -28,11 +27,12 @@ def _generate_summary_section(
 
 
 def _generate_acl_section(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    thresholds: Dict[str, Any],
 ) -> str:
     """Analyzes and reports on functions with high cognitive load."""
-    acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
+    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
     targets += (
@@ -54,7 +54,9 @@ def _generate_acl_section(
             acl_val = cast(float, fn.get("acl", 0))
             if acl_val > acl_yellow:
                 status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-                targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                targets += (
+                    f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                )
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
@@ -62,10 +64,13 @@ def _generate_acl_section(
 
 
 def _generate_type_safety_section(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]], thresholds: Dict[str, Any]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    thresholds: Dict[str, Any],
 ) -> str:
     """Summarizes type hint coverage across the project."""
-    type_safety_threshold = thresholds.get("type_safety", 90)
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    )
 
     types_section = "## 🛡️ Type Safety Index\n\n"
     types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
@@ -103,9 +108,11 @@ def _generate_prompts_section(
     project_issues: Optional[List[str]] = None,
 ) -> str:
     """Generates structured CRAFT prompts for remediation."""
-    acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
-    type_safety_threshold = thresholds.get("type_safety", 90)
+    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    )
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 
@@ -176,7 +183,9 @@ def _generate_prompts_section(
     return prompts
 
 
-def _generate_file_table_section(stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]]) -> str:
+def _generate_file_table_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+) -> str:
     """Creates a full breakdown of analysis for every file."""
     table = "### 📂 Full File Analysis\n\n"
     table += "| File | Score | Issues |\n"
@@ -198,7 +207,7 @@ def generate_markdown_report(
 ) -> str:
     """Orchestrates the generation of the Markdown report."""
     if thresholds is None:
-        thresholds = {"acl_yellow": 10, "acl_red": 20, "type_safety": 90}
+        thresholds = DEFAULT_THRESHOLDS.copy()
 
     summary = _generate_summary_section(final_score, profile, project_issues)
     targets = _generate_acl_section(stats, thresholds)
@@ -283,7 +292,9 @@ def generate_advisor_report(
     return report
 
 
-def generate_recommendations_report(results: Union[AnalysisResult, List[FileAnalysisResult], Any]) -> str:
+def generate_recommendations_report(
+    results: Union[AnalysisResult, List[FileAnalysisResult], Any],
+) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
     file_list = (
