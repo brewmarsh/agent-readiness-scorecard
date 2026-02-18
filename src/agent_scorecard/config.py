@@ -3,6 +3,7 @@ import copy
 from typing import Dict, Any, TypedDict
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+tomllib: Any
 try:
     import tomllib  # type: ignore
 except ImportError:
@@ -71,9 +72,6 @@ def load_config(path: str = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return cast(Config, _deep_merge(DEFAULT_CONFIG, user_config))
+    from typing import cast as typing_cast
 
-
-def cast(t, v):
-    """Helper for type hinting merged dictionaries."""
-    return v
+    return typing_cast(Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
