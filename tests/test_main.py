@@ -1,12 +1,13 @@
 import pytest
 from pathlib import Path
-from src.agent_scorecard.analyzer import (
+from agent_scorecard.analyzer import (
     get_loc,
     get_complexity_score,  # Renamed from analyze_complexity
-    check_type_hints,      # Renamed from analyze_type_hints
+    check_type_hints,  # Renamed from analyze_type_hints
     scan_project_docs,
 )
-from src.agent_scorecard.scoring import generate_badge
+from agent_scorecard.scoring import generate_badge
+
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:
@@ -27,6 +28,7 @@ def complex_func(n):
 """)
     return p
 
+
 @pytest.fixture
 def typed_file(tmp_path: Path) -> Path:
     """TODO: Add docstring for AI context."""
@@ -37,10 +39,12 @@ def add(a: int, b: int) -> int:
 """)
     return p
 
+
 def test_get_loc(sample_file: Path) -> None:
     # Manual count: 8 lines
     """TODO: Add docstring for AI context."""
     assert get_loc(str(sample_file)) == 8
+
 
 def test_analyze_complexity(sample_file: Path) -> None:
     # hello: 1
@@ -58,6 +62,7 @@ def test_analyze_complexity(sample_file: Path) -> None:
     # Penalty Logic Simulation (threshold=2)
     penalty = 10 if avg > 2 else 0
     assert penalty == 10
+
 
 def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     # sample_file: 0/2 typed -> 0%
@@ -78,6 +83,7 @@ def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     penalty = 20 if cov < 50 else 0
     assert penalty == 0
 
+
 def test_scan_project_docs(tmp_path: Path) -> None:
     """TODO: Add docstring for AI context."""
     required = ["agents.md", "instructions.md"]
@@ -89,6 +95,7 @@ def test_scan_project_docs(tmp_path: Path) -> None:
     missing = scan_project_docs(str(tmp_path), required)
     assert "agents.md" not in missing
     assert "instructions.md" in missing
+
 
 def test_generate_badge() -> None:
     # >= 90: Bright Green

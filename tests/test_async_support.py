@@ -2,8 +2,9 @@ from pathlib import Path
 from unittest.mock import patch
 import textwrap
 from click.testing import CliRunner
-from src.agent_scorecard.main import cli
-from src.agent_scorecard.analyzer import check_type_hints
+from agent_scorecard.main import cli
+from agent_scorecard.analyzer import check_type_hints
+
 
 def test_async_function_support_checks(tmp_path: Path):
     """Test that check_type_hints correctly identifies async functions."""
@@ -17,6 +18,7 @@ async def fetch_data(url):
     cov = check_type_hints(str(p))
     assert cov == 0
 
+
 def test_fix_async_function(tmp_path: Path):
     """Test that 'fix' command adds docstrings and type hints to async functions."""
     p = tmp_path / "async_fix.py"
@@ -26,7 +28,7 @@ async def process_data(data):
 """)
 
     runner = CliRunner()
-    
+
     # RESOLUTION: Use mocking to simulate the LLM refactoring the code
     fixed_code = textwrap.dedent("""
         async def process_data(data: dict) -> None:
@@ -35,14 +37,15 @@ async def process_data(data):
     """).strip()
 
     # Mocking the LLM ensures tests run locally without network access
-    with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+    with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
         # We invoke the standalone 'fix' command established in the Beta branch
         result = runner.invoke(cli, ["fix", str(p)])
         assert result.exit_code == 0
 
     content = p.read_text()
-    assert 'Processes data async.' in content
-    assert 'data: dict' in content
+    assert "Processes data async." in content
+    assert "data: dict" in content
+
 
 def test_score_async_function(tmp_path: Path):
     """Test that 'score' command detects issues in async functions."""

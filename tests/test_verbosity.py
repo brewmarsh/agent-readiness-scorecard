@@ -1,6 +1,6 @@
-import os
 from click.testing import CliRunner
-from src.agent_scorecard.main import cli
+from agent_scorecard.main import cli
+
 
 def test_verbosity_quiet():
     """Test quiet mode behavior (should only print score and critical issues)."""
@@ -19,13 +19,14 @@ def test_verbosity_quiet():
         assert "Running Agent Scorecard" not in result.output
         assert "Final Agent Score" in result.output
 
+
 def test_verbosity_summary():
     """Test summary mode behavior (default)."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # One passing file (score 100), one failing file (score < 70)
         with open("pass.py", "w") as f:
-            f.write("def good() -> None:\n    \"\"\"Docstring.\"\"\"\n    pass\n")
+            f.write('def good() -> None:\n    """Docstring."""\n    pass\n')
 
         # Create a complex, untyped function to ensure score < 70
         # Complexity 20 -> -15 penalty.
@@ -33,7 +34,7 @@ def test_verbosity_summary():
         # Score = 65.
         content = "def bad():\n"
         for i in range(20):
-            content += "    " * (i+1) + f"if True: # {i}\n"
+            content += "    " * (i + 1) + f"if True: # {i}\n"
         content += "    " * 22 + "pass\n"
 
         with open("fail.py", "w") as f:
@@ -48,6 +49,7 @@ def test_verbosity_summary():
         assert "fail.py" in result.output
         # pass.py should be hidden because its score is 100 (>= 70)
         assert "pass.py" not in result.output
+
 
 def test_verbosity_detailed():
     """Test detailed mode behavior."""

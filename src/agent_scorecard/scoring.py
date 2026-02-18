@@ -1,7 +1,10 @@
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Optional
 from .metrics import get_loc, get_function_stats
 
-def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any] = None) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
+
+def score_file(
+    filepath: str, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]] = None
+) -> Tuple[int, str, int, float, float, List[Dict[str, Any]]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
@@ -9,12 +12,12 @@ def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any
     # 1. Initialize Thresholds
     # Extract from profile or use defaults if thresholds arg is missing
     p_thresholds = profile.get("thresholds", {})
-    
+
     if thresholds is None:
         thresholds = {
             "acl_yellow": p_thresholds.get("acl_yellow", 10),
             "acl_red": p_thresholds.get("acl_red", 20),
-            "type_safety": p_thresholds.get("type_safety", 90)
+            "type_safety": p_thresholds.get("type_safety", 90),
         }
 
     metrics = get_function_stats(filepath)
@@ -53,16 +56,26 @@ def score_file(filepath: str, profile: Dict[str, Any], thresholds: Dict[str, Any
     if type_safety_index < type_safety_threshold:
         penalty = 20
         score -= penalty
-        details.append(f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})")
+        details.append(
+            f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+        )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 
     # Ensure score doesn't dip below 0
-    return max(score, 0), ", ".join(details), loc, avg_complexity, type_safety_index, metrics
+    return (
+        max(score, 0),
+        ", ".join(details),
+        loc,
+        avg_complexity,
+        type_safety_index,
+        metrics,
+    )
+
 
 def generate_badge(score: float) -> str:
     """Generates an SVG badge based on the final agent readiness score."""
-    # 
+    #
     if score >= 90:
         color = "#4c1"  # Bright Green
     elif score >= 70:

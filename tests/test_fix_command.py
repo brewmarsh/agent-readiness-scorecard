@@ -3,7 +3,8 @@ import textwrap
 import pytest
 from unittest.mock import patch
 from click.testing import CliRunner
-from src.agent_scorecard.main import cli
+from agent_scorecard.main import cli
+
 
 class TestFixCommand:
     @pytest.fixture
@@ -16,10 +17,12 @@ class TestFixCommand:
             # Create a dummy python file
             os.makedirs("src")
             with open("src/test.py", "w") as f:
-                f.write(textwrap.dedent("""
+                f.write(
+                    textwrap.dedent("""
                     def foo():
                         pass
-                """))
+                """)
+                )
 
             # RESOLUTION: Mock LLM.generate to simulate CRAFT refactoring
             fixed_code = textwrap.dedent("""
@@ -28,7 +31,9 @@ class TestFixCommand:
                     pass
             """).strip()
 
-            with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code) as mock_gen:
+            with patch(
+                "agent_scorecard.fix.LLM.generate", return_value=fixed_code
+            ) as mock_gen:
                 # Invoke dedicated 'fix' command
                 result = runner.invoke(cli, ["fix", "."])
 
@@ -53,13 +58,15 @@ class TestFixCommand:
     def test_fix_command_specific_path(self, runner):
         """Test fix command on a subdirectory with a specific agent profile."""
         with runner.isolated_filesystem():
-             # Create a dummy python file in a subdirectory
+            # Create a dummy python file in a subdirectory
             os.makedirs("subdir")
             with open("subdir/test.py", "w") as f:
-                f.write(textwrap.dedent("""
+                f.write(
+                    textwrap.dedent("""
                     def bar(x):
                         return x
-                """))
+                """)
+                )
 
             fixed_code = textwrap.dedent("""
                 def bar(x: int) -> int:
@@ -67,7 +74,7 @@ class TestFixCommand:
                     return x
             """).strip()
 
-            with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+            with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
                 # Run fix command on subdir with jules agent (requires agents.md)
                 result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
 
@@ -86,14 +93,14 @@ class TestFixCommand:
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")
-            
+
             # Create README.md to satisfy profile
             with open("README.md", "w") as f:
                 f.write("# Project")
 
-            fixed_code = "def foo() -> None:\n    \"\"\"Doc.\"\"\"\n    pass"
-            
-            with patch("src.agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+            fixed_code = 'def foo() -> None:\n    """Doc."""\n    pass'
+
+            with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
                 # Using the old --fix flag style
                 result = runner.invoke(cli, ["score", ".", "--fix"])
                 assert result.exit_code == 0
@@ -107,5 +114,5 @@ class TestFixCommand:
 
             # Should default to generic and not crash
             result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
-            assert result.exit_code == 0 
+            assert result.exit_code == 0
             assert "Unknown agent profile: invalid. using generic." in result.output
