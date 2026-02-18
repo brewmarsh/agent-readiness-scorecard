@@ -1,65 +1,79 @@
 import os
-import sys
+import copy
 from typing import Dict, Any, TypedDict
 
+# Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
 try:
     import tomllib  # type: ignore
 except ImportError:
     try:
         import tomli as tomllib  # type: ignore
     except ImportError:
-        # Fallback for environments where neither is installed yet during initialization
+        # Fallback for environments where neither is installed yet
         tomllib = None
 
-class Thresholds(TypedDict):
+
+class Thresholds(TypedDict, total=False):
     acl_yellow: int
     acl_red: int
+    complexity: int
     type_safety: int
+
 
 class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
 
+
+# Unified defaults representing core Agent Physics
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": {
-        "acl_yellow": 10,
-        "acl_red": 20,
-        "type_safety": 90,
+        "acl_yellow": 10,  # Warning threshold for cognitive load
+        "acl_red": 20,     # Critical failure threshold
+        "complexity": 10,  # McCabe complexity limit
+        "type_safety": 90, # Minimum type hint coverage %
     },
 }
 
-def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merges two dictionaries."""
+
+def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge user settings into the default configuration."""
+    result = copy.deepcopy(base)
     for key, value in override.items():
-        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-            base[key] = deep_merge(base[key].copy(), value)
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = _deep_merge(result[key], value)
         else:
-            base[key] = value
-    return base
+            result[key] = value
+    return result
+
 
 def load_config(path: str = ".") -> Config:
-    """Loads configuration from pyproject.toml and merges with defaults."""
-    # Start with a deep copy of the default config
-    config: Config = {
-        "verbosity": DEFAULT_CONFIG["verbosity"],
-        "thresholds": DEFAULT_CONFIG["thresholds"].copy()
-    }
+    """
+    Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
+    Looks for the [tool.agent-scorecard] section.
+    """
+    if os.path.isfile(path):
+        search_dir = os.path.dirname(os.path.abspath(path))
+    else:
+        search_dir = path
 
-    if tomllib is None:
-        return config
+    config_path = os.path.join(search_dir, "pyproject.toml")
+    user_config = {}
 
-    pyproject_path = os.path.join(path, "pyproject.toml")
-    if os.path.exists(pyproject_path):
+    if tomllib and os.path.exists(config_path):
         try:
-            with open(pyproject_path, "rb") as f:
+            with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-
-            user_config = data.get("tool", {}).get("agent-scorecard", {})
-            if user_config:
-                config = deep_merge(config, user_config)  # type: ignore
+                # Parse settings from the standardized PEP 518 [tool] table
+                user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback if parsing fails or other issues occur
+            # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return config
+    return cast(Config, _deep_merge(DEFAULT_CONFIG, user_config))
+
+
+def cast(t, v):
+    """Helper for type hinting merged dictionaries."""
+    return v

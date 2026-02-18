@@ -51,6 +51,34 @@ agent-score . --fix
 
 ```
 
+## Configuration
+
+`agent-scorecard` can be configured using a `pyproject.toml` file in your project root.
+
+### Priority
+Configuration is resolved in the following order:
+1. **CLI Flags** (e.g., `--agent`, `--fix`)
+2. **`pyproject.toml`** (the `[tool.agent-scorecard]` section)
+3. **Defaults** (Hardcoded application defaults)
+
+### pyproject.toml Example
+
+Add a section to your `pyproject.toml` to customize the tool's behavior:
+
+```toml
+[tool.agent-scorecard]
+agent = "jules"
+min_type_coverage = 95
+required_files = ["README.md", "AGENTS.md"]
+verbosity = 1
+```
+
+### Verbosity Levels
+The tool supports three levels of output detail:
+* **Level 0 (Quiet):** Ideal for CI/CD. Outputs only the final score and critical failures.
+* **Level 1 (Default):** Provides a summary table of file scores and project-wide issues.
+* **Level 2 (Verbose):** Deep-dive mode. Includes per-function metrics, ACL calculations, and specific refactoring suggestions.
+
 ## 📊 The Scoring System
 
 Your codebase starts at **100 points**. Penalties are applied for:
@@ -58,9 +86,12 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **Complexity** | -10 pts if McCabe > 10 | If code is hard to read, it's hard to refactor safely. |
-| **Missing Types** | -20 pts if coverage < 50% | Agents need types to call functions correctly. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: $CC + (LOC / 20)$. Target <= 10. |
+| **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
+| **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
+| **High Entropy** | -5 pts per directory | Folders with > 50 files confuse retrieval tools. |
+| **Circular Deps** | -5 pts per cycle | Causes infinite recursion in agent planning. |
 
 ## 🛠 Project Structure
 
@@ -105,3 +136,13 @@ agent-score check-prompts prompts/system_v1.txt
 * **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
 * **Few-Shot Examples**: Does it include 1-3 examples?
 * **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
+
+## 🤖 Working with Jules
+
+To start a task using the Jules Agent:
+1. Add the `prompt-check` label to your issue or pull request.
+2. The Gatekeeper will analyze your prompt.
+3. If the prompt passes analysis, the `jules` label will be automatically added, and the agent will start.
+4. If it fails, you will receive a comment with suggested improvements.
+
+**Note:** Do not add the `jules` label directly. Always start with `prompt-check`.

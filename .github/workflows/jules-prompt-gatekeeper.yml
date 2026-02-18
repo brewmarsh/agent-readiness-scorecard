@@ -3,13 +3,16 @@ name: 'Jules: Prompt Gatekeeper'
 on:
   issues:
     types: [labeled]
+  pull_request:
+    types: [labeled]
 
 jobs:
   gatekeeper:
-    if: github.event.label.name == 'jules'
+    if: github.event.label.name == 'prompt-check'
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      pull-requests: write
       contents: read
     steps:
       - name: Checkout
@@ -28,7 +31,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const issueBody = context.payload.issue.body || '';
+            const issueOrPR = context.payload.issue || context.payload.pull_request;
+            const issueBody = issueOrPR.body || '';
             fs.writeFileSync('issue_prompt.txt', issueBody);
 
             let output = '';
@@ -43,6 +47,14 @@ jobs:
 
             const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
 
+            // Always remove prompt-check
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              name: 'prompt-check'
+            });
+
             if (exitCode !== 0) {
               // Extract suggestions from output
               const suggestionsMatch = output.match(/Refactored Suggestions:([\s\S]*?)(\nFAILED:|$)/);
@@ -54,11 +66,12 @@ jobs:
                 issue_number: context.issue.number,
                 body: `🛑 Prompt Physics Check Failed\nI cannot start this task yet because the prompt instructions are ambiguous.\n\nSuggested Improvements:\n${suggestions}`
               });
-
-              await github.rest.issues.removeLabel({
+            } else {
+              // Pass: Add jules label
+              await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                name: 'jules'
+                labels: ['jules']
               });
             }
