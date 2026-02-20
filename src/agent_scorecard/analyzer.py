@@ -167,7 +167,9 @@ def get_project_issues(
     issues: List[str] = []
 
     # 1. Documentation Check
-    missing_docs = scan_project_docs(path, cast(List[str], profile.get("required_files", [])))
+    missing_docs = scan_project_docs(
+        path, cast(List[str], profile.get("required_files", []))
+    )
     if missing_docs:
         msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
@@ -279,7 +281,9 @@ def perform_analysis(
     return {
         "file_results": file_results,
         "final_score": final_score,
-        "missing_docs": scan_project_docs(path, cast(List[str], profile.get("required_files", []))),
+        "missing_docs": scan_project_docs(
+            path, cast(List[str], profile.get("required_files", []))
+        ),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis_val,
         "directory_stats": directory_stats,
