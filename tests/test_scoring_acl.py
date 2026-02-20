@@ -1,11 +1,14 @@
-from src.agent_scorecard.scoring import score_file
-from src.agent_scorecard.constants import PROFILES
+from agent_scorecard.scoring import score_file
+from agent_scorecard.constants import PROFILES
 
+
+# TODO: Add type hints for Agent clarity
 def test_score_file_acl_penalty(tmp_path):
     # Create a file with high ACL function
     # ACL = CC + LOC/20
     # Let's make LOC high ~300 lines -> 15.
 
+    """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
     code += "    x = 0\n"
     # 320 lines of assignment
@@ -16,13 +19,17 @@ def test_score_file_acl_penalty(tmp_path):
     p = tmp_path / "high_acl.py"
     p.write_text(code, encoding="utf-8")
 
-    # ACL: CC=1, LOC=322. ACL = 1 + 16.1 = 17.1. Yellow ACL. Penalty -5.
+    # ACL: CC=1, LOC=323. ACL = 1 + 16.15 = 17.15. Red ACL (>15). Penalty -15.
     # Type Safety: 0/1 typed -> 0%. Penalty -20.
-    # Total score = 100 - 5 - 20 = 75.
+    # Bloated File (323 LOC): -12.
+    # Total score = 100 - 15 - 20 - 12 = 53.
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(str(p), PROFILES['generic'])
+    score, details, loc, avg_comp, type_cov, metrics = score_file(
+        str(p), PROFILES["generic"]
+    )
 
-    assert "Yellow ACL functions" in details
-    assert "(-5)" in details
+    assert "Red ACL functions" in details
+    assert "(-15)" in details
     assert "Type Safety Index" in details
-    assert score == 75
+    assert "Bloated File" in details
+    assert score == 53
