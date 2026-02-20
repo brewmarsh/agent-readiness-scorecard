@@ -86,7 +86,9 @@ def _generate_type_safety_section(
         has_rows = True
 
     if not has_rows and verbosity == "summary":
-        return "## 🛡️ Type Safety Index\n\n✅ All files meet type safety requirements.\n\n"
+        return (
+            "## 🛡️ Type Safety Index\n\n✅ All files meet type safety requirements.\n\n"
+        )
 
     return types_section + "\n"
 
