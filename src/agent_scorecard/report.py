@@ -31,7 +31,7 @@ def _generate_acl_section(
 ) -> str:
     """Analyzes and reports on functions with high cognitive load."""
     acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
+    acl_red = thresholds.get("acl_red", 15)
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
     targets += (
@@ -106,7 +106,7 @@ def _generate_prompts_section(
 ) -> str:
     """Generates structured CRAFT prompts for remediation."""
     acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 20)
+    acl_red = thresholds.get("acl_red", 15)
     type_safety_threshold = thresholds.get("type_safety", 90)
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
@@ -202,7 +202,7 @@ def generate_markdown_report(
 ) -> str:
     """Orchestrates the generation of the Markdown report."""
     if thresholds is None:
-        thresholds = {"acl_yellow": 10, "acl_red": 20, "type_safety": 90}
+        thresholds = {"acl_yellow": 10, "acl_red": 15, "type_safety": 90}
 
     summary = _generate_summary_section(final_score, profile, project_issues)
     targets = _generate_acl_section(stats, thresholds)
@@ -323,6 +323,17 @@ def generate_recommendations_report(
                     "Finding": f"Low Type Safety: {res['file']}",
                     "Agent Impact": "Hallucination of signatures.",
                     "Recommendation": "Add PEP 484 hints.",
+                }
+            )
+
+        # Docstring recommendation
+        issues_text = str(res.get("issues", ""))
+        if "Missing docstrings" in issues_text:
+            recommendations.append(
+                {
+                    "Finding": f"Missing Docstrings: {res['file']}",
+                    "Agent Impact": "Agent misses semantic context of functions.",
+                    "Recommendation": "Add triple-quote docstrings to all functions.",
                 }
             )
 
