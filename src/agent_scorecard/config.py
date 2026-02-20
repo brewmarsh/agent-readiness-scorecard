@@ -64,4 +64,6 @@ def load_config(path: str = ".") -> Config:
             # Fallback to defaults if file is malformed
             pass
 
-    return typing_cast(Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )

@@ -16,9 +16,13 @@ def score_file(
 
     if thresholds is None:
         thresholds = {
-            "acl_yellow": p_thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]),
+            "acl_yellow": p_thresholds.get(
+                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+            ),
             "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-            "type_safety": p_thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"]),
+            "type_safety": p_thresholds.get(
+                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+            ),
         }
 
     metrics = get_function_stats(filepath)
