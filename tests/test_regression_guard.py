@@ -23,7 +23,7 @@ def test_bloated_files_penalty(tmp_path: Path):
 
 def test_acl_strictness(tmp_path: Path):
     """Verify ACL thresholds: Red > 15, Yellow 10-15."""
-    # ACL = Complexity + (LOC / 20). 
+    # ACL = Complexity + (LOC / 20).
     # For this function: CC=1, LOC=300. ACL = 1 + 15 = 16.0 (Red status)
     content = textwrap.dedent("""
     def hall_func():

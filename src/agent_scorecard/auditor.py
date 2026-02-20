@@ -139,7 +139,7 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     Counts tokens for the project's 'Critical Context'.
     If this exceeds 32k, an Agent will likely lose track of the overall architecture.
     """
-    
+
     try:
         enc = tiktoken.get_encoding("cl100k_base")
     except Exception:
