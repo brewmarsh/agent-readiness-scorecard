@@ -55,6 +55,15 @@ def get_changed_files(base_ref: str = "origin/main") -> List[str]:
     except Exception:
         return []
 
+def _print_project_issues(results: Union[Dict[str, Any], AnalysisResult]) -> None:
+    """Prints critical project-level issues."""
+    issues = results.get("project_issues", [])
+    if issues:
+        console.print(Panel("[bold red]Project Issues Detected[/bold red]", expand=False))
+        for issue in issues:
+            console.print(f"❌ {issue}")
+        console.print("")
+
 def _print_environment_health(path: str, results: Union[Dict[str, Any], AnalysisResult], verbosity: str) -> None:
     """Prints the environment health table."""
     if verbosity == "quiet":
@@ -110,11 +119,70 @@ def _print_file_analysis(results: Union[Dict[str, Any], AnalysisResult], verbosi
 
 # --- COMMANDS ---
 
+@cli.command(name="check-prompts")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--plain", is_flag=True, help="Plain output mode.")
+def check_prompts(path: str, plain: bool) -> None:
+    """Statically analyzes prompts for LLM best practices."""
+    analyzer_inst = PromptAnalyzer()
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    result = analyzer_inst.analyze(content)
+    score = result["score"]
+
+    if plain:
+        print(f"Score: {score}/100")
+        for imp in result["improvements"]:
+            print(f"- {imp}")
+    else:
+        console.print(Panel(f"[bold cyan]Prompt Analysis: {os.path.basename(path)}[/bold cyan]", expand=False))
+
+        table = Table(title="Heuristic Checks")
+        table.add_column("Check", style="cyan")
+        table.add_column("Status", justify="right")
+
+        checks = {
+            "role_definition": "Role Definition",
+            "cognitive_scaffolding": "Cognitive Scaffolding",
+            "delimiter_hygiene": "Delimiter Hygiene",
+            "few_shot": "Few-Shot Examples",
+            "negative_constraints": "No Negative Constraints"
+        }
+
+        for key, label in checks.items():
+            passed = result["results"].get(key, False)
+            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+            table.add_row(label, status)
+
+        console.print(table)
+
+        score_color = "green" if score >= 80 else "red"
+        console.print(f"\n[bold]Prompt Score: [{score_color}]{score}/100[/{score_color}][/bold]")
+
+        if result["improvements"]:
+            console.print("\n[bold yellow]Improvements:[/bold yellow]")
+            for imp in result["improvements"]:
+                console.print(f"- {imp}")
+
+        if score >= 80:
+             console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+        else:
+             console.print("\n[bold red]FAILED: Prompt needs improvement.[/bold red]")
+
+    if score < 80:
+        sys.exit(1)
+
 @cli.command(name="fix")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues using configuration thresholds."""
+    if agent not in PROFILES:
+        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
+        agent = "generic"
+
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     
@@ -134,20 +202,35 @@ def fix(path: str, agent: str) -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
 @click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity.")
-def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str) -> None:
+@click.option("--badge", is_flag=True, help="Generate SVG badge.")
+def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool) -> None:
     """Scores a codebase based on agent compatibility."""
+    if verbosity != "quiet":
+        console.print("[bold cyan]Running Agent Scorecard...[/bold cyan]")
+
+    if agent not in PROFILES:
+        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
+        agent = "generic"
+
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if fix:
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         apply_fixes(path, profile)
 
     results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
     
+    _print_project_issues(results)
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
+
+    # Force print score if quiet mode suppressed it in _print_file_analysis
+    if final_verbosity == "quiet":
+        score_color = "green" if results["final_score"] >= 70 else "red"
+        console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
     if report_path:
         content = report.generate_markdown_report(
@@ -156,6 +239,15 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str) ->
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
+
+    if badge:
+        svg = generate_badge(results["final_score"])
+        with open("agent_score.svg", "w", encoding="utf-8") as f:
+            f.write(svg)
+        console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
+
+    if results["final_score"] < 70:
+        sys.exit(1)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
