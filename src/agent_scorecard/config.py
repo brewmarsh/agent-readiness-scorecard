@@ -1,16 +1,15 @@
 import os
 import copy
-from typing import Dict, Any, TypedDict
+from typing import Dict, Any, TypedDict, cast as typing_cast
+from .constants import DEFAULT_VERBOSITY, DEFAULT_THRESHOLDS
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
-tomllib: Any
 try:
     import tomllib  # type: ignore
 except ImportError:
     try:
         import tomli as tomllib  # type: ignore
     except ImportError:
-        # Fallback for environments where neither is installed yet
         tomllib = None
 
 
@@ -26,15 +25,9 @@ class Config(TypedDict):
     thresholds: Thresholds
 
 
-# Unified defaults representing core Agent Physics
 DEFAULT_CONFIG: Config = {
-    "verbosity": "summary",
-    "thresholds": {
-        "acl_yellow": 10,  # Warning threshold for cognitive load
-        "acl_red": 15,  # Critical failure threshold
-        "complexity": 10,  # McCabe complexity limit
-        "type_safety": 90,  # Minimum type hint coverage %
-    },
+    "verbosity": DEFAULT_VERBOSITY,
+    "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
 
 
@@ -60,20 +53,15 @@ def load_config(path: str = ".") -> Config:
         search_dir = path
 
     config_path = os.path.join(search_dir, "pyproject.toml")
-    user_config = {}
+    user_config: Dict[str, Any] = {}
 
     if tomllib and os.path.exists(config_path):
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-                # Parse settings from the standardized PEP 518 [tool] table
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
+            # Fallback to defaults if file is malformed
             pass
 
-    from typing import cast as typing_cast
-
-    return typing_cast(
-        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
-    )
+    return typing_cast(Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config))

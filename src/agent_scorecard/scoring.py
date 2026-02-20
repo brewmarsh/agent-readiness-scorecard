@@ -1,6 +1,7 @@
 from typing import Dict, Any, Tuple, List, Optional
 from .metrics import get_loc, get_function_stats
 from .types import FunctionMetric
+from .constants import DEFAULT_THRESHOLDS
 
 
 def score_file(
@@ -15,9 +16,9 @@ def score_file(
 
     if thresholds is None:
         thresholds = {
-            "acl_yellow": p_thresholds.get("acl_yellow", 10),
-            "acl_red": p_thresholds.get("acl_red", 15),
-            "type_safety": p_thresholds.get("type_safety", 90),
+            "acl_yellow": p_thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]),
+            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
+            "type_safety": p_thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"]),
         }
 
     metrics = get_function_stats(filepath)

@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .constants import DEFAULT_THRESHOLDS
 
 
 def _generate_summary_section(
@@ -202,7 +203,7 @@ def generate_markdown_report(
 ) -> str:
     """Orchestrates the generation of the Markdown report."""
     if thresholds is None:
-        thresholds = {"acl_yellow": 10, "acl_red": 20, "type_safety": 90}
+        thresholds = DEFAULT_THRESHOLDS
 
     summary = _generate_summary_section(final_score, profile, project_issues)
     targets = _generate_acl_section(stats, thresholds)
