@@ -9,7 +9,7 @@ def test_score_file_acl_penalty(tmp_path):
     # Let's make LOC high ~300 lines -> 15.
 
     """TODO: Add docstring for AI context."""
-    code = 'def high_acl():\n'
+    code = "def high_acl():\n"
     code += '    """A high ACL function."""\n'
     code += "    x = 0\n"
     # 320 lines of assignment

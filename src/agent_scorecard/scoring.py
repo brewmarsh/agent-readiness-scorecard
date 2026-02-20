@@ -75,7 +75,9 @@ def score_file(
     if missing_doc_count > 0:
         penalty = 10
         score -= penalty
-        details.append(f"Missing docstrings for {missing_doc_count} functions (-{penalty})")
+        details.append(
+            f"Missing docstrings for {missing_doc_count} functions (-{penalty})"
+        )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 

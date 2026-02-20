@@ -74,7 +74,16 @@ def test_generate_markdown_report():
                 "loc": 100,
                 "complexity": 11,
                 "type_coverage": 100,
-                "function_metrics": [{"name": "f", "acl": 16.0, "complexity": 11, "loc": 100, "is_typed": True, "has_docstring": True}],
+                "function_metrics": [
+                    {
+                        "name": "f",
+                        "acl": 16.0,
+                        "complexity": 11,
+                        "loc": 100,
+                        "is_typed": True,
+                        "has_docstring": True,
+                    }
+                ],
             }
         ],
         final_score=50.0,

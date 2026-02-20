@@ -66,7 +66,9 @@ def test_malformed_pyproject(tmp_path: Path):
     bad_toml = "[[[ invalid toml"
     (tmp_path / "pyproject.toml").write_text(bad_toml, encoding="utf-8")
     (tmp_path / "README.md").write_text("# README", encoding="utf-8")
-    (tmp_path / "ok.py").write_text('def f():\n    """Docstring."""\n    pass', encoding="utf-8")
+    (tmp_path / "ok.py").write_text(
+        'def f():\n    """Docstring."""\n    pass', encoding="utf-8"
+    )
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
