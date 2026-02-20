@@ -102,7 +102,6 @@ def _generate_prompts_section(
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 
-    # 1. Project-Wide Logic (Merged from Main)
     if project_issues:
         for issue in project_issues:
             if "God Module" in issue:
@@ -121,7 +120,6 @@ def _generate_prompts_section(
                         template="A refactoring plan followed by the new module code structure."
                     ) + "\n\n"
 
-    # 2. File-Specific Logic (CRAFT Upgrade)
     problematic_files = [f for f in stats if f.get("score", 0) < 90]
     for f_res in problematic_files:
         file_path = f_res["file"]
@@ -145,6 +143,19 @@ def _generate_prompts_section(
 
     return prompts
 
+def _generate_file_table_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+) -> str:
+    """Creates a full breakdown of analysis for every file."""
+    table = "### 📂 Full File Analysis\n\n"
+    table += "| File | Score | Issues |\n"
+    table += "| :--- | :---: | :--- |\n"
+    for res in stats:
+        score = res.get("score", 0)
+        status = "✅" if score >= 70 else "❌"
+        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
+    return table
+
 def generate_markdown_report(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     final_score: float,
@@ -161,12 +172,7 @@ def generate_markdown_report(
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds)
     prompts = _generate_prompts_section(stats, thresholds, project_issues)
-    
-    table = "### 📂 Full File Analysis\n\n| File | Score | Issues |\n| :--- | :---: | :--- |\n"
-    for res in stats:
-        score = res.get("score", 0)
-        status = "✅" if score >= 70 else "❌"
-        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
+    table = _generate_file_table_section(stats)
 
     return (
         summary + targets + types_section + prompts + "\n" + table + 
@@ -182,7 +188,6 @@ def generate_advisor_report(
     """Generates the advanced Advisor Report based on Agent Physics."""
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    # ACL Section
     report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
     high_acl_files = sorted([s for s in stats if s.get("acl", 0) > 15], key=lambda x: x.get("acl", 0), reverse=True)
     if high_acl_files:
@@ -192,7 +197,6 @@ def generate_advisor_report(
     else:
         report += "✅ No Hallucination Zones detected.\n"
 
-    # Context Section
     report += "\n## 2. Context Economics\n"
     high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
     if high_token_files:
@@ -202,7 +206,6 @@ def generate_advisor_report(
     else:
         report += "✅ All files within context window limits.\n"
 
-    # Dependency Section
     report += "\n## 3. Dependency Entanglement\n"
     god_modules = sorted({k: v for k, v in dependency_stats.items() if v > 50}.items(), key=lambda x: x[1], reverse=True)
     if god_modules:
@@ -222,7 +225,7 @@ def generate_advisor_report(
 def generate_recommendations_report(
     results: Union[AnalysisResult, List[FileAnalysisResult], Any],
 ) -> str:
-    """Creates a RECOMMENDATIONS.md file for systemic improvements."""
+    """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
     file_list = results.get("file_results", []) if isinstance(results, dict) else results
     missing_docs = results.get("missing_docs", []) if isinstance(results, dict) else []

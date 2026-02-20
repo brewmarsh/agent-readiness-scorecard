@@ -1,18 +1,20 @@
 import os
 import copy
-from typing import Dict, Any, TypedDict, cast
+from typing import Dict, Any, TypedDict, cast as typing_cast
 from .constants import DEFAULT_THRESHOLDS
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+tomllib: Any = None
 try:
-    import tomllib  # type: ignore
+    import tomllib as _tomllib  # type: ignore
+    tomllib = _tomllib
 except ImportError:
     try:
-        import tomli as tomllib  # type: ignore
+        import tomli as _tomli
+        tomllib = _tomli
     except ImportError:
         # Fallback for environments where neither is installed yet
-        tomllib = None  # type: ignore
-
+        tomllib = None
 
 class Thresholds(TypedDict, total=False):
     acl_yellow: int
@@ -20,20 +22,17 @@ class Thresholds(TypedDict, total=False):
     complexity: int
     type_safety: int
 
-
 class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
-
 
 # Unified defaults representing core Agent Physics
 # RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
 # to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
-    "thresholds": cast(Thresholds, DEFAULT_THRESHOLDS),
+    "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
-
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
@@ -44,7 +43,6 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
         else:
             result[key] = value
     return result
-
 
 def load_config(path: str = ".") -> Config:
     """
@@ -69,4 +67,10 @@ def load_config(path: str = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return cast(Config, _deep_merge(cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )
+
+def cast(t: Any, v: Any) -> Any:
+    """Helper for type hinting merged dictionaries in a dynamic context."""
+    return v
