@@ -4,7 +4,7 @@ import subprocess
 import copy
 import click
 from importlib.metadata import version, PackageNotFoundError
-from typing import List, Dict, Any, Optional, Union, cast
+from typing import List, Dict, Any, Optional, cast
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -155,8 +155,9 @@ def fix(path: str, agent: str) -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
 @click.option("--badge", is_flag=True, help="Generate an agent score badge.")
+@click.option("--diff", "diff_base", help="Score only changed files.")
 @click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity.")
-def score(path: str, agent: str, fix: bool, report_path: str, badge: bool, verbosity: str) -> None:
+def score(path: str, agent: str, fix: bool, report_path: str, badge: bool, diff_base: Optional[str], verbosity: str) -> None:
     """Scores a codebase based on agent compatibility."""
     if not os.path.exists(path):
         console.print(f"[red]Error: Path '{path}' does not exist.[/red]")
@@ -178,7 +179,8 @@ def score(path: str, agent: str, fix: bool, report_path: str, badge: bool, verbo
         profile = cast(Profile, copy.deepcopy(PROFILES.get(agent, PROFILES["generic"])))
         apply_fixes(path, profile)
 
-    results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
+    limit_to_files = get_changed_files(diff_base) if diff_base else None
+    results = analyzer.perform_analysis(path, agent, limit_to_files=limit_to_files, thresholds=thresholds)
 
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
@@ -197,7 +199,7 @@ def score(path: str, agent: str, fix: bool, report_path: str, badge: bool, verbo
         badge_content = generate_badge(results["final_score"])
         with open("agent_score.svg", "w", encoding="utf-8") as f:
             f.write(badge_content)
-        console.print(f"[bold green]Badge saved to agent_score.svg[/bold green]")
+        console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
 
     if results["missing_docs"]:
         if final_verbosity != "quiet":
@@ -207,42 +209,55 @@ def score(path: str, agent: str, fix: bool, report_path: str, badge: bool, verbo
         sys.exit(1)
 
 @cli.command(name="check-prompts")
-@click.argument("input_file", type=click.Path(exists=True), required=False)
-def check_prompts(input_file: Optional[str]) -> None:
+@click.argument("input_file", type=click.Path(exists=True, dir_okay=False, allow_dash=True), required=False)
+@click.option("--plain", is_flag=True, help="Output raw score and suggestions for CI.")
+def check_prompts(input_file: Optional[str], plain: bool) -> None:
     """Statically analyzes prompts for LLM best practices."""
-    if input_file:
+    if input_file == "-" or not input_file:
+        text = sys.stdin.read()
+        name = "stdin"
+    else:
         with open(input_file, "r", encoding="utf-8") as f:
             text = f.read()
         name = input_file
-    else:
-        text = sys.stdin.read()
-        name = "stdin"
 
     analyzer = PromptAnalyzer()
     analysis = analyzer.analyze(text)
+    score = analysis["score"]
 
-    console.print(Panel(f"[bold cyan]Prompt Analysis: {name}[/bold cyan]", expand=False))
-
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Heuristic", style="dim")
-    table.add_column("Status")
-
-    for key, passed in analysis["results"].items():
-        status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
-        table.add_row(key.replace("_", " ").title(), status)
-
-    console.print(table)
-    console.print(f"\n[bold]Score: {analysis['score']}/100[/bold]")
-
-    if analysis["improvements"]:
-        console.print("\n[yellow]Improvements:[/yellow]")
-        for imp in analysis["improvements"]:
-            console.print(f"- {imp}")
-
-    if analysis["score"] >= 80:
-        console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+    if plain:
+        click.echo(f"Score: {score}")
+        if analysis.get("improvements"):
+            click.echo("Refactored Suggestions:")
+            for sug in analysis["improvements"]:
+                click.echo(f"- {sug}")
+        if score < 80:
+            click.echo("FAILED: Prompt score too low.")
     else:
-        console.print("\n[bold red]FAILED: Prompt needs optimization.[/bold red]")
+        console.print(Panel(f"[bold cyan]Prompt Analysis: {name}[/bold cyan]", expand=False))
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Heuristic", style="dim")
+        table.add_column("Status")
+
+        for key, passed in analysis["results"].items():
+            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+            table.add_row(key.replace("_", " ").title(), status)
+
+        console.print(table)
+        console.print(f"\n[bold]Score: {score}/100[/bold]")
+
+        if analysis["improvements"]:
+            console.print("\n[yellow]Improvements:[/yellow]")
+            for imp in analysis["improvements"]:
+                console.print(f"- {imp}")
+
+        if score >= 80:
+            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+        else:
+            console.print("\n[bold red]FAILED: Prompt needs optimization.[/bold red]")
+
+    if score < 80:
         sys.exit(1)
 
 @cli.command(name="advise")

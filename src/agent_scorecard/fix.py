@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, Union
+from typing import Union
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats

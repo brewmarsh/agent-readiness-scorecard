@@ -1,4 +1,4 @@
-from typing import List, Dict, TypedDict, Optional, Union
+from typing import List, Dict, TypedDict, Optional
 
 
 class Thresholds(TypedDict, total=False):

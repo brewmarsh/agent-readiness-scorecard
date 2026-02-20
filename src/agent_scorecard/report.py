@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import List, Dict, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
@@ -106,7 +105,6 @@ def _generate_prompts_section(
     """Generates structured CRAFT prompts for systemic remediation."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 

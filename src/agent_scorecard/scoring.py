@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Tuple, List, Optional, Union
 from .constants import DEFAULT_THRESHOLDS
 from .metrics import get_loc, get_function_stats
 from .types import FunctionMetric, Profile, Thresholds
