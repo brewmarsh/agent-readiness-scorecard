@@ -9,10 +9,12 @@ from .types import Thresholds
 tomllib: Any = None
 try:
     import tomllib as _tomllib  # type: ignore
+
     tomllib = _tomllib
 except ImportError:
     try:
         import tomli as _tomli
+
         tomllib = _tomli
     except ImportError:
         # Fallback for environments where neither is installed yet
@@ -23,6 +25,7 @@ class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
 
+
 # Unified defaults representing core Agent Physics
 # RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants
 # to ensure consistency across the entire package.
@@ -30,6 +33,7 @@ DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": cast(Thresholds, DEFAULT_THRESHOLDS),
 }
+
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
@@ -40,6 +44,7 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
         else:
             result[key] = value
     return result
+
 
 def load_config(path: Union[str, Path] = ".") -> Config:
     """
@@ -64,6 +69,4 @@ def load_config(path: Union[str, Path] = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return cast(
-        Config, _deep_merge(cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
-    )
+    return cast(Config, _deep_merge(cast(Dict[str, Any], DEFAULT_CONFIG), user_config))

@@ -6,7 +6,9 @@ from .types import FunctionMetric, Profile, Thresholds
 
 
 def score_file(
-    filepath: Union[str, Path], profile: Profile, thresholds: Optional[Thresholds] = None
+    filepath: Union[str, Path],
+    profile: Profile,
+    thresholds: Optional[Thresholds] = None,
 ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
@@ -48,11 +50,18 @@ def score_file(
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
     # 3. Extract granular thresholds (Synchronized with Constants)
-    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]) or DEFAULT_THRESHOLDS["acl_yellow"]
-    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]) or DEFAULT_THRESHOLDS["acl_red"]
-    type_safety_threshold = thresholds.get(
-        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-    ) or DEFAULT_THRESHOLDS["type_safety"]
+    acl_yellow = (
+        thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+        or DEFAULT_THRESHOLDS["acl_yellow"]
+    )
+    acl_red = (
+        thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+        or DEFAULT_THRESHOLDS["acl_red"]
+    )
+    type_safety_threshold = (
+        thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
+        or DEFAULT_THRESHOLDS["type_safety"]
+    )
 
     # 4. ACL Scoring (Agent Cognitive Load)
     # Red functions represent "hallucination zones" where agents lose tracking.

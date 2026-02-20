@@ -44,7 +44,9 @@ def check_directory_entropy(path: Union[str, Path]) -> DirectoryEntropy:
     }
 
 
-def get_crowded_directories(root_path: Union[str, Path], threshold: int = 50) -> Dict[str, int]:
+def get_crowded_directories(
+    root_path: Union[str, Path], threshold: int = 50
+) -> Dict[str, int]:
     """Returns a flat dictionary of directories exceeding the file count threshold."""
     entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
