@@ -43,9 +43,11 @@ class DefaultGroup(click.Group):
 
 @click.group(cls=DefaultGroup)
 @click.version_option(version=__version__)
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     """Main entry point for the agent-scorecard CLI."""
-    pass
+    ctx.ensure_object(dict)
+    ctx.obj["config"] = load_config(".")
 
 
 # --- HELPERS ---
@@ -162,7 +164,7 @@ def _print_file_analysis(
 
     has_rows = False
     for res in results["file_results"]:
-        if verbosity == "summary" and res["score"] == 100:
+        if verbosity == "summary" and res["score"] >= 70:
             continue
 
         status_color = "green" if res["score"] >= 70 else "red"
@@ -176,7 +178,7 @@ def _print_file_analysis(
     if has_rows:
         console.print(table)
     elif verbosity == "summary":
-        console.print("[green]All files passed with perfect scores![/green]")
+        console.print("[green]All files passed![/green]")
 
 
 def _generate_artifacts(
@@ -210,6 +212,7 @@ def _generate_artifacts(
                 profile,
                 results.get("project_issues"),
                 thresholds=thresholds,
+                verbosity=verbosity,
             )
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write(report_content)
@@ -244,14 +247,16 @@ def run_scoring(
         cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(thresholds)
 
     if fix:
-        console.print(
-            Panel(
-                f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
-                expand=False,
+        if verbosity != "quiet":
+            console.print(
+                Panel(
+                    f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
+                    expand=False,
+                )
             )
-        )
         apply_fixes(path, profile)
-        console.print("")
+        if verbosity != "quiet":
+            console.print("")
 
     results = analyzer.perform_analysis(
         path,
@@ -348,7 +353,8 @@ def check_prompts(input_path: str, plain: bool) -> None:
 @cli.command(name="fix")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
-def fix(path: str, agent: str) -> None:
+@click.pass_context
+def fix(ctx: click.Context, path: str, agent: str) -> None:
     """Automatically fix common issues using CRAFT framework prompts."""
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
@@ -381,7 +387,9 @@ def fix(path: str, agent: str) -> None:
     type=click.Choice(["quiet", "summary", "detailed"]),
     help="Override verbosity.",
 )
+@click.pass_context
 def score(
+    ctx: click.Context,
     path: str,
     agent: str,
     fix: bool,
@@ -412,7 +420,8 @@ def score(
 @click.option(
     "--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown."
 )
-def advise(path: str, output_file: Optional[str]) -> None:
+@click.pass_context
+def advise(ctx: click.Context, path: str, output_file: Optional[str]) -> None:
     """Detailed advice based on Agent Physics using absolute paths for CI reliability."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
 
