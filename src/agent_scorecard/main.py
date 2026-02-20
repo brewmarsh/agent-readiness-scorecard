@@ -16,7 +16,13 @@ from .config import load_config
 from .constants import PROFILES
 from .fix import apply_fixes
 from .scoring import generate_badge
-from .types import AnalysisResult, AdvisorFileResult, FileAnalysisResult, Profile
+from .types import (
+    AnalysisResult,
+    AdvisorFileResult,
+    FileAnalysisResult,
+    Profile,
+    Thresholds,
+)
 
 console = Console()
 
@@ -224,7 +230,7 @@ def score(
         console.print(
             Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False)
         )
-    thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
+    thresholds = cast(Optional[Thresholds], cfg.get("thresholds"))
 
     if fix:
         console.print(
@@ -251,7 +257,7 @@ def score(
             cast(List[FileAnalysisResult], results["file_results"]),
             results["final_score"],
             path,
-            PROFILES[agent],
+            cast(Profile, PROFILES[agent]),
             thresholds=thresholds,
         )
         with open(report_path, "w", encoding="utf-8") as f:
@@ -343,7 +349,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
 
     cfg = load_config(path)
     results = analyzer.perform_analysis(
-        path, "generic", thresholds=cast(Dict[str, Any], cfg.get("thresholds"))
+        path, "generic", thresholds=cast(Optional[Thresholds], cfg.get("thresholds"))
     )
 
     # Enrichment loop for Advisor-specific token metrics
@@ -360,7 +366,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
         )
 
     report_md = report.generate_advisor_report(
-        stats=cast(List[Dict[str, Any]], stats),
+        stats=stats,
         dependency_stats=results.get("dep_analysis", {}).get("god_modules", {}),
         entropy_stats={
             d["path"]: d["file_count"] for d in results.get("directory_stats", [])
