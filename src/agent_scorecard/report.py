@@ -1,4 +1,3 @@
-import os
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
@@ -98,7 +97,6 @@ def _generate_prompts_section(
     """Generates structured CRAFT prompts for systemic remediation."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 
@@ -220,6 +218,16 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
+    # NEW: Directory Entropy Section
+    report += "\n## 4. Directory Entropy\n"
+    crowded_dirs = {k: v for k, v in entropy_stats.items() if v > 15}
+    if crowded_dirs:
+        report += "### 📂 Crowded Directories (> 15 files)\n| Directory | File Count |\n|---|---|\n"
+        for k, v in crowded_dirs.items():
+            report += f"| `{k}` | {v} |\n"
+    else:
+        report += "✅ Directory structure is balanced.\n"
+
     return report
 
 def generate_recommendations_report(
@@ -232,14 +240,14 @@ def generate_recommendations_report(
 
     for res in file_list:
         if res.get("complexity", 0) > 20:
-            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context overflow.", "Recommendation": "Refactor units."})
+            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context window overflow.", "Recommendation": "Refactor units."})
         if "Circular dependency" in str(res.get("issues", "")):
             recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use DI."})
         if res.get("type_coverage", 100) < 90:
-            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination.", "Recommendation": "Add PEP 484 hints."})
+            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints."})
 
     if any(doc.lower() == "agents.md" for doc in missing_docs):
-        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Guessing repo structure.", "Recommendation": "Create AGENTS.md."})
+        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Agent guesses repository structure.", "Recommendation": "Create AGENTS.md."})
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
