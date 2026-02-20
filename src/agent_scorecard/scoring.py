@@ -12,7 +12,7 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability 
+    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
     # instead of hardcoded magic numbers.
     p_thresholds = profile.get("thresholds", {})
 

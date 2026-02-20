@@ -258,7 +258,11 @@ def perform_analysis(
             }
         )
 
-    penalty, project_issues = get_project_issues(path, all_py_files, profile)
+    # Use project root for environment checks to ensure accurate context analysis
+    project_root = (
+        path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    )
+    penalty, project_issues = get_project_issues(project_root, all_py_files, profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
@@ -282,7 +286,7 @@ def perform_analysis(
         "file_results": file_results,
         "final_score": final_score,
         "missing_docs": scan_project_docs(
-            path, cast(List[str], profile.get("required_files", []))
+            project_root, cast(List[str], profile.get("required_files", []))
         ),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis_val,
