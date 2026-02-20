@@ -4,6 +4,7 @@ from typing import Dict, Any, TypedDict, cast as typing_cast
 from .constants import DEFAULT_VERBOSITY, DEFAULT_THRESHOLDS
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+tomllib: Any
 try:
     import tomllib  # type: ignore
 except ImportError:
