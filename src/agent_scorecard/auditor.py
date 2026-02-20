@@ -1,10 +1,12 @@
 import os
 import ast
+from pathlib import Path
 import tiktoken
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional, Union
+from .types import EnvironmentHealth, DirectoryEntropy, TokenAnalysis
 
 
-def check_directory_entropy(path: str) -> Dict[str, Any]:
+def check_directory_entropy(path: Union[str, Path]) -> DirectoryEntropy:
     """
     Calculate directory entropy.
     Warns if avg files > 15 OR any single directory has > 50 files.
@@ -42,7 +44,7 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
     }
 
 
-def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
+def get_crowded_directories(root_path: Union[str, Path], threshold: int = 50) -> Dict[str, int]:
     """Returns a flat dictionary of directories exceeding the file count threshold."""
     entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
@@ -71,17 +73,14 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
 
     if hasattr(ast, "unparse"):
         # Python 3.9+ logic: Replace body with 'pass' to get just the signature
-        # Use getattr/setattr for maximum compatibility with various AST implementations
         orig_body = getattr(node, "body", [])
         setattr(node, "body", [ast.Pass()])
         try:
             unparsed = ast.unparse(node)
             lines = unparsed.splitlines()
             if lines:
-                # For functions/classes, unparse usually includes the signature and 'pass'
-                # We want just the signature.
                 sig = "\n".join(lines[:-1]).strip()
-                if not sig:  # Fallback if it's a single line
+                if not sig:
                     sig = lines[0]
                 return sig
         except Exception:
@@ -107,7 +106,7 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     return None
 
 
-def get_python_signatures(filepath: str) -> str:
+def get_python_signatures(filepath: Union[str, Path]) -> str:
     """Extracts all top-level function and class signatures from a file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -126,7 +125,7 @@ def get_python_signatures(filepath: str) -> str:
     return "\n".join(signatures)
 
 
-def count_python_tokens(filepath: str) -> int:
+def count_python_tokens(filepath: Union[str, Path]) -> int:
     """Calculates the token count of a single Python file using tiktoken."""
     try:
         enc = tiktoken.get_encoding("cl100k_base")
@@ -137,10 +136,9 @@ def count_python_tokens(filepath: str) -> int:
         return 0
 
 
-def check_critical_context_tokens(path: str) -> Dict[str, Any]:
+def check_critical_context_tokens(path: Union[str, Path]) -> TokenAnalysis:
     """
-    Counts tokens for the project's 'Critical Context':
-    (README + AGENTS.md + All Python Signatures).
+    Counts tokens for the project's 'Critical Context'.
     If this exceeds 32k, an Agent will likely lose track of the overall architecture.
     """
 
@@ -149,7 +147,6 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     except Exception:
         return {"token_count": 0, "alert": False}
 
-    # Gather documentation
     total_content = ""
     critical_files = ["README.md", "AGENTS.md"]
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
@@ -163,7 +160,6 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
-    # Gather signatures
     if os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
@@ -172,7 +168,7 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
                     total_content += (
                         get_python_signatures(os.path.join(root, file)) + "\n"
                     )
-    elif os.path.isfile(path) and path.endswith(".py"):
+    elif os.path.isfile(path) and str(path).endswith(".py"):
         total_content += get_python_signatures(path)
 
     tokens = enc.encode(total_content)
@@ -180,9 +176,9 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     return {"token_count": count, "alert": count > 32000}
 
 
-def check_environment_health(path: str) -> Dict[str, Any]:
+def check_environment_health(path: Union[str, Path]) -> EnvironmentHealth:
     """Check for essential agent configuration: AGENTS.md, Linters, and Lock files."""
-    results = {
+    results: EnvironmentHealth = {
         "agents_md": False,
         "linter_config": False,
         "lock_file": False,
@@ -210,17 +206,14 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+            # Use toml_tool alias to unify tomllib and tomli
             try:
-                import tomllib  # type: ignore
+                import tomllib as toml_tool  # type: ignore
             except ImportError:
-                import tomli as tomllib  # type: ignore
+                import tomli as toml_tool  # type: ignore
 
             with open(filepath, "rb") as f:
-                tomllib.load(f)
-        except ImportError:
-            # Fallback for environments where neither is installed yet
-            pass
+                toml_tool.load(f)
         except Exception:
             results["pyproject_valid"] = False
 
