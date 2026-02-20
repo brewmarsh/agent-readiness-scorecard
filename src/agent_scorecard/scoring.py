@@ -12,8 +12,8 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability 
-    # instead of hardcoded magic numbers.
+    # RESOLUTION: Unified configuration logic. Uses DEFAULT_THRESHOLDS constant 
+    # to ensure consistency across report generation and scoring.
     p_thresholds = profile.get("thresholds", {})
 
     if thresholds is None:
@@ -45,7 +45,7 @@ def score_file(
     if not metrics:
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
-    # 3. Extract granular thresholds (Synchronized with Constants)
+    # 3. Extract granular thresholds
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
     type_safety_threshold = thresholds.get(

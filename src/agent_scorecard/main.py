@@ -29,6 +29,7 @@ except PackageNotFoundError:
 # --- CLI DEFINITION ---
 class DefaultGroup(click.Group):
     def resolve_command(self, ctx: click.Context, args: List[str]) -> Any:
+        """Resolves the command, defaulting to 'score' if no command matches."""
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
@@ -118,7 +119,6 @@ def fix(path: str, agent: str) -> None:
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     
-    # RESOLUTION: Use Beta branch casting for safe dict merging
     if cfg.get("thresholds"):
         cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(
             cast(Dict[str, Any], cfg["thresholds"])
@@ -172,7 +172,8 @@ def advise(path: str, output_file: Optional[str]) -> None:
     # Enrichment loop for Advisor-specific token metrics
     stats: List[AdvisorFileResult] = []
     for res in results.get("file_results", []):
-        tokens = auditor.check_critical_context_tokens(os.path.join(path, res["file"]))
+        full_path = os.path.join(path, res["file"])
+        tokens = auditor.check_critical_context_tokens(full_path)
         m_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0.0])
         
         stats.append(cast(AdvisorFileResult, {
