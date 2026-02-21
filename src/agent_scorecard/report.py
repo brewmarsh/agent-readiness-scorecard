@@ -15,6 +15,7 @@ def _generate_summary_section(
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n"
 
+    # Aggregate metrics for a high-level project overview
     if stats:
         avg_acl = sum(f.get("acl", 0.0) for f in stats) / len(stats)
         avg_type_safety = sum(f.get("type_coverage", 0.0) for f in stats) / len(stats)
@@ -42,7 +43,7 @@ def _generate_acl_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
 ) -> str:
-    """Analyzes and reports on units with high Agent Cognitive Load."""
+    """Analyzes and reports on units with high Agent Cognitive Load (ACL)."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
@@ -199,6 +200,7 @@ def generate_markdown_report(
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
+    # RESOLUTION: Use Beta branch argument order (stats first)
     summary = _generate_summary_section(stats, final_score, profile, project_issues)
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds)
@@ -311,7 +313,7 @@ def generate_recommendations_report(
                 }
             )
 
-        # RESOLUTION: Preserve docstring logic from GitHub Workflow branch
+        # Preserve docstring logic for agent semantic understanding
         issues_text = str(res.get("issues", ""))
         if "Missing docstrings" in issues_text:
             recommendations.append(
