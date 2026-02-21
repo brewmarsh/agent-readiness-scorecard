@@ -93,7 +93,8 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
-    # RESOLUTION: Combined visual table clarity with modular entropy logic
+    # 4. Directory Entropy
+    # RESOLUTION: Combined visual table clarity with modular entropy logic from Beta branch.
     report += "\n## 4. Directory Entropy\n"
     crowded_dirs = {k: v for k, v in entropy_stats.items() if v > 15}
     if crowded_dirs:
@@ -142,7 +143,7 @@ def generate_recommendations_report(
                 }
             )
 
-        # Preserve docstring logic for agent semantic understanding
+        # RESOLUTION: Preserve docstring logic for agent semantic understanding
         issues_text = str(res.get("issues", ""))
         if "Missing docstrings" in issues_text:
             recommendations.append(

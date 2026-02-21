@@ -103,6 +103,7 @@ def _print_project_issues(
     if issues:
         console.print(Panel("[bold red]Project Issues Detected[/bold red]", expand=False))
         for issue in issues:
+            # Use red bullets for project-level violations (QA requirement)
             console.print(f"[red]• {issue}[/red]")
         console.print("")
 
@@ -171,6 +172,7 @@ def check_prompts(path: str, plain: bool) -> None:
 
     result = PromptAnalyzer().analyze(content)
     if plain:
+        # Fallback to simple printing for CI logs
         print(f"Prompt Score: {result['score']}/100")
         for key, val in result["results"].items(): print(f"{key}: {val}")
     else:
@@ -227,6 +229,7 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, ba
     _print_project_issues(results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
 
+    # FINAL SCORE: Always printed to support build-breaking scripts
     score_color = "green" if results["final_score"] >= 70 else "red"
     console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
@@ -241,6 +244,7 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, ba
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
 
+    # RESOLUTION: QA requirement - Fail on low scores OR missing mandatory documentation
     if results["final_score"] < 70 or results.get("missing_docs"):
         sys.exit(1)
 
