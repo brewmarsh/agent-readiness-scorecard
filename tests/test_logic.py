@@ -1,6 +1,5 @@
 import textwrap
 from pathlib import Path
-from typing import cast
 from click.testing import CliRunner
 
 # RESOLUTION: Import from the correct modules (analyzer/scoring) not deleted 'checks'
@@ -8,7 +7,6 @@ from agent_scorecard import analyzer
 from agent_scorecard.constants import PROFILES
 from agent_scorecard.main import cli
 from agent_scorecard.scoring import score_file
-from agent_scorecard.types import Profile
 
 
 def test_get_loc(tmp_path: Path):
@@ -95,7 +93,7 @@ def test_score_file_logic(tmp_path: Path):
 
     # RESOLUTION: score_file returns (score, details_string, ...) in Upgrade branch
     score, issues, loc, complexity, type_safety, metrics = score_file(
-        str(py_file), cast(Profile, profile)
+        str(py_file), profile
     )
 
     # Check metrics manually to verify why score is what it is

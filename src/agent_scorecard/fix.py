@@ -1,10 +1,8 @@
 import os
-from pathlib import Path
-from typing import Union
+from typing import Dict, Any
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
-from .types import Profile
 
 console = Console()
 
@@ -35,7 +33,7 @@ class LLM:
         return ""
 
 
-def fix_file_issues(filepath: Union[str, Path]) -> None:
+def fix_file_issues(filepath: str) -> None:
     """Uses CRAFT prompts and LLM to fix code quality violations."""
     try:
         stats = get_function_stats(filepath)
@@ -69,7 +67,7 @@ def fix_file_issues(filepath: Union[str, Path]) -> None:
         )
 
 
-def apply_fixes(path: Union[str, Path], profile: Profile) -> None:
+def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
 
     # 1. Project Docs
@@ -97,8 +95,8 @@ def apply_fixes(path: Union[str, Path], profile: Profile) -> None:
 
     # 2. File Fixes
     py_files = []
-    if os.path.isfile(path) and str(path).endswith(".py"):
-        py_files = [str(path)]
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
     elif os.path.isdir(path):
         for root, _, files in os.walk(path):
             for file in files:

@@ -1,18 +1,10 @@
 import os
 import ast
-from pathlib import Path
-from typing import List, Dict, Tuple, Set, Optional, cast, Union
+from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
-from .types import (
-    FileAnalysisResult,
-    DepAnalysis,
-    DirectoryStat,
-    AnalysisResult,
-    Profile,
-    Thresholds,
-)
+from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -26,9 +18,8 @@ from .metrics import (  # noqa: F401
 
 # --- METRICS & GRAPH ANALYSIS ---
 
-def scan_project_docs(
-    root_path: Union[str, Path], required_files: List[str]
-) -> List[str]:
+
+def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
     root_files = (
@@ -41,14 +32,13 @@ def scan_project_docs(
     return missing
 
 
-def _collect_python_files(path: Union[str, Path]) -> List[str]:
+def _collect_python_files(path: str) -> List[str]:
     """Collects all Python files in the given path, ignoring hidden directories."""
-    py_files: List[str] = []
-    path_str = str(path)
-    if os.path.isfile(path_str) and path_str.endswith(".py"):
-        py_files = [path_str]
-    elif os.path.isdir(path_str):
-        for root, _, files in os.walk(path_str):
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
             parts = root.split(os.sep)
             if any(p.startswith(".") and p != "." for p in parts):
                 continue
@@ -58,13 +48,13 @@ def _collect_python_files(path: Union[str, Path]) -> List[str]:
     return py_files
 
 
-def _parse_imports(filepath: Union[str, Path]) -> Set[str]:
+def _parse_imports(filepath: str) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
     imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
-        tree = ast.parse(code, filename=str(filepath))
+        tree = ast.parse(code, filename=filepath)
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return imported_names
 
@@ -78,11 +68,10 @@ def _parse_imports(filepath: Union[str, Path]) -> Set[str]:
     return imported_names
 
 
-def get_import_graph(root_path: Union[str, Path]) -> Dict[str, Set[str]]:
-    """Builds a dependency graph of the project for structural analysis."""
-    
-    if os.path.isfile(root_path) and str(root_path).endswith(".py"):
-        all_py_files = [os.path.basename(str(root_path))]
+def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+    """Builds a dependency graph of the project."""
+    if os.path.isfile(root_path) and root_path.endswith(".py"):
+        all_py_files = [os.path.basename(root_path)]
         root_path = os.path.dirname(root_path)
     else:
         full_paths = _collect_python_files(root_path)
@@ -155,6 +144,7 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
+    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
@@ -170,12 +160,13 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
 
 
 def get_project_issues(
-    path: Union[str, Path], py_files: List[str], profile: Profile
+    path: str, py_files: List[str], profile: Dict[str, Any]
 ) -> Tuple[int, List[str]]:
     """Analyzes global project health: docs, environment, god modules, and entropy."""
     penalty = 0
     issues: List[str] = []
 
+    # 1. Documentation Check
     missing_docs = scan_project_docs(
         path, cast(List[str], profile.get("required_files", []))
     )
@@ -184,12 +175,14 @@ def get_project_issues(
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
+    # 1a. Environment Health (malformed config logic)
     health = auditor.check_environment_health(path)
     if not health.get("pyproject_valid", True):
         msg = "Malformed pyproject.toml detected"
         penalty += 20
         issues.append(msg)
 
+    # 2. Dependency Analysis
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -198,6 +191,7 @@ def get_project_issues(
         penalty += len(god_modules) * 10
         issues.append(msg)
 
+    # 3. Directory Entropy
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
@@ -205,6 +199,7 @@ def get_project_issues(
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
+    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
@@ -216,16 +211,15 @@ def get_project_issues(
 
 
 def perform_analysis(
-    path: Union[str, Path],
+    path: str,
     agent: str = "generic",
     limit_to_files: Optional[List[str]] = None,
-    profile: Optional[Profile] = None,
-    thresholds: Optional[Thresholds] = None,
+    profile: Optional[Dict[str, Any]] = None,
+    thresholds: Optional[Dict[str, Any]] = None,
 ) -> AnalysisResult:
     """Orchestrates the full project analysis pipeline."""
-    actual_profile: Profile = profile or cast(
-        Profile, PROFILES.get(agent, PROFILES["generic"])
-    )
+    if profile is None:
+        profile = PROFILES.get(agent, PROFILES["generic"])
 
     py_files = _collect_python_files(path)
     all_py_files = py_files[:]
@@ -241,8 +235,9 @@ def perform_analysis(
     file_scores: List[int] = []
 
     for filepath in py_files:
+        # Pass thresholds to allow pyproject.toml overrides per file
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
-            filepath, actual_profile, thresholds=thresholds
+            filepath, profile, thresholds=thresholds
         )
         file_scores.append(score)
 
@@ -263,7 +258,7 @@ def perform_analysis(
             }
         )
 
-    penalty, project_issues = get_project_issues(path, all_py_files, actual_profile)
+    penalty, project_issues = get_project_issues(path, all_py_files, profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
@@ -287,7 +282,7 @@ def perform_analysis(
         "file_results": file_results,
         "final_score": final_score,
         "missing_docs": scan_project_docs(
-            path, actual_profile.get("required_files", [])
+            path, cast(List[str], profile.get("required_files", []))
         ),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis_val,
