@@ -101,3 +101,39 @@ def test_generate_recommendations_report():
     assert "Agent guesses repository structure." in rec_content
     assert "Recursive loops." in rec_content
     assert "Hallucination of signatures." in rec_content
+
+
+def test_generate_report_averages():
+    """Tests that the report summary includes Average ACL and Type Safety metrics."""
+    stats = [
+        {
+            "file": "f1.py",
+            "acl": 10.0,
+            "type_coverage": 50.0,
+            "function_metrics": [],
+            "score": 50,
+            "issues": "",
+        },
+        {
+            "file": "f2.py",
+            "acl": 20.0,
+            "type_coverage": 100.0,
+            "function_metrics": [],
+            "score": 50,
+            "issues": "",
+        },
+    ]
+
+    content = generate_markdown_report(
+        stats=stats,
+        final_score=50.0,
+        path=".",
+        profile=PROFILES["generic"],
+        project_issues=[],
+    )
+
+    # Average ACL: (10 + 20) / 2 = 15.0
+    # Average Type Safety: (50 + 100) / 2 = 75%
+
+    assert "**Average ACL:** 15.0" in content
+    assert "**Average Type Safety:** 75%" in content
