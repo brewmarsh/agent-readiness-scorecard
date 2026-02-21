@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 from agent_scorecard import analyzer, report
 from agent_scorecard.constants import PROFILES
 from agent_scorecard.analyzer import (
@@ -13,18 +14,29 @@ from agent_scorecard.report import generate_advisor_report
 # --- Beta Branch Tests (Unit Tests for Metrics) ---
 
 
-# TODO: Add type hints for Agent clarity
-def test_calculate_acl():
+def test_calculate_acl() -> None:
+    """
+    Tests the ACL calculation formula.
+
+    Returns:
+        None
+    """
     # ACL = CC + (LOC / 20)
-    """TODO: Add docstring for AI context."""
     assert calculate_acl(10, 100) == 10 + (100 / 20)  # 15.0
     assert calculate_acl(0, 0) == 0
 
 
-# TODO: Add type hints for Agent clarity
-def test_get_directory_entropy(tmp_path):
+def test_get_directory_entropy(tmp_path: Path) -> None:
+    """
+    Tests the directory entropy calculation.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # Create 25 files in tmp_path
-    """TODO: Add docstring for AI context."""
     for i in range(25):
         (tmp_path / f"file_{i}.txt").touch()
 
@@ -43,10 +55,17 @@ def test_get_directory_entropy(tmp_path):
     assert "subdir" not in entropy
 
 
-# TODO: Add type hints for Agent clarity
-def test_dependency_analysis(tmp_path):
+def test_dependency_analysis(tmp_path: Path) -> None:
+    """
+    Tests the project dependency analysis.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # main.py imports utils, utils imports shared
-    """TODO: Add docstring for AI context."""
     (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
     (tmp_path / "utils.py").write_text("import shared", encoding="utf-8")
     (tmp_path / "shared.py").write_text("# no imports", encoding="utf-8")
@@ -64,10 +83,17 @@ def test_dependency_analysis(tmp_path):
     assert inbound.get("main.py") == 0
 
 
-# TODO: Add type hints for Agent clarity
-def test_cycle_detection(tmp_path):
+def test_cycle_detection(tmp_path: Path) -> None:
+    """
+    Tests circular dependency detection.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # a.py <-> b.py
-    """TODO: Add docstring for AI context."""
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
     (tmp_path / "b.py").write_text("import a", encoding="utf-8")
 
@@ -80,9 +106,13 @@ def test_cycle_detection(tmp_path):
     assert "b.py" in flat_cycle
 
 
-# TODO: Add type hints for Agent clarity
-def test_generate_advisor_report_standalone():
-    """Tests the standalone Advisor Report used in 'agent-score advise' command."""
+def test_generate_advisor_report_standalone() -> None:
+    """
+    Tests the standalone Advisor Report used in 'agent-score advise' command.
+
+    Returns:
+        None
+    """
     stats = [
         {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
         {"file": "normal.py", "acl": 5.0, "complexity": 2, "loc": 60},
@@ -108,9 +138,16 @@ def test_generate_advisor_report_standalone():
 # --- Advisor Mode Tests (Integration Tests) ---
 
 
-# TODO: Add type hints for Agent clarity
-def test_function_stats_parsing(tmp_path):
-    """Tests that we can parse a file and extract function stats correctly."""
+def test_function_stats_parsing(tmp_path: Path) -> None:
+    """
+    Tests that we can parse a file and extract function stats correctly.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     code = textwrap.dedent("""
         def complex_function():
             if True:
@@ -135,9 +172,16 @@ def test_function_stats_parsing(tmp_path):
     assert func["acl"] > 2
 
 
-# TODO: Add type hints for Agent clarity
-def test_unified_score_report_content(tmp_path):
-    """Tests the Markdown report generated during the 'score' command."""
+def test_unified_score_report_content(tmp_path: Path) -> None:
+    """
+    Tests the Markdown report generated during the 'score' command.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # Setup a project that triggers advisor warnings
     code = "def hallucinate():\n"
     for _ in range(10):

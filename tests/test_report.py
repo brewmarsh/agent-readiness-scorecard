@@ -5,8 +5,13 @@ from agent_scorecard.report import (
 from agent_scorecard.constants import PROFILES
 
 
-def test_generate_markdown_report():
-    """Tests the Markdown report generation with new Agent Readiness metrics."""
+def test_generate_markdown_report() -> None:
+    """
+    Tests the Markdown report generation with new Agent Readiness metrics.
+
+    Returns:
+        None
+    """
     file_results = [
         {
             "file": "file1.py",
@@ -73,8 +78,13 @@ def test_generate_markdown_report():
     )  # From project_issues text passed in
 
 
-def test_generate_recommendations_report():
-    """Tests the recommendations report generation."""
+def test_generate_recommendations_report() -> None:
+    """
+    Tests the recommendations report generation.
+
+    Returns:
+        None
+    """
     # This matches the structure expected by generate_recommendations_report
     results = {
         "file_results": [

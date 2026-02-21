@@ -5,7 +5,15 @@ import networkx as nx
 
 
 def get_imports(filepath: str) -> List[Dict[str, Any]]:
-    """Extracts all imports from a python file using AST."""
+    """
+    Extracts all imports from a python file using AST.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries containing 'module' and 'level' for each import.
+    """
     with open(filepath, "r", encoding="utf-8") as f:
         try:
             tree = ast.parse(f.read())
@@ -25,7 +33,19 @@ def get_imports(filepath: str) -> List[Dict[str, Any]]:
 def resolve_module_path(
     base_path: str, current_file: str, module_name: str, level: int, py_files: Set[str]
 ) -> str | None:
-    """Resolves a module import to an absolute file path if it exists in py_files."""
+    """
+    Resolves a module import to an absolute file path if it exists in py_files.
+
+    Args:
+        base_path (str): The project base path.
+        current_file (str): Path to the file containing the import.
+        module_name (str): The name of the module being imported.
+        level (int): The import level (0 for absolute, >0 for relative).
+        py_files (Set[str]): Set of all Python files in the project.
+
+    Returns:
+        str | None: The resolved absolute path to the module, or None if not found.
+    """
     if level > 0:
         # Relative import
         parts = os.path.dirname(current_file).split(os.sep)
@@ -70,7 +90,15 @@ def resolve_module_path(
 
 
 def build_dependency_graph(root_path: str) -> nx.DiGraph:
-    """Builds a Directed Graph of dependencies between Python files."""
+    """
+    Builds a Directed Graph of dependencies between Python files.
+
+    Args:
+        root_path (str): The project root path to analyze.
+
+    Returns:
+        nx.DiGraph: A NetworkX directed graph where nodes are file paths and edges are dependencies.
+    """
     graph: nx.DiGraph = nx.DiGraph()
     py_files = set()
 
@@ -99,7 +127,15 @@ def build_dependency_graph(root_path: str) -> nx.DiGraph:
 
 
 def analyze_graph(graph: nx.DiGraph) -> Dict[str, Any]:
-    """Analyzes the dependency graph for cycles and God Modules."""
+    """
+    Analyzes the dependency graph for cycles and God Modules.
+
+    Args:
+        graph (nx.DiGraph): The project dependency graph.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing 'cycles' and 'god_modules' analysis.
+    """
     cycles = list(nx.simple_cycles(graph))
 
     god_modules = []

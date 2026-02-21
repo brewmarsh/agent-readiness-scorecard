@@ -1,10 +1,18 @@
 import textwrap
+from pathlib import Path
 from agent_scorecard.analyzer import get_function_stats
 
 
-# TODO: Add type hints for Agent clarity
-def test_get_function_stats(tmp_path):
-    """TODO: Add docstring for AI context."""
+def test_get_function_stats(tmp_path: Path) -> None:
+    """
+    Tests extraction of function statistics including complexity, LOC, and ACL.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     code = textwrap.dedent("""
     def simple():
         return 1

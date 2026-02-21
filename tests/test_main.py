@@ -11,7 +11,15 @@ from agent_scorecard.scoring import generate_badge
 
 @pytest.fixture
 def sample_file(tmp_path: Path) -> Path:
-    """TODO: Add docstring for AI context."""
+    """
+    Pytest fixture to create a sample Python file for analysis.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        Path: Path to the created sample file.
+    """
     d = tmp_path / "subdir"
     d.mkdir()
     p = d / "hello.py"
@@ -31,7 +39,15 @@ def complex_func(n):
 
 @pytest.fixture
 def typed_file(tmp_path: Path) -> Path:
-    """TODO: Add docstring for AI context."""
+    """
+    Pytest fixture to create a typed Python file for analysis.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        Path: Path to the created typed file.
+    """
     p = tmp_path / "typed.py"
     p.write_text("""
 def add(a: int, b: int) -> int:
@@ -41,17 +57,28 @@ def add(a: int, b: int) -> int:
 
 
 def test_get_loc(sample_file: Path) -> None:
-    # Manual count: 8 lines
-    """TODO: Add docstring for AI context."""
+    """
+    Tests line count calculation on a sample file.
+
+    Args:
+        sample_file (Path): Path to the sample file.
+
+    Returns:
+        None
+    """
     assert get_loc(str(sample_file)) == 8
 
 
 def test_analyze_complexity(sample_file: Path) -> None:
-    # hello: 1
-    # complex_func: 4 (1 + 3 ifs)
-    # Avg: 2.5
-    # RESOLUTION: Use new function name
-    """TODO: Add docstring for AI context."""
+    """
+    Tests complexity score calculation on a sample file.
+
+    Args:
+        sample_file (Path): Path to the sample file.
+
+    Returns:
+        None
+    """
     avg = get_complexity_score(str(sample_file))
     assert avg == 2.5
 
@@ -65,9 +92,16 @@ def test_analyze_complexity(sample_file: Path) -> None:
 
 
 def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
-    # sample_file: 0/2 typed -> 0%
-    # RESOLUTION: Use new function name
-    """TODO: Add docstring for AI context."""
+    """
+    Tests type hint coverage calculation.
+
+    Args:
+        sample_file (Path): Path to an untyped sample file.
+        typed_file (Path): Path to a typed sample file.
+
+    Returns:
+        None
+    """
     cov = check_type_hints(str(sample_file))
     assert cov == 0
 
@@ -85,7 +119,15 @@ def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
 
 
 def test_scan_project_docs(tmp_path: Path) -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests scanning for project documentation files.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     required = ["agents.md", "instructions.md"]
     missing = scan_project_docs(str(tmp_path), required)
     assert "agents.md" in missing
@@ -98,8 +140,12 @@ def test_scan_project_docs(tmp_path: Path) -> None:
 
 
 def test_generate_badge() -> None:
-    # >= 90: Bright Green
-    """TODO: Add docstring for AI context."""
+    """
+    Tests SVG badge generation for various score ranges.
+
+    Returns:
+        None
+    """
     svg = generate_badge(95)
     assert "#4c1" in svg
     assert "95/100" in svg

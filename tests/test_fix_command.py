@@ -8,11 +8,25 @@ from agent_scorecard.main import cli
 
 class TestFixCommand:
     @pytest.fixture
-    def runner(self):
+    def runner(self) -> CliRunner:
+        """
+        Pytest fixture for CliRunner.
+
+        Returns:
+            CliRunner: The CLI runner instance.
+        """
         return CliRunner()
 
-    def test_fix_command_happy_path(self, runner):
-        """Test the standalone fix command using the generic profile."""
+    def test_fix_command_happy_path(self, runner: CliRunner) -> None:
+        """
+        Test the standalone fix command using the generic profile.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             # Create a dummy python file
             os.makedirs("src")
@@ -55,8 +69,16 @@ class TestFixCommand:
             assert "A docstring." in content
             assert "-> None" in content
 
-    def test_fix_command_specific_path(self, runner):
-        """Test fix command on a subdirectory with a specific agent profile."""
+    def test_fix_command_specific_path(self, runner: CliRunner) -> None:
+        """
+        Test fix command on a subdirectory with a specific agent profile.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             # Create a dummy python file in a subdirectory
             os.makedirs("subdir")
@@ -88,8 +110,16 @@ class TestFixCommand:
             assert "Returns x." in content
             assert "x: int" in content
 
-    def test_fix_flag_in_score_command(self, runner):
-        """Regression test for the --fix flag inside the score command."""
+    def test_fix_flag_in_score_command(self, runner: CliRunner) -> None:
+        """
+        Regression test for the --fix flag inside the score command.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")
@@ -106,8 +136,16 @@ class TestFixCommand:
                 assert result.exit_code == 0
                 assert "Applying Fixes" in result.output
 
-    def test_fix_command_invalid_agent(self, runner):
-        """Verify fallback to generic profile when an invalid agent is provided."""
+    def test_fix_command_invalid_agent(self, runner: CliRunner) -> None:
+        """
+        Verify fallback to generic profile when an invalid agent is provided.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")

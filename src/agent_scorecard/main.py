@@ -55,7 +55,15 @@ def cli(ctx: click.Context) -> None:
 
 
 def get_changed_files(base_ref: str = "origin/main") -> List[str]:
-    """Uses git diff to return a list of changed Python files."""
+    """
+    Uses git diff to return a list of changed Python files.
+
+    Args:
+        base_ref (str): The git reference to compare against (default: "origin/main").
+
+    Returns:
+        List[str]: A list of paths to changed Python files.
+    """
     try:
         cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -69,7 +77,16 @@ def get_changed_files(base_ref: str = "origin/main") -> List[str]:
 
 
 def _print_project_issues(project_issues: List[str], verbosity: str) -> None:
-    """Prints systemic project issues (God Modules, Cycles) using a high-visibility bulleted list."""
+    """
+    Prints systemic project issues using a high-visibility bulleted list.
+
+    Args:
+        project_issues (List[str]): List of detected project issues.
+        verbosity (str): Output verbosity level.
+
+    Returns:
+        None
+    """
     if not project_issues or verbosity == "quiet":
         return
 
@@ -81,7 +98,17 @@ def _print_project_issues(project_issues: List[str], verbosity: str) -> None:
 def _print_environment_health(
     path: str, results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
-    """Prints the environment health table."""
+    """
+    Prints the environment health table.
+
+    Args:
+        path (str): The project path.
+        results (Union[Dict[str, Any], AnalysisResult]): Analysis results.
+        verbosity (str): Output verbosity level.
+
+    Returns:
+        None
+    """
     if verbosity == "quiet":
         return
 
@@ -122,7 +149,16 @@ def _print_environment_health(
 def _print_file_analysis(
     results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
-    """Prints the file analysis table based on verbosity."""
+    """
+    Prints the file analysis table based on verbosity.
+
+    Args:
+        results (Union[Dict[str, Any], AnalysisResult]): Analysis results.
+        verbosity (str): Output verbosity level.
+
+    Returns:
+        None
+    """
     if verbosity == "quiet":
         return
 
@@ -150,7 +186,16 @@ def _print_file_analysis(
 @click.argument("path", required=True)
 @click.option("--plain", is_flag=True, help="Plain output for CI.")
 def check_prompts(path: str, plain: bool) -> None:
-    """Checks a prompt file for LLM best practices."""
+    """
+    Checks a prompt file for LLM best practices.
+
+    Args:
+        path (str): Path to the prompt file, or '-' for stdin.
+        plain (bool): Whether to use plain output for CI.
+
+    Returns:
+        None
+    """
     content = ""
     if path == "-":
         content = sys.stdin.read()
@@ -212,7 +257,16 @@ def check_prompts(path: str, plain: bool) -> None:
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
-    """Automatically fix issues using configuration thresholds."""
+    """
+    Automatically fix issues using configuration thresholds.
+
+    Args:
+        path (str): The path to fix.
+        agent (str): The agent profile to use.
+
+    Returns:
+        None
+    """
     if agent not in PROFILES:
         console.print(
             f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]"
@@ -253,7 +307,20 @@ def fix(path: str, agent: str) -> None:
 def score(
     path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool
 ) -> None:
-    """Scores a codebase based on agent compatibility."""
+    """
+    Scores a codebase based on agent compatibility.
+
+    Args:
+        path (str): The path to score.
+        agent (str): The agent profile to use.
+        fix (bool): Whether to automatically fix issues.
+        report_path (str): Optional path to save a Markdown report.
+        verbosity (str): Optional verbosity override.
+        badge (bool): Whether to generate an SVG badge.
+
+    Returns:
+        None
+    """
     if agent not in PROFILES:
         console.print(
             f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]"
@@ -321,7 +388,16 @@ def score(
     "--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown."
 )
 def advise(path: str, output_file: Optional[str]) -> None:
-    """Detailed advice based on Agent Physics."""
+    """
+    Detailed advice based on Agent Physics.
+
+    Args:
+        path (str): The path to analyze.
+        output_file (Optional[str]): Optional path to save advice to Markdown.
+
+    Returns:
+        None
+    """
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     cfg = load_config(path)
     results = analyzer.perform_analysis(

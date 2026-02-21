@@ -6,8 +6,16 @@ from agent_scorecard.main import cli
 from agent_scorecard.analyzer import check_type_hints
 
 
-def test_async_function_support_checks(tmp_path: Path):
-    """Test that check_type_hints correctly identifies async functions."""
+def test_async_function_support_checks(tmp_path: Path) -> None:
+    """
+    Test that check_type_hints correctly identifies async functions.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     p = tmp_path / "async_test.py"
     p.write_text("""
 async def fetch_data(url):
@@ -19,8 +27,16 @@ async def fetch_data(url):
     assert cov == 0
 
 
-def test_fix_async_function(tmp_path: Path):
-    """Test that 'fix' command adds docstrings and type hints to async functions."""
+def test_fix_async_function(tmp_path: Path) -> None:
+    """
+    Test that 'fix' command adds docstrings and type hints to async functions.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     p = tmp_path / "async_fix.py"
     p.write_text("""
 async def process_data(data):
@@ -47,8 +63,16 @@ async def process_data(data):
     assert "data: dict" in content
 
 
-def test_score_async_function(tmp_path: Path):
-    """Test that 'score' command detects issues in async functions."""
+def test_score_async_function(tmp_path: Path) -> None:
+    """
+    Test that 'score' command detects issues in async functions.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     p = tmp_path / "async_score.py"
     p.write_text("""
 async def process_data(data):
@@ -67,8 +91,13 @@ async def process_data(data):
     assert "Type Safety Index 0%" in result.output
 
 
-def test_cli_check_prompts_async_context_plain():
-    """Verify check-prompts --plain handles async context suggestions correctly."""
+def test_cli_check_prompts_async_context_plain() -> None:
+    """
+    Verify check-prompts --plain handles async context suggestions correctly.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open("async_prompt.txt", "w") as f:

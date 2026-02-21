@@ -1,14 +1,23 @@
 import os
 import ast
 import tiktoken
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional, cast
+from .types import DirectoryEntropy, TokenAnalysis, EnvironmentHealth
 
 
-def check_directory_entropy(path: str) -> Dict[str, Any]:
+def check_directory_entropy(path: str) -> DirectoryEntropy:
     """
-    Calculate directory entropy.
+    Calculate directory entropy for a given path.
+
     Warns if avg files > 15 OR any single directory has > 50 files.
     High entropy makes it difficult for RAG or Agents to find specific files.
+
+    Args:
+        path (str): The root directory path to analyze.
+
+    Returns:
+        DirectoryEntropy: A dictionary containing average files, warning status,
+                        max files in a single dir, and list of crowded directories.
     """
     if not os.path.isdir(path):
         return {"avg_files": 0, "warning": False, "max_files": 0, "crowded_dirs": []}
@@ -43,7 +52,16 @@ def check_directory_entropy(path: str) -> Dict[str, Any]:
 
 
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
-    """Returns a flat dictionary of directories exceeding the file count threshold."""
+    """
+    Returns a flat dictionary of directories exceeding the file count threshold.
+
+    Args:
+        root_path (str): The root path to start the search.
+        threshold (int): The file count threshold (default: 50).
+
+    Returns:
+        Dict[str, int]: A dictionary mapping directory paths to their file counts.
+    """
     entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
         return entropy_stats
@@ -64,7 +82,14 @@ def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, in
 def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     """
     Extracts function/class signatures from an AST node.
+
     This provides the 'skeleton' of the code for token counting.
+
+    Args:
+        node (ast.AST): The AST node to extract the signature from.
+
+    Returns:
+        Optional[str]: The extracted signature string, or None if not applicable.
     """
     if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
         return None
@@ -105,7 +130,15 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
 
 
 def get_python_signatures(filepath: str) -> str:
-    """Extracts all top-level function and class signatures from a file."""
+    """
+    Extracts all top-level function and class signatures from a file.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        str: A concatenated string of all signatures found.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -124,7 +157,15 @@ def get_python_signatures(filepath: str) -> str:
 
 
 def count_python_tokens(filepath: str) -> int:
-    """Calculates the token count of a single Python file using tiktoken."""
+    """
+    Calculates the token count of a single Python file using tiktoken.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        int: The number of tokens in the file.
+    """
     try:
         enc = tiktoken.get_encoding("cl100k_base")
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
@@ -134,10 +175,17 @@ def count_python_tokens(filepath: str) -> int:
         return 0
 
 
-def check_critical_context_tokens(path: str) -> Dict[str, Any]:
+def check_critical_context_tokens(path: str) -> TokenAnalysis:
     """
     Counts tokens for the project's 'Critical Context'.
+
     If this exceeds 32k, an Agent will likely lose track of the overall architecture.
+
+    Args:
+        path (str): Path to the project or file.
+
+    Returns:
+        TokenAnalysis: Dictionary with token count and alert status.
     """
 
     try:
@@ -174,8 +222,16 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     return {"token_count": count, "alert": count > 32000}
 
 
-def check_environment_health(path: str) -> Dict[str, Any]:
-    """Check for essential agent configuration: AGENTS.md, Linters, and Lock files."""
+def check_environment_health(path: str) -> EnvironmentHealth:
+    """
+    Check for essential agent configuration: AGENTS.md, Linters, and Lock files.
+
+    Args:
+        path (str): The root path to check.
+
+    Returns:
+        EnvironmentHealth: Dictionary containing the status of various environment checks.
+    """
     results = {
         "agents_md": False,
         "linter_config": False,
@@ -185,7 +241,7 @@ def check_environment_health(path: str) -> Dict[str, Any]:
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
     if not os.path.exists(base_dir):
-        return results
+        return cast(EnvironmentHealth, results)
 
     root_files = os.listdir(base_dir)
 
@@ -215,4 +271,4 @@ def check_environment_health(path: str) -> Dict[str, Any]:
         except Exception:
             results["pyproject_valid"] = False
 
-    return results
+    return cast(EnvironmentHealth, results)

@@ -1,11 +1,19 @@
+from pathlib import Path
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 
 
-# TODO: Add type hints for Agent clarity
-def test_report_full(tmp_path):
+def test_report_full(tmp_path: Path) -> None:
+    """
+    Tests full report generation through the CLI.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # Create file with high ACL
-    """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
     code += "    x = 0\n"
     for i in range(400):

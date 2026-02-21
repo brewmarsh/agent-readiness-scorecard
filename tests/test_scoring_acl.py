@@ -1,16 +1,23 @@
+from pathlib import Path
 from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 
 
-# TODO: Add type hints for Agent clarity
-def test_score_file_acl_penalty(tmp_path):
+def test_score_file_acl_penalty(tmp_path: Path) -> None:
+    """
+    Tests ACL penalty calculation in scoring.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # Create a file with high ACL function
     # ACL = CC + LOC/20
     # Let's make LOC high ~300 lines -> 15.
-
-    """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
     code += "    x = 0\n"
     # 320 lines of assignment
@@ -37,8 +44,13 @@ def test_score_file_acl_penalty(tmp_path):
     assert score == 53
 
 
-def test_cli_check_prompts_scoring_context_plain():
-    """Verify check-prompts --plain handles scoring context suggestions correctly."""
+def test_cli_check_prompts_scoring_context_plain() -> None:
+    """
+    Verify check-prompts --plain handles scoring context suggestions correctly.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open("scoring_prompt.txt", "w") as f:
