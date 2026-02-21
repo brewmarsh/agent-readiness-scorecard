@@ -16,15 +16,18 @@ except ImportError:
         # Fallback for environments where neither is installed yet
         tomllib = None
 
+
 class Thresholds(TypedDict, total=False):
     acl_yellow: int
     acl_red: int
     complexity: int
     type_safety: int
 
+
 class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
+
 
 # Unified defaults representing core Agent Physics
 # RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
@@ -33,6 +36,7 @@ DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
+
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
@@ -43,6 +47,7 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
         else:
             result[key] = value
     return result
+
 
 def load_config(path: str = ".") -> Config:
     """
@@ -70,6 +75,7 @@ def load_config(path: str = ".") -> Config:
     return typing_cast(
         Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
     )
+
 
 def cast(t: Any, v: Any) -> Any:
     """Helper for type hinting merged dictionaries in a dynamic context."""

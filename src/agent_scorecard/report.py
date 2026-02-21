@@ -3,27 +3,33 @@ from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 
+
 def _generate_summary_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     final_score: float,
     profile: Dict[str, Any],
     project_issues: Optional[List[str]],
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
 ) -> str:
-    """Creates the executive summary section of the report."""
+    """Creates the executive summary section of the report with aggregated metrics."""
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
-    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n"
 
+    # Aggregate metrics for a high-level project overview
     if stats:
-        avg_acl = sum(f.get("acl", 0) for f in stats) / len(stats)
-        avg_type_safety = sum(f.get("type_coverage", 0) for f in stats) / len(stats)
+        avg_acl = sum(f.get("acl", 0.0) for f in stats) / len(stats)
+        avg_type_safety = sum(f.get("type_coverage", 0.0) for f in stats) / len(stats)
         summary += f"**Average ACL:** {avg_acl:.1f}\n"
-        summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n\n"
+        summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n"
+
+    summary += "\n"
 
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+        summary += (
+            "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+        )
 
     if project_issues:
         summary += "### ⚠️ Project Issues\n"
@@ -32,16 +38,19 @@ def _generate_summary_section(
         summary += "\n"
     return summary
 
+
 def _generate_acl_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
 ) -> str:
-    """Analyzes and reports on units with high Agent Cognitive Load."""
+    """Analyzes and reports on units with high Agent Cognitive Load (ACL)."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    targets += f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
+    targets += (
+        f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
+    )
 
     all_functions = []
     for f_res in stats:
@@ -58,18 +67,23 @@ def _generate_acl_section(
             acl_val = cast(float, fn.get("acl", 0))
             if acl_val > acl_yellow:
                 status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-                targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                targets += (
+                    f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+                )
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
     return targets
+
 
 def _generate_type_safety_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
 ) -> str:
     """Summarizes type hint coverage across the project."""
-    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    )
 
     types_section = "## 🛡️ Type Safety Index\n\n"
     types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
@@ -83,6 +97,7 @@ def _generate_type_safety_section(
         types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
 
     return types_section + "\n"
+
 
 def _format_craft_prompt(
     context: str, request: str, actions: List[str], frame: str, template: str
@@ -99,6 +114,7 @@ def _format_craft_prompt(
         f"> **Template**: {template}"
     )
 
+
 def _generate_prompts_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
@@ -107,7 +123,6 @@ def _generate_prompts_section(
     """Generates structured CRAFT prompts for systemic remediation."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 
@@ -117,17 +132,20 @@ def _generate_prompts_section(
                 mods = issue.split(": ")[1].split(", ")
                 for mod in mods:
                     prompts += f"### Project Issue: God Module `{mod}`\n"
-                    prompts += _format_craft_prompt(
-                        context="You are a Software Architect specializing in modular system design.",
-                        request=f"Decompose the God Module `{mod}` to reduce context pressure.",
-                        actions=[
-                            "Identify distinct responsibilities within the module.",
-                            "Extract logic into cohesive sub-modules.",
-                            "Refactor imports to maintain functionality."
-                        ],
-                        frame="Inbound imports must stay below 50. Maintain existing logic.",
-                        template="A refactoring plan followed by the new module code structure."
-                    ) + "\n\n"
+                    prompts += (
+                        _format_craft_prompt(
+                            context="You are a Software Architect specializing in modular system design.",
+                            request=f"Decompose the God Module `{mod}` to reduce context pressure.",
+                            actions=[
+                                "Identify distinct responsibilities within the module.",
+                                "Extract logic into cohesive sub-modules.",
+                                "Refactor imports to maintain functionality.",
+                            ],
+                            frame="Inbound imports must stay below 50. Maintain existing logic.",
+                            template="A refactoring plan followed by the new module code structure.",
+                        )
+                        + "\n\n"
+                    )
 
     problematic_files = [f for f in stats if f.get("score", 0) < 90]
     for f_res in problematic_files:
@@ -138,19 +156,23 @@ def _generate_prompts_section(
         if red_functions:
             fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
             prompts += f"### File: `{file_path}` - High Cognitive Load\n"
-            prompts += _format_craft_prompt(
-                context="You are a Senior Python Engineer focused on code maintainability.",
-                request=f"Refactor functions in `{file_path}` with Red ACL scores.",
-                actions=[
-                    f"Target functions: {fn_names}.",
-                    "Extract nested logic into smaller helper functions.",
-                    f"Ensure all units result in an ACL score < {acl_yellow}."
-                ],
-                frame="Keep functions under 50 lines. Ensure all tests pass.",
-                template="Markdown code blocks for the refactored code."
-            ) + "\n\n"
+            prompts += (
+                _format_craft_prompt(
+                    context="You are a Senior Python Engineer focused on code maintainability.",
+                    request=f"Refactor functions in `{file_path}` with Red ACL scores.",
+                    actions=[
+                        f"Target functions: {fn_names}.",
+                        "Extract nested logic into smaller helper functions.",
+                        f"Ensure all units result in an ACL score < {acl_yellow}.",
+                    ],
+                    frame="Keep functions under 50 lines. Ensure all tests pass.",
+                    template="Markdown code blocks for the refactored code.",
+                )
+                + "\n\n"
+            )
 
     return prompts
+
 
 def _generate_file_table_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
@@ -165,6 +187,7 @@ def _generate_file_table_section(
         table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
     return table
 
+
 def generate_markdown_report(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     final_score: float,
@@ -177,16 +200,23 @@ def generate_markdown_report(
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
-    summary = _generate_summary_section(final_score, profile, project_issues, stats)
+    # RESOLUTION: Use Beta branch argument order (stats first)
+    summary = _generate_summary_section(stats, final_score, profile, project_issues)
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds)
     prompts = _generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats)
 
     return (
-        summary + targets + types_section + prompts + "\n" + table + 
-        "\n---\n*Generated by Agent-Scorecard*"
+        summary
+        + targets
+        + types_section
+        + prompts
+        + "\n"
+        + table
+        + "\n---\n*Generated by Agent-Scorecard*"
     )
+
 
 def generate_advisor_report(
     stats: Union[List[AdvisorFileResult], List[Dict[str, Any]]],
@@ -197,8 +227,14 @@ def generate_advisor_report(
     """Generates the advanced Advisor Report based on Agent Physics."""
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
-    high_acl_files = sorted([s for s in stats if s.get("acl", 0) > 15], key=lambda x: x.get("acl", 0), reverse=True)
+    report += (
+        "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
+    )
+    high_acl_files = sorted(
+        [s for s in stats if s.get("acl", 0) > 15],
+        key=lambda x: x.get("acl", 0),
+        reverse=True,
+    )
     if high_acl_files:
         report += "### 🚨 Hallucination Zones (ACL > 15)\n| File | ACL | Complexity | LOC |\n|---|---|---|---|\n"
         for s in high_acl_files:
@@ -216,7 +252,11 @@ def generate_advisor_report(
         report += "✅ All files within context window limits.\n"
 
     report += "\n## 3. Dependency Entanglement\n"
-    god_modules = sorted({k: v for k, v in dependency_stats.items() if v > 50}.items(), key=lambda x: x[1], reverse=True)
+    god_modules = sorted(
+        {k: v for k, v in dependency_stats.items() if v > 50}.items(),
+        key=lambda x: x[1],
+        reverse=True,
+    )
     if god_modules:
         report += "### 🕸 God Modules\n| File | Inbound Refs |\n|---|---|\n"
         for k, v in god_modules:
@@ -230,36 +270,76 @@ def generate_advisor_report(
         report += "✅ No Circular Dependencies detected.\n"
 
     if entropy_stats:
-        report += "### 📂 Directory Entropy\n"
+        report += "\n## 4. Directory Entropy\n"
         for d, c in entropy_stats.items():
             report += f"- `{d}`: {c} files\n"
 
     return report
+
 
 def generate_recommendations_report(
     results: Union[AnalysisResult, List[FileAnalysisResult], Any],
 ) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []
-    file_list = results.get("file_results", []) if isinstance(results, dict) else results
+    file_list = (
+        results.get("file_results", []) if isinstance(results, dict) else results
+    )
     missing_docs = results.get("missing_docs", []) if isinstance(results, dict) else []
 
     for res in file_list:
         if res.get("complexity", 0) > 20:
-            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context window overflow.", "Recommendation": "Refactor units."})
+            recommendations.append(
+                {
+                    "Finding": f"High Complexity: {res['file']}",
+                    "Agent Impact": "Context window overflow.",
+                    "Recommendation": "Refactor units.",
+                }
+            )
         if "Circular dependency" in str(res.get("issues", "")):
-            recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use DI."})
+            recommendations.append(
+                {
+                    "Finding": f"Circular Dependency: {res['file']}",
+                    "Agent Impact": "Recursive loops.",
+                    "Recommendation": "Use DI.",
+                }
+            )
         if res.get("type_coverage", 100) < 90:
-            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints."})
+            recommendations.append(
+                {
+                    "Finding": f"Low Type Safety: {res['file']}",
+                    "Agent Impact": "Hallucination of signatures.",
+                    "Recommendation": "Add PEP 484 hints.",
+                }
+            )
+
+        # Preserve docstring logic for agent semantic understanding
+        issues_text = str(res.get("issues", ""))
+        if "Missing docstrings" in issues_text:
+            recommendations.append(
+                {
+                    "Finding": f"Missing Docstrings: {res['file']}",
+                    "Agent Impact": "Agent misses semantic context of functions.",
+                    "Recommendation": "Add triple-quote docstrings to all functions.",
+                }
+            )
 
     if any(doc.lower() == "agents.md" for doc in missing_docs):
-        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Agent guesses repository structure.", "Recommendation": "Create AGENTS.md."})
+        recommendations.append(
+            {
+                "Finding": "Missing AGENTS.md",
+                "Agent Impact": "Agent guesses repository structure.",
+                "Recommendation": "Create AGENTS.md.",
+            }
+        )
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
 
     table = "| Finding | Agent Impact | Recommendation |\n| :--- | :--- | :--- |\n"
     for rec in recommendations:
-        table += f"| {rec['Finding']} | {rec['Agent Impact']} | {rec['Recommendation']} |\n"
+        table += (
+            f"| {rec['Finding']} | {rec['Agent Impact']} | {rec['Recommendation']} |\n"
+        )
 
     return "# Recommendations\n\n" + table

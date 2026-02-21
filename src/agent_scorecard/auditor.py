@@ -204,7 +204,7 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            # Use toml_tool alias to unify tomllib and tomli
+            # RESOLUTION: Use toml_tool alias to unify tomllib and tomli
             try:
                 import tomllib as toml_tool  # type: ignore
             except ImportError:

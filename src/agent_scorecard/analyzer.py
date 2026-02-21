@@ -5,6 +5,7 @@ from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
 from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
+from .utils import collect_python_files
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -30,20 +31,6 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
             missing.append(req)
     return missing
 
-def _collect_python_files(path: str) -> List[str]:
-    """Collects all Python files in the given path, ignoring hidden directories."""
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            parts = root.split(os.sep)
-            if any(p.startswith(".") and p != "." for p in parts):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-    return py_files
 
 def _parse_imports(filepath: str) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
@@ -64,14 +51,14 @@ def _parse_imports(filepath: str) -> Set[str]:
                 imported_names.add(node.module)
     return imported_names
 
+
 def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
     """Builds a dependency graph of the project for structural analysis."""
-    
     if os.path.isfile(root_path) and root_path.endswith(".py"):
         all_py_files = [os.path.basename(root_path)]
         root_path = os.path.dirname(root_path)
     else:
-        full_paths = _collect_python_files(root_path)
+        full_paths = collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
@@ -95,6 +82,7 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
                         graph[rel_path].add(candidate)
     return graph
 
+
 def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     """Returns {file: count} of inbound imports to identify 'God Modules'."""
     inbound: Dict[str, int] = {node: 0 for node in graph}
@@ -106,38 +94,41 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
                 inbound[target] = 1
     return inbound
 
-def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """Returns list of unique cycles using DFS and canonicalization."""
-    cycles: List[List[str]] = []
-    visited_global: Set[str] = set()
-    path_set: Set[str] = set()
-    nodes = sorted(graph.keys())
 
-    def visit(node: str, current_path: List[str]) -> None:
-        visited_global.add(node)
-        path_set.add(node)
-        current_path.append(node)
-        neighbors = sorted(list(graph.get(node, set())))
+def _find_cycles_dfs(
+    node: str,
+    graph: Dict[str, Set[str]],
+    visited_global: Set[str],
+    path_set: Set[str],
+    current_path: List[str],
+    cycles: List[List[str]],
+) -> None:
+    """Helper for detecting cycles using DFS."""
+    visited_global.add(node)
+    path_set.add(node)
+    current_path.append(node)
+    neighbors = sorted(list(graph.get(node, set())))
 
-        for neighbor in neighbors:
-            if neighbor in path_set:
-                try:
-                    idx = current_path.index(neighbor)
-                    cycle = current_path[idx:]
-                    if cycle not in cycles:
-                        cycles.append(cycle[:])
-                except ValueError:
-                    pass
-            elif neighbor not in visited_global:
-                visit(neighbor, current_path)
+    for neighbor in neighbors:
+        if neighbor in path_set:
+            try:
+                idx = current_path.index(neighbor)
+                cycle = current_path[idx:]
+                if cycle not in cycles:
+                    cycles.append(cycle[:])
+            except ValueError:
+                pass
+        elif neighbor not in visited_global:
+            _find_cycles_dfs(
+                neighbor, graph, visited_global, path_set, current_path, cycles
+            )
 
-        path_set.remove(node)
-        current_path.pop()
+    path_set.remove(node)
+    current_path.pop()
 
-    for node in nodes:
-        if node not in visited_global:
-            visit(node, [])
 
+def _deduplicate_cycles(cycles: List[List[str]]) -> List[List[str]]:
+    """Canonicalizes and deduplicates detected cycles."""
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
@@ -150,6 +141,20 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
             seen_cycle_sets.add(canonical)
             unique_cycles.append(list(canonical))
     return unique_cycles
+
+
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+    """Returns list of unique cycles using DFS and canonicalization."""
+    cycles: List[List[str]] = []
+    visited_global: Set[str] = set()
+    nodes = sorted(graph.keys())
+
+    for node in nodes:
+        if node not in visited_global:
+            _find_cycles_dfs(node, graph, visited_global, set(), [], cycles)
+
+    return _deduplicate_cycles(cycles)
+
 
 def get_project_issues(
     path: str, py_files: List[str], profile: Dict[str, Any]
@@ -196,6 +201,7 @@ def get_project_issues(
 
     return penalty, issues
 
+
 def perform_analysis(
     path: str,
     agent: str = "generic",
@@ -207,7 +213,7 @@ def perform_analysis(
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
 
-    py_files = _collect_python_files(path)
+    py_files = collect_python_files(path)
     all_py_files = py_files[:]
 
     if limit_to_files:
@@ -221,7 +227,6 @@ def perform_analysis(
     file_scores: List[int] = []
 
     for filepath in py_files:
-        # RESOLUTION: Unified score_file call using explicit thresholds from config.py
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
             filepath, profile, thresholds=thresholds
         )

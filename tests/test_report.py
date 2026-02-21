@@ -59,7 +59,7 @@ def test_generate_markdown_report():
     assert "Overall Score: 70.0/100" in report_content
     assert "PASSED" in report_content
 
-    # Verify Average Metrics
+    # Verify New Summary Metrics (Average ACL & Type Safety)
     assert "**Average ACL:** 14.0" in report_content
     assert "**Average Type Safety:** 50%" in report_content
 
@@ -69,6 +69,35 @@ def test_generate_markdown_report():
     assert "complex_untyped" in report_content
     assert "25.0" in report_content
     assert "🔴 Red" in report_content
+
+    # Regression check: Verify that ACL 16 is now reported as Red (previously it would have been Yellow due to 20 threshold)
+    report_with_16 = generate_markdown_report(
+        stats=[
+            {
+                "file": "borderline.py",
+                "score": 50,
+                "issues": "1 Red ACL functions",
+                "loc": 100,
+                "complexity": 11,
+                "type_coverage": 100,
+                "function_metrics": [
+                    {
+                        "name": "f",
+                        "acl": 16.0,
+                        "complexity": 11,
+                        "loc": 100,
+                        "is_typed": True,
+                        "has_docstring": True,
+                    }
+                ],
+            }
+        ],
+        final_score=50.0,
+        path=".",
+        profile=PROFILES["generic"],
+    )
+    assert "16.0" in report_with_16
+    assert "🔴 Red" in report_with_16
 
     assert "Type Safety Index" in report_content
     assert "Agent Prompts for Remediation" in report_content
@@ -107,3 +136,39 @@ def test_generate_recommendations_report():
     assert "Agent guesses repository structure." in rec_content
     assert "Recursive loops." in rec_content
     assert "Hallucination of signatures." in rec_content
+
+
+def test_generate_report_averages():
+    """Tests that the report summary includes Average ACL and Type Safety metrics."""
+    stats = [
+        {
+            "file": "f1.py",
+            "acl": 10.0,
+            "type_coverage": 50.0,
+            "function_metrics": [],
+            "score": 50,
+            "issues": "",
+        },
+        {
+            "file": "f2.py",
+            "acl": 20.0,
+            "type_coverage": 100.0,
+            "function_metrics": [],
+            "score": 50,
+            "issues": "",
+        },
+    ]
+
+    content = generate_markdown_report(
+        stats=stats,
+        final_score=50.0,
+        path=".",
+        profile=PROFILES["generic"],
+        project_issues=[],
+    )
+
+    # Average ACL: (10 + 20) / 2 = 15.0
+    # Average Type Safety: (50 + 100) / 2 = 75%
+
+    assert "**Average ACL:** 15.0" in content
+    assert "**Average Type Safety:** 75%" in content
