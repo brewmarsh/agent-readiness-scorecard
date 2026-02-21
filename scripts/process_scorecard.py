@@ -4,6 +4,7 @@ import subprocess
 import json
 import os
 
+
 def check_issue_exists(file_path, issue_type):
     """
     Checks if an open GitHub issue with the same title already exists.
@@ -14,14 +15,27 @@ def check_issue_exists(file_path, issue_type):
         # Search for open issues with the exact title
         # We use --json number to get a list of issue numbers
         result = subprocess.run(
-            ["gh", "issue", "list", "--search", f'"{title}" in:title', "--state", "open", "--json", "number"],
-            capture_output=True, text=True, check=True
+            [
+                "gh",
+                "issue",
+                "list",
+                "--search",
+                f'"{title}" in:title',
+                "--state",
+                "open",
+                "--json",
+                "number",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
         )
         issues = json.loads(result.stdout)
         return len(issues) > 0
     except Exception as e:
         print(f"Error checking issue: {e}")
         return False
+
 
 def create_issue(file_path, issue_type, craft_prompt):
     """
@@ -32,17 +46,24 @@ def create_issue(file_path, issue_type, craft_prompt):
     try:
         subprocess.run(
             [
-                "gh", "issue", "create",
-                "--title", title,
-                "--body", craft_prompt,
-                "--label", "tech-debt",
-                "--label", "ai-ready"
+                "gh",
+                "issue",
+                "create",
+                "--title",
+                title,
+                "--body",
+                craft_prompt,
+                "--label",
+                "tech-debt",
+                "--label",
+                "ai-ready",
             ],
-            check=True
+            check=True,
         )
         print(f"Created issue for {file_path} ({issue_type})")
     except Exception as e:
         print(f"Error creating issue: {e}")
+
 
 def main():
     if len(sys.argv) < 2:
@@ -54,7 +75,7 @@ def main():
         print(f"Error: File {scorecard_file} not found.")
         sys.exit(1)
 
-    with open(scorecard_file, 'r', encoding='utf-8') as f:
+    with open(scorecard_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Regex logic:
@@ -80,21 +101,19 @@ def main():
                 print(f"Issue already exists for {file_path} ({issue_type})")
         elif issue_type == "Low Type Safety":
             # Low Type Safety items are collected for later processing
-            typing_tasks.append({
-                "file": file_path,
-                "prompt": craft_prompt
-            })
+            typing_tasks.append({"file": file_path, "prompt": craft_prompt})
 
     # Save typing tasks to JSON for the next CI step
     if typing_tasks:
-        with open('typing_tasks.json', 'w', encoding='utf-8') as f:
+        with open("typing_tasks.json", "w", encoding="utf-8") as f:
             json.dump(typing_tasks, f, indent=2)
         print(f"Saved {len(typing_tasks)} typing tasks to typing_tasks.json")
     else:
         # Create an empty file if no tasks found to avoid CI step failure if it expects the file
-        with open('typing_tasks.json', 'w', encoding='utf-8') as f:
+        with open("typing_tasks.json", "w", encoding="utf-8") as f:
             json.dump([], f)
         print("No typing tasks found. Created empty typing_tasks.json")
+
 
 if __name__ == "__main__":
     main()
