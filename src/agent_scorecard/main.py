@@ -164,11 +164,19 @@ def check_prompts(path: str, plain: bool) -> None:
 
     if plain:
         print(f"Prompt Analysis: {path}")
-        print(f"Score: {result['score']}/100")
+        print(f"Score: {result['score']}/100\n")
         for k, passed in result["results"].items():
-            print(f"- {k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
+            print(f"{k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
+
+        if result["improvements"]:
+            print("\nRefactored Suggestions:")
+            for imp in result["improvements"]:
+                print(f"- {imp}")
+
         if result["score"] >= 80:
             print("PASSED: Prompt is optimized!")
+        else:
+            print("FAILED: Prompt score too low.")
     else:
         console.print(Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False))
         style = "green" if result["score"] >= 80 else "red"
