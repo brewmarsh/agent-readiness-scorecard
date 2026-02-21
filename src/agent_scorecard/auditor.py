@@ -143,7 +143,7 @@ def check_critical_context_tokens(path: Union[str, Path]) -> TokenAnalysis:
     Counts tokens for the project's 'Critical Context'.
     If this exceeds 32k, an Agent will likely lose track of the overall architecture.
     """
-
+    
     try:
         enc = tiktoken.get_encoding("cl100k_base")
     except Exception:
@@ -208,7 +208,7 @@ def check_environment_health(path: Union[str, Path]) -> EnvironmentHealth:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            # Use toml_tool alias to unify tomllib and tomli
+            # RESOLUTION: Use toml_tool alias to unify tomllib and tomli
             try:
                 import tomllib as toml_tool  # type: ignore
             except ImportError:

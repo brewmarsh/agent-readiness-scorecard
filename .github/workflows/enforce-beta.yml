@@ -1,0 +1,16 @@
+name: Enforce Beta Workflow
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  enforce-beta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Source Branch
+        if: github.head_ref != 'beta'
+        run: |
+          echo "Please target all new features and bug fixes to the 'beta' branch. The 'main' branch is reserved for stable release merges from 'beta'."
+          exit 1

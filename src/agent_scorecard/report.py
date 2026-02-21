@@ -1,5 +1,6 @@
+import os
 from pathlib import Path
-from typing import List, Dict, Optional, Union, cast
+from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import (
     FileAnalysisResult,
@@ -11,12 +12,24 @@ from .types import (
 
 
 def _generate_summary_section(
-    final_score: float, profile: Profile, project_issues: Optional[List[str]]
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    final_score: float,
+    profile: Profile,
+    project_issues: Optional[List[str]],
 ) -> str:
-    """Creates the executive summary section of the report."""
+    """Creates the executive summary section of the report with aggregated metrics."""
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
-    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n"
+
+    # Aggregate metrics for a high-level project overview
+    if stats:
+        avg_acl = sum(f.get("acl", 0.0) for f in stats) / len(stats)
+        avg_type_safety = sum(f.get("type_coverage", 0.0) for f in stats) / len(stats)
+        summary += f"**Average ACL:** {avg_acl:.1f}\n"
+        summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n"
+
+    summary += "\n"
 
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
@@ -37,7 +50,7 @@ def _generate_acl_section(
     stats: List[FileAnalysisResult],
     thresholds: Thresholds,
 ) -> str:
-    """Analyzes and reports on units with high Agent Cognitive Load."""
+    """Analyzes and reports on units with high Agent Cognitive Load (ACL)."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
@@ -197,7 +210,8 @@ def generate_markdown_report(
         Thresholds, DEFAULT_THRESHOLDS.copy()
     )
 
-    summary = _generate_summary_section(final_score, profile, project_issues)
+    # RESOLUTION: Use Beta branch argument order (stats first) with DX types
+    summary = _generate_summary_section(stats, final_score, profile, project_issues)
     targets = _generate_acl_section(stats, actual_thresholds)
     types_section = _generate_type_safety_section(stats, actual_thresholds)
     prompts = _generate_prompts_section(stats, actual_thresholds, project_issues)
@@ -265,6 +279,7 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
+    # RESOLUTION: Preserve high-fidelity directory table from DX branch
     report += "\n## 4. Directory Entropy\n"
     if entropy_stats:
         report += "### 🗄 Crowded Directories\n| Directory | File Count |\n|---|---|\n"
@@ -309,6 +324,17 @@ def generate_recommendations_report(
                     "Finding": f"Low Type Safety: {res['file']}",
                     "Agent Impact": "Hallucination of signatures.",
                     "Recommendation": "Add PEP 484 hints.",
+                }
+            )
+
+        # Preserve docstring logic for agent semantic understanding
+        issues_text = str(res.get("issues", ""))
+        if "Missing docstrings" in issues_text:
+            recommendations.append(
+                {
+                    "Finding": f"Missing Docstrings: {res['file']}",
+                    "Agent Impact": "Agent misses semantic context of functions.",
+                    "Recommendation": "Add triple-quote docstrings to all functions.",
                 }
             )
 

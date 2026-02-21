@@ -1,7 +1,7 @@
 import os
 import copy
 from pathlib import Path
-from typing import Dict, Any, TypedDict, cast, Union
+from typing import Dict, Any, TypedDict, cast as typing_cast, Union
 from .constants import DEFAULT_THRESHOLDS
 from .types import Thresholds
 
@@ -9,12 +9,10 @@ from .types import Thresholds
 tomllib: Any = None
 try:
     import tomllib as _tomllib  # type: ignore
-
     tomllib = _tomllib
 except ImportError:
     try:
         import tomli as _tomli
-
         tomllib = _tomli
     except ImportError:
         # Fallback for environments where neither is installed yet
@@ -27,11 +25,11 @@ class Config(TypedDict):
 
 
 # Unified defaults representing core Agent Physics
-# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants
+# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
 # to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
-    "thresholds": cast(Thresholds, DEFAULT_THRESHOLDS),
+    "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
 
 
@@ -51,10 +49,11 @@ def load_config(path: Union[str, Path] = ".") -> Config:
     Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
     Looks for the [tool.agent-scorecard] section in accordance with PEP 518.
     """
-    if os.path.isfile(path):
-        search_dir = os.path.dirname(os.path.abspath(str(path)))
+    path_str = str(path)
+    if os.path.isfile(path_str):
+        search_dir = os.path.dirname(os.path.abspath(path_str))
     else:
-        search_dir = str(path)
+        search_dir = path_str
 
     config_path = os.path.join(search_dir, "pyproject.toml")
     user_config = {}
@@ -69,4 +68,11 @@ def load_config(path: Union[str, Path] = ".") -> Config:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
 
-    return cast(Config, _deep_merge(cast(Dict[str, Any], DEFAULT_CONFIG), user_config))
+    return typing_cast(
+        Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
+    )
+
+
+def cast(t: Any, v: Any) -> Any:
+    """Helper for type hinting merged dictionaries in a dynamic context."""
+    return v

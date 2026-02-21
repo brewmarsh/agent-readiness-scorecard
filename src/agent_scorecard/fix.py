@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
-from typing import Union
+from typing import Union, Dict, Any, List
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
 from .types import Profile
+from .utils import collect_python_files
 
 console = Console()
 
@@ -29,7 +30,6 @@ class LLM:
         Note: This is a placeholder for real LLM integration.
         """
         # In a real implementation, this would call OpenAI/Anthropic etc.
-        # For now, we return the original code (simulating no changes).
         if "Source Code:\n" in user_prompt:
             return user_prompt.split("Source Code:\n")[-1]
         return ""
@@ -69,41 +69,44 @@ def fix_file_issues(filepath: Union[str, Path]) -> None:
         )
 
 
+def _ensure_project_docs(path: Union[str, Path], profile: Profile) -> None:
+    """Ensures that required project documentation files exist."""
+    path_str = str(path)
+    if not os.path.isdir(path_str):
+        return
+
+    required = profile.get("required_files", [])
+    existing = [f.lower() for f in os.listdir(path_str)]
+
+    for req in required:
+        if req.lower() not in existing:
+            filepath = os.path.join(path_str, req)
+            content = ""
+            if req.lower() == "agents.md":
+                content = AGENT_CONTEXT_TEMPLATE.format(
+                    project_name=os.path.basename(os.path.abspath(path_str))
+                )
+            elif req.lower() == "instructions.md":
+                content = INSTRUCTIONS_TEMPLATE
+            elif req.lower() == "readme.md":
+                content = "# Project\n\nAuto-generated README."
+
+            if content:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                console.print(f"[bold green][Fixed][/bold green] Created {req}")
+
+
 def apply_fixes(path: Union[str, Path], profile: Profile) -> None:
     """Applies fixes to project files and structure."""
+    path_str = str(path)
 
-    # 1. Project Docs
-    if os.path.isdir(path):
-        required = profile.get("required_files", [])
-        existing = [f.lower() for f in os.listdir(path)]
+    # 1. Project Docs remediation
+    _ensure_project_docs(path_str, profile)
 
-        for req in required:
-            if req.lower() not in existing:
-                filepath = os.path.join(path, req)
-                content = ""
-                if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(
-                        project_name=os.path.basename(os.path.abspath(path))
-                    )
-                elif req.lower() == "instructions.md":
-                    content = INSTRUCTIONS_TEMPLATE
-                elif req.lower() == "readme.md":
-                    content = "# Project\n\nAuto-generated README."
-
-                if content:
-                    with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    console.print(f"[bold green][Fixed][/bold green] Created {req}")
-
-    # 2. File Fixes
-    py_files = []
-    if os.path.isfile(path) and str(path).endswith(".py"):
-        py_files = [str(path)]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
+    # 2. Source Code remediation
+    # RESOLUTION: Use Beta branch centralized collector for efficiency
+    py_files = collect_python_files(path_str)
 
     for py_file in py_files:
         fix_file_issues(py_file)

@@ -15,12 +15,11 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
-    # instead of hardcoded magic numbers.
+    # RESOLUTION: Unified configuration logic using Profile type and central constants.
     p_thresholds: Thresholds = profile.get("thresholds") or {}
 
     if thresholds is None:
-        new_thresholds: Thresholds = {
+        thresholds = {
             "acl_yellow": p_thresholds.get(
                 "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
             ),
@@ -29,7 +28,6 @@ def score_file(
                 "type_safety", DEFAULT_THRESHOLDS["type_safety"]
             ),
         }
-        thresholds = new_thresholds
 
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
@@ -50,17 +48,10 @@ def score_file(
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
     # 3. Extract granular thresholds (Synchronized with Constants)
-    acl_yellow = (
-        thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-        or DEFAULT_THRESHOLDS["acl_yellow"]
-    )
-    acl_red = (
-        thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-        or DEFAULT_THRESHOLDS["acl_red"]
-    )
-    type_safety_threshold = (
-        thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
-        or DEFAULT_THRESHOLDS["type_safety"]
+    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
 
     # 4. ACL Scoring (Agent Cognitive Load)
@@ -87,6 +78,16 @@ def score_file(
         score -= penalty
         details.append(
             f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+        )
+
+    # 6. Docstring Coverage Check
+    # RESOLUTION: Preserve penalty for missing semantic context to prevent agent hallucination.
+    missing_doc_count = sum(1 for m in metrics if not m.get("has_docstring", False))
+    if missing_doc_count > 0:
+        penalty = 10
+        score -= penalty
+        details.append(
+            f"Missing docstrings for {missing_doc_count} functions (-{penalty})"
         )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)

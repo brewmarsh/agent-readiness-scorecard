@@ -13,6 +13,7 @@ from .types import (
     Profile,
     Thresholds,
 )
+from .utils import collect_python_files
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -25,7 +26,6 @@ from .metrics import (  # noqa: F401
 )
 
 # --- METRICS & GRAPH ANALYSIS ---
-
 
 def scan_project_docs(
     root_path: Union[str, Path], required_files: List[str]
@@ -42,29 +42,13 @@ def scan_project_docs(
     return missing
 
 
-def _collect_python_files(path: Union[str, Path]) -> List[str]:
-    """Collects all Python files in the given path, ignoring hidden directories."""
-    py_files: List[str] = []
-    if os.path.isfile(path) and str(path).endswith(".py"):
-        py_files = [str(path)]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            parts = root.split(os.sep)
-            if any(p.startswith(".") and p != "." for p in parts):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-    return py_files
-
-
 def _parse_imports(filepath: Union[str, Path]) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
     imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
-        tree = ast.parse(code, filename=filepath)
+        tree = ast.parse(code, filename=str(filepath))
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return imported_names
 
@@ -79,12 +63,13 @@ def _parse_imports(filepath: Union[str, Path]) -> Set[str]:
 
 
 def get_import_graph(root_path: Union[str, Path]) -> Dict[str, Set[str]]:
-    """Builds a dependency graph of the project."""
+    """Builds a dependency graph of the project for structural analysis."""
+    
     if os.path.isfile(root_path) and str(root_path).endswith(".py"):
         all_py_files = [os.path.basename(str(root_path))]
         root_path = os.path.dirname(root_path)
     else:
-        full_paths = _collect_python_files(root_path)
+        full_paths = collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
@@ -121,40 +106,40 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     return inbound
 
 
-def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """Returns list of unique cycles using DFS and canonicalization."""
-    cycles: List[List[str]] = []
-    visited_global: Set[str] = set()
-    path_set: Set[str] = set()
-    nodes = sorted(graph.keys())
+def _find_cycles_dfs(
+    node: str,
+    graph: Dict[str, Set[str]],
+    visited_global: Set[str],
+    path_set: Set[str],
+    current_path: List[str],
+    cycles: List[List[str]],
+) -> None:
+    """Helper for detecting cycles using DFS."""
+    visited_global.add(node)
+    path_set.add(node)
+    current_path.append(node)
+    neighbors = sorted(list(graph.get(node, set())))
 
-    def visit(node: str, current_path: List[str]) -> None:
-        """Recursively visits nodes to find import cycles."""
-        visited_global.add(node)
-        path_set.add(node)
-        current_path.append(node)
-        neighbors = sorted(list(graph.get(node, set())))
+    for neighbor in neighbors:
+        if neighbor in path_set:
+            try:
+                idx = current_path.index(neighbor)
+                cycle = current_path[idx:]
+                if cycle not in cycles:
+                    cycles.append(cycle[:])
+            except ValueError:
+                pass
+        elif neighbor not in visited_global:
+            _find_cycles_dfs(
+                neighbor, graph, visited_global, path_set, current_path, cycles
+            )
 
-        for neighbor in neighbors:
-            if neighbor in path_set:
-                try:
-                    idx = current_path.index(neighbor)
-                    cycle = current_path[idx:]
-                    if cycle not in cycles:
-                        cycles.append(cycle[:])
-                except ValueError:
-                    pass
-            elif neighbor not in visited_global:
-                visit(neighbor, current_path)
+    path_set.remove(node)
+    current_path.pop()
 
-        path_set.remove(node)
-        current_path.pop()
 
-    for node in nodes:
-        if node not in visited_global:
-            visit(node, [])
-
-    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
+def _deduplicate_cycles(cycles: List[List[str]]) -> List[List[str]]:
+    """Canonicalizes and deduplicates detected cycles."""
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
@@ -169,6 +154,19 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     return unique_cycles
 
 
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+    """Returns list of unique cycles using DFS and canonicalization."""
+    cycles: List[List[str]] = []
+    visited_global: Set[str] = set()
+    nodes = sorted(graph.keys())
+
+    for node in nodes:
+        if node not in visited_global:
+            _find_cycles_dfs(node, graph, visited_global, set(), [], cycles)
+
+    return _deduplicate_cycles(cycles)
+
+
 def get_project_issues(
     path: Union[str, Path], py_files: List[str], profile: Profile
 ) -> Tuple[int, List[str]]:
@@ -176,7 +174,6 @@ def get_project_issues(
     penalty = 0
     issues: List[str] = []
 
-    # 1. Documentation Check
     missing_docs = scan_project_docs(
         path, cast(List[str], profile.get("required_files", []))
     )
@@ -185,14 +182,12 @@ def get_project_issues(
         penalty += len(missing_docs) * 15
         issues.append(msg)
 
-    # 1a. Environment Health (malformed config logic)
     health = auditor.check_environment_health(path)
     if not health.get("pyproject_valid", True):
         msg = "Malformed pyproject.toml detected"
         penalty += 20
         issues.append(msg)
 
-    # 2. Dependency Analysis
     graph = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
@@ -201,7 +196,6 @@ def get_project_issues(
         penalty += len(god_modules) * 10
         issues.append(msg)
 
-    # 3. Directory Entropy
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     crowded_dirs = list(entropy_stats.keys())
     if crowded_dirs:
@@ -209,7 +203,6 @@ def get_project_issues(
         penalty += len(crowded_dirs) * 5
         issues.append(msg)
 
-    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
         cycle_strs = ["->".join(c) for c in cycles]
@@ -232,7 +225,7 @@ def perform_analysis(
         Profile, PROFILES.get(agent, PROFILES["generic"])
     )
 
-    py_files = _collect_python_files(path)
+    py_files = collect_python_files(path)
     all_py_files = py_files[:]
 
     if limit_to_files:
@@ -246,7 +239,6 @@ def perform_analysis(
     file_scores: List[int] = []
 
     for filepath in py_files:
-        # Pass thresholds to allow pyproject.toml overrides per file
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
             filepath, actual_profile, thresholds=thresholds
         )
