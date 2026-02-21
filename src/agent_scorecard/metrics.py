@@ -1,11 +1,10 @@
 import ast
 import mccabe
-from pathlib import Path
-from typing import List, Union
+from typing import List
 from .types import FunctionMetric
 
 
-def get_loc(filepath: Union[str, Path]) -> int:
+def get_loc(filepath: str) -> int:
     """Returns lines of code excluding whitespace/comments roughly."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -16,12 +15,12 @@ def get_loc(filepath: Union[str, Path]) -> int:
         return 0
 
 
-def get_complexity_score(filepath: Union[str, Path]) -> float:
+def get_complexity_score(filepath: str) -> float:
     """Returns average cyclomatic complexity for all functions in a file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
-        tree = ast.parse(code, str(filepath))
+        tree = ast.parse(code, filepath)
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return 0.0
 
@@ -35,7 +34,7 @@ def get_complexity_score(filepath: Union[str, Path]) -> float:
     return sum(complexities) / len(complexities)
 
 
-def check_type_hints(filepath: Union[str, Path]) -> float:
+def check_type_hints(filepath: str) -> float:
     """Returns type hint coverage percentage for functions and async functions."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -70,7 +69,7 @@ def calculate_acl(complexity: float, loc: int) -> float:
     return complexity + (loc / 20.0)
 
 
-def count_tokens(filepath: Union[str, Path]) -> int:
+def count_tokens(filepath: str) -> int:
     """Estimates the number of tokens in a file (approx 4 chars/token)."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -80,12 +79,12 @@ def count_tokens(filepath: Union[str, Path]) -> int:
         return 0
 
 
-def get_function_stats(filepath: Union[str, Path]) -> List[FunctionMetric]:
+def get_function_stats(filepath: str) -> List[FunctionMetric]:
     """Returns statistics for each function in the file including ACL and Type coverage."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
-        tree = ast.parse(code, str(filepath))
+        tree = ast.parse(code, filepath)
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return []
 

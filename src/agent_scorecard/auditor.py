@@ -1,12 +1,10 @@
 import os
 import ast
-from pathlib import Path
 import tiktoken
-from typing import Dict, List, Optional, Union
-from .types import EnvironmentHealth, DirectoryEntropy, TokenAnalysis
+from typing import Dict, Any, List, Optional
 
 
-def check_directory_entropy(path: Union[str, Path]) -> DirectoryEntropy:
+def check_directory_entropy(path: str) -> Dict[str, Any]:
     """
     Calculate directory entropy.
     Warns if avg files > 15 OR any single directory has > 50 files.
@@ -44,9 +42,7 @@ def check_directory_entropy(path: Union[str, Path]) -> DirectoryEntropy:
     }
 
 
-def get_crowded_directories(
-    root_path: Union[str, Path], threshold: int = 50
-) -> Dict[str, int]:
+def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """Returns a flat dictionary of directories exceeding the file count threshold."""
     entropy_stats: Dict[str, int] = {}
     if os.path.isfile(root_path):
@@ -111,7 +107,7 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
     return None
 
 
-def get_python_signatures(filepath: Union[str, Path]) -> str:
+def get_python_signatures(filepath: str) -> str:
     """Extracts all top-level function and class signatures from a file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -130,7 +126,7 @@ def get_python_signatures(filepath: Union[str, Path]) -> str:
     return "\n".join(signatures)
 
 
-def count_python_tokens(filepath: Union[str, Path]) -> int:
+def count_python_tokens(filepath: str) -> int:
     """Calculates the token count of a single Python file using tiktoken."""
     try:
         enc = tiktoken.get_encoding("cl100k_base")
@@ -141,7 +137,7 @@ def count_python_tokens(filepath: Union[str, Path]) -> int:
         return 0
 
 
-def check_critical_context_tokens(path: Union[str, Path]) -> TokenAnalysis:
+def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     """
     Counts tokens for the project's 'Critical Context':
     (README + AGENTS.md + All Python Signatures).
@@ -176,7 +172,7 @@ def check_critical_context_tokens(path: Union[str, Path]) -> TokenAnalysis:
                     total_content += (
                         get_python_signatures(os.path.join(root, file)) + "\n"
                     )
-    elif os.path.isfile(path) and str(path).endswith(".py"):
+    elif os.path.isfile(path) and path.endswith(".py"):
         total_content += get_python_signatures(path)
 
     tokens = enc.encode(total_content)
@@ -184,9 +180,9 @@ def check_critical_context_tokens(path: Union[str, Path]) -> TokenAnalysis:
     return {"token_count": count, "alert": count > 32000}
 
 
-def check_environment_health(path: Union[str, Path]) -> EnvironmentHealth:
+def check_environment_health(path: str) -> Dict[str, Any]:
     """Check for essential agent configuration: AGENTS.md, Linters, and Lock files."""
-    results: EnvironmentHealth = {
+    results = {
         "agents_md": False,
         "linter_config": False,
         "lock_file": False,

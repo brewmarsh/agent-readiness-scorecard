@@ -1,10 +1,8 @@
 import os
-from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Dict, Any
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
-from .types import Profile
 
 console = Console()
 
@@ -29,12 +27,13 @@ class LLM:
         Note: This is a placeholder for real LLM integration.
         """
         # In a real implementation, this would call OpenAI/Anthropic etc.
+        # For now, we return the original code (simulating no changes).
         if "Source Code:\n" in user_prompt:
             return user_prompt.split("Source Code:\n")[-1]
         return ""
 
 
-def fix_file_issues(filepath: Union[str, Path]) -> None:
+def fix_file_issues(filepath: str) -> None:
     """Uses CRAFT prompts and LLM to fix code quality violations."""
     try:
         stats = get_function_stats(filepath)
@@ -68,10 +67,10 @@ def fix_file_issues(filepath: Union[str, Path]) -> None:
         )
 
 
-def apply_fixes(path: Union[str, Path], profile: Profile) -> None:
+def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
 
-    # 1. Project Docs remediation
+    # 1. Project Docs
     if os.path.isdir(path):
         required = profile.get("required_files", [])
         existing = [f.lower() for f in os.listdir(path)]
@@ -94,14 +93,12 @@ def apply_fixes(path: Union[str, Path], profile: Profile) -> None:
                         f.write(content)
                     console.print(f"[bold green][Fixed][/bold green] Created {req}")
 
-    # 2. Source Code remediation
+    # 2. File Fixes
     py_files = []
-    # RESOLUTION: Ensure 'path' is treated as a string for extension checking
-    path_str = str(path)
-    if os.path.isfile(path_str) and path_str.endswith(".py"):
-        py_files = [path_str]
-    elif os.path.isdir(path_str):
-        for root, _, files in os.walk(path_str):
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
