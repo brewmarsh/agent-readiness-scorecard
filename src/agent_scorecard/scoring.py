@@ -12,7 +12,7 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Unified configuration logic. Uses DEFAULT_THRESHOLDS constant 
+    # RESOLUTION: Unified configuration logic. Uses DEFAULT_THRESHOLDS constant
     # to ensure consistency across report generation and scoring.
     p_thresholds = profile.get("thresholds", {})
 
