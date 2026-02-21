@@ -2,6 +2,7 @@ from typing import Dict, Any, Tuple, List, Optional
 from .constants import DEFAULT_THRESHOLDS
 from .metrics import get_loc, get_function_stats
 from .types import FunctionMetric
+from .constants import DEFAULT_THRESHOLDS
 
 
 def score_file(

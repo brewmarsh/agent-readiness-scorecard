@@ -19,11 +19,12 @@ def generate_markdown_report(
     project_issues: Optional[List[str]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Orchestrates the Markdown report generation."""
+    """Orchestrates the Markdown report generation using modular components."""
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
     # Orchestration of modular report components
+    # RESOLUTION: Delegated section generation to report_sections.py for better maintainability.
     summary = generate_summary_section(stats, final_score, profile, project_issues)
     targets = generate_acl_section(stats, thresholds)
     types_section = generate_type_safety_section(stats, thresholds)
@@ -92,7 +93,7 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
-    # RESOLUTION: Combined v0.3.0 visual clarity with Beta branch threshold logic
+    # RESOLUTION: Combined visual table clarity with modular entropy logic
     report += "\n## 4. Directory Entropy\n"
     crowded_dirs = {k: v for k, v in entropy_stats.items() if v > 15}
     if crowded_dirs:
@@ -141,7 +142,7 @@ def generate_recommendations_report(
                 }
             )
 
-        # RESOLUTION: Preserve docstring logic for agent semantic understanding
+        # Preserve docstring logic for agent semantic understanding
         issues_text = str(res.get("issues", ""))
         if "Missing docstrings" in issues_text:
             recommendations.append(
