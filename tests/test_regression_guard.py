@@ -7,29 +7,29 @@ from agent_scorecard import analyzer
 
 def test_bloated_files_penalty(tmp_path: Path):
     """Verify that files over 200 lines get a penalty."""
-    # Base 100 score. 310 lines - 200 = 110. 110 // 10 = 11 penalty points.
-    content = "x = 1\n" * 310
+    content = "x = 1\n" * 310  # 310 lines of code
     py_file = tmp_path / "bloated.py"
     py_file.write_text(content, encoding="utf-8")
 
+    # 310 lines - 200 = 110. 110 // 10 = 11 penalty points.
     score, details, loc, avg_comp, type_cov, metrics = score_file(
         str(py_file), PROFILES["generic"]
     )
 
     assert loc == 310
     assert "Bloated File: 310 lines (-11)" in details
-    assert score == 89  # 100 - 11
+    # Base 100 - 11 = 89
+    assert score == 89
 
 
 def test_acl_strictness(tmp_path: Path):
     """Verify ACL thresholds: Red > 15, Yellow 10-15."""
-    # ACL = Complexity + (LOC / 20).
-    # For this function: CC=1, LOC=300. ACL = 1 + 15 = 16.0 (Red status)
+    # CC=1, LOC=300. ACL = 1 + 300/20 = 1 + 15 = 16.0 (Red)
     content = textwrap.dedent("""
     def hall_func():
         pass
     """)
-    # Append lines to reach 300 lines total
+    # Add 298 lines inside the function (plus def and pass makes 300)
     for i in range(298):
         content += f"    x = {i}\n"
 
@@ -40,6 +40,7 @@ def test_acl_strictness(tmp_path: Path):
         str(py_file), PROFILES["generic"]
     )
 
+    # metrics[0] should be hall_func
     assert any(m["acl"] == 16.0 for m in metrics)
     assert "1 Red ACL functions (-15)" in details
 
@@ -51,12 +52,14 @@ def test_empty_directory(tmp_path: Path):
 
     results = analyzer.perform_analysis(str(empty_dir), "generic")
     assert results["file_results"] == []
-    # If README is missing (project penalty -15), final_score reflects 20% project weight.
+    # Project issues might exist (missing docs) but final_score handles it.
+    # Base score is 100 for project. File average is 0.
+    # Final Score Weighting: (avg_file_score * 0.8) + (project_score * 0.2)
     assert results["final_score"] < 100
 
 
 def test_malformed_pyproject(tmp_path: Path):
-    """Verify that malformed pyproject.toml is detected and penalized."""
+    """Verify that malformed pyproject.toml is detected and results in a penalty."""
     bad_toml = "[[[ invalid toml"
     (tmp_path / "pyproject.toml").write_text(bad_toml, encoding="utf-8")
     (tmp_path / "README.md").write_text("# README", encoding="utf-8")
@@ -64,17 +67,20 @@ def test_malformed_pyproject(tmp_path: Path):
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
-    # Final score handles both file results and project penalties.
+    
+    # ok.py score: 80 (type penalty). project score: 80 (malformed penalty).
+    # Weighted average leads to 80.0
     assert results["final_score"] == 80.0
 
 
 def test_missing_dependencies_parsing(tmp_path: Path):
-    """Verify that imports are parsed via AST regardless of system installation."""
+    """Verify that missing dependencies in imports don't crash the scanner."""
     content = "import non_existent_package\nfrom another_one import something"
     py_file = tmp_path / "imports.py"
     py_file.write_text(content, encoding="utf-8")
 
     graph = analyzer.get_import_graph(str(tmp_path))
     assert "imports.py" in graph
-    # Scanner should find imports via AST even if the packages aren't installed.
+    # It should still parse the file even if packages are missing on system,
+    # because it uses AST rather than runtime inspection.
     assert len(graph) == 1
