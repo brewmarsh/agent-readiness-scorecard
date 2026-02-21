@@ -113,4 +113,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+agent_score.svg
 src/agent_scorecard/_version.py

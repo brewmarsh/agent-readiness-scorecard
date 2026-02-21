@@ -13,6 +13,3 @@
 - All functions must have docstrings
 - Type hints are strict (aim for >80% coverage)
 - Keep files small (<150 LOC)
-
-## Repository Workflow Rules
-Target all new features and bug fixes to the `beta` branch. Maintain `main` as a stable release artifact. All AI agents must branch from `beta` and target Pull Requests strictly to the `beta` branch. The `main` branch is reserved exclusively for release merges from `beta`.
