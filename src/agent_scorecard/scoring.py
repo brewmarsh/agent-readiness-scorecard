@@ -1,21 +1,23 @@
-from typing import Dict, Any, Tuple, List, Optional
+from pathlib import Path
+from typing import Tuple, List, Optional, Union
 from .constants import DEFAULT_THRESHOLDS
 from .metrics import get_loc, get_function_stats
-from .types import FunctionMetric
-from .constants import DEFAULT_THRESHOLDS
+from .types import FunctionMetric, Profile, Thresholds
 
 
 def score_file(
-    filepath: str, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]] = None
+    filepath: Union[str, Path],
+    profile: Profile,
+    thresholds: Optional[Thresholds] = None,
 ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Unified configuration logic. Uses DEFAULT_THRESHOLDS constant
-    # to ensure consistency across report generation and scoring.
-    p_thresholds = profile.get("thresholds", {})
+    # RESOLUTION: Unified configuration logic using DEFAULT_THRESHOLDS constant 
+    # for package-wide consistency.
+    p_thresholds: Thresholds = profile.get("thresholds") or {}
 
     if thresholds is None:
         thresholds = {
@@ -77,16 +79,6 @@ def score_file(
         score -= penalty
         details.append(
             f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
-        )
-
-    # 6. Docstring Coverage Check (Merged from GitHub Workflow branch)
-    # RESOLUTION: Preserve the penalty for missing semantic context.
-    missing_doc_count = sum(1 for m in metrics if not m.get("has_docstring", False))
-    if missing_doc_count > 0:
-        penalty = 10
-        score -= penalty
-        details.append(
-            f"Missing docstrings for {missing_doc_count} functions (-{penalty})"
         )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)

@@ -1,8 +1,10 @@
 import textwrap
 from pathlib import Path
+from typing import cast
 from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
 from agent_scorecard import analyzer
+from agent_scorecard.types import Profile
 
 
 def test_bloated_files_penalty(tmp_path: Path):
@@ -13,7 +15,7 @@ def test_bloated_files_penalty(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     score, details, loc, avg_comp, type_cov, metrics = score_file(
-        str(py_file), PROFILES["generic"]
+        str(py_file), cast(Profile, PROFILES["generic"])
     )
 
     assert loc == 310
@@ -37,7 +39,7 @@ def test_acl_strictness(tmp_path: Path):
     py_file.write_text(content, encoding="utf-8")
 
     score, details, loc, avg_comp, type_cov, metrics = score_file(
-        str(py_file), PROFILES["generic"]
+        str(py_file), cast(Profile, PROFILES["generic"])
     )
 
     assert any(m["acl"] == 16.0 for m in metrics)
@@ -60,9 +62,7 @@ def test_malformed_pyproject(tmp_path: Path):
     bad_toml = "[[[ invalid toml"
     (tmp_path / "pyproject.toml").write_text(bad_toml, encoding="utf-8")
     (tmp_path / "README.md").write_text("# README", encoding="utf-8")
-    (tmp_path / "ok.py").write_text(
-        'def f():\n    """Docstring."""\n    pass', encoding="utf-8"
-    )
+    (tmp_path / "ok.py").write_text("def f(): pass", encoding="utf-8")
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]

@@ -1,7 +1,14 @@
 import os
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .types import (
+    FileAnalysisResult,
+    AnalysisResult,
+    AdvisorFileResult,
+    Profile,
+    Thresholds,
+)
 from .report_sections import (
     generate_summary_section,
     generate_acl_section,
@@ -12,23 +19,24 @@ from .report_sections import (
 
 
 def generate_markdown_report(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    stats: List[FileAnalysisResult],
     final_score: float,
-    path: str,
-    profile: Dict[str, Any],
+    path: Union[str, Path],
+    profile: Profile,
     project_issues: Optional[List[str]] = None,
-    thresholds: Optional[Dict[str, Any]] = None,
+    thresholds: Optional[Thresholds] = None,
 ) -> str:
     """Orchestrates the Markdown report generation using modular components."""
-    if thresholds is None:
-        thresholds = DEFAULT_THRESHOLDS.copy()
+    actual_thresholds: Thresholds = thresholds or cast(
+        Thresholds, DEFAULT_THRESHOLDS.copy()
+    )
 
     # Orchestration of modular report components
-    # RESOLUTION: Delegated section generation to report_sections.py for better maintainability.
+    # RESOLUTION: Delegated section generation to report_sections.py with DX type safety.
     summary = generate_summary_section(stats, final_score, profile, project_issues)
-    targets = generate_acl_section(stats, thresholds)
-    types_section = generate_type_safety_section(stats, thresholds)
-    prompts = generate_prompts_section(stats, thresholds, project_issues)
+    targets = generate_acl_section(stats, actual_thresholds)
+    types_section = generate_type_safety_section(stats, actual_thresholds)
+    prompts = generate_prompts_section(stats, actual_thresholds, project_issues)
     table = generate_file_table_section(stats)
 
     return (
@@ -43,7 +51,7 @@ def generate_markdown_report(
 
 
 def generate_advisor_report(
-    stats: Union[List[AdvisorFileResult], List[Dict[str, Any]]],
+    stats: List[AdvisorFileResult],
     dependency_stats: Dict[str, int],
     entropy_stats: Dict[str, int],
     cycles: List[List[str]],
@@ -108,7 +116,7 @@ def generate_advisor_report(
 
 
 def generate_recommendations_report(
-    results: Union[AnalysisResult, List[FileAnalysisResult], Any],
+    results: Union[AnalysisResult, List[FileAnalysisResult]],
 ) -> str:
     """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
     recommendations = []

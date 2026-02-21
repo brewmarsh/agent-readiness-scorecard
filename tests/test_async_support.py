@@ -1,6 +1,6 @@
+import textwrap
 from pathlib import Path
 from unittest.mock import patch
-import textwrap
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 from agent_scorecard.analyzer import check_type_hints

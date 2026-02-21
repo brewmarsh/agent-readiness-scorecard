@@ -1,11 +1,18 @@
 import os
 import ast
-from typing import List, Dict, Any, Tuple, Set, Optional, cast
+from pathlib import Path
+from typing import List, Dict, Tuple, Set, Optional, cast, Union
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
-from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
-from .utils import collect_python_files
+from .types import (
+    FileAnalysisResult,
+    DepAnalysis,
+    DirectoryStat,
+    AnalysisResult,
+    Profile,
+    Thresholds,
+)
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -19,8 +26,9 @@ from .metrics import (  # noqa: F401
 
 # --- METRICS & GRAPH ANALYSIS ---
 
-
-def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
+def scan_project_docs(
+    root_path: Union[str, Path], required_files: List[str]
+) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
     root_files = (
@@ -33,13 +41,30 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     return missing
 
 
-def _parse_imports(filepath: str) -> Set[str]:
+def _collect_python_files(path: Union[str, Path]) -> List[str]:
+    """Collects all Python files in the given path, ignoring hidden directories."""
+    py_files: List[str] = []
+    path_str = str(path)
+    if os.path.isfile(path_str) and path_str.endswith(".py"):
+        py_files = [path_str]
+    elif os.path.isdir(path_str):
+        for root, _, files in os.walk(path_str):
+            parts = root.split(os.sep)
+            if any(p.startswith(".") and p != "." for p in parts):
+                continue
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+    return py_files
+
+
+def _parse_imports(filepath: Union[str, Path]) -> Set[str]:
     """Parses a Python file and returns a set of imported module names."""
     imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
-        tree = ast.parse(code, filename=filepath)
+        tree = ast.parse(code, filename=str(filepath))
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return imported_names
 
@@ -53,13 +78,14 @@ def _parse_imports(filepath: str) -> Set[str]:
     return imported_names
 
 
-def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+def get_import_graph(root_path: Union[str, Path]) -> Dict[str, Set[str]]:
     """Builds a dependency graph of the project for structural analysis."""
-    if os.path.isfile(root_path) and root_path.endswith(".py"):
-        all_py_files = [os.path.basename(root_path)]
+    
+    if os.path.isfile(root_path) and str(root_path).endswith(".py"):
+        all_py_files = [os.path.basename(str(root_path))]
         root_path = os.path.dirname(root_path)
     else:
-        full_paths = collect_python_files(root_path)
+        full_paths = _collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
@@ -96,40 +122,39 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     return inbound
 
 
-def _find_cycles_dfs(
-    node: str,
-    graph: Dict[str, Set[str]],
-    visited_global: Set[str],
-    path_set: Set[str],
-    current_path: List[str],
-    cycles: List[List[str]],
-) -> None:
-    """Helper for detecting cycles using DFS."""
-    visited_global.add(node)
-    path_set.add(node)
-    current_path.append(node)
-    neighbors = sorted(list(graph.get(node, set())))
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+    """Returns list of unique cycles using DFS and canonicalization."""
+    cycles: List[List[str]] = []
+    visited_global: Set[str] = set()
+    path_set: Set[str] = set()
+    nodes = sorted(graph.keys())
 
-    for neighbor in neighbors:
-        if neighbor in path_set:
-            try:
-                idx = current_path.index(neighbor)
-                cycle = current_path[idx:]
-                if cycle not in cycles:
-                    cycles.append(cycle[:])
-            except ValueError:
-                pass
-        elif neighbor not in visited_global:
-            _find_cycles_dfs(
-                neighbor, graph, visited_global, path_set, current_path, cycles
-            )
+    def visit(node: str, current_path: List[str]) -> None:
+        """Recursively visits nodes to find import cycles."""
+        visited_global.add(node)
+        path_set.add(node)
+        current_path.append(node)
+        neighbors = sorted(list(graph.get(node, set())))
 
-    path_set.remove(node)
-    current_path.pop()
+        for neighbor in neighbors:
+            if neighbor in path_set:
+                try:
+                    idx = current_path.index(neighbor)
+                    cycle = current_path[idx:]
+                    if cycle not in cycles:
+                        cycles.append(cycle[:])
+                except ValueError:
+                    pass
+            elif neighbor not in visited_global:
+                visit(neighbor, current_path)
 
+        path_set.remove(node)
+        current_path.pop()
 
-def _deduplicate_cycles(cycles: List[List[str]]) -> List[List[str]]:
-    """Canonicalizes and deduplicates detected cycles."""
+    for node in nodes:
+        if node not in visited_global:
+            visit(node, [])
+
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
@@ -144,21 +169,8 @@ def _deduplicate_cycles(cycles: List[List[str]]) -> List[List[str]]:
     return unique_cycles
 
 
-def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """Returns list of unique cycles using DFS and canonicalization."""
-    cycles: List[List[str]] = []
-    visited_global: Set[str] = set()
-    nodes = sorted(graph.keys())
-
-    for node in nodes:
-        if node not in visited_global:
-            _find_cycles_dfs(node, graph, visited_global, set(), [], cycles)
-
-    return _deduplicate_cycles(cycles)
-
-
 def get_project_issues(
-    path: str, py_files: List[str], profile: Dict[str, Any]
+    path: Union[str, Path], py_files: List[str], profile: Profile
 ) -> Tuple[int, List[str]]:
     """Analyzes global project health: docs, environment, god modules, and entropy."""
     penalty = 0
@@ -204,17 +216,18 @@ def get_project_issues(
 
 
 def perform_analysis(
-    path: str,
+    path: Union[str, Path],
     agent: str = "generic",
     limit_to_files: Optional[List[str]] = None,
-    profile: Optional[Dict[str, Any]] = None,
-    thresholds: Optional[Dict[str, Any]] = None,
+    profile: Optional[Profile] = None,
+    thresholds: Optional[Thresholds] = None,
 ) -> AnalysisResult:
     """Orchestrates the full project analysis pipeline."""
-    if profile is None:
-        profile = PROFILES.get(agent, PROFILES["generic"])
+    actual_profile: Profile = profile or cast(
+        Profile, PROFILES.get(agent, PROFILES["generic"])
+    )
 
-    py_files = collect_python_files(path)
+    py_files = _collect_python_files(path)
     all_py_files = py_files[:]
 
     if limit_to_files:
@@ -229,7 +242,7 @@ def perform_analysis(
 
     for filepath in py_files:
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
-            filepath, profile, thresholds=thresholds
+            filepath, actual_profile, thresholds=thresholds
         )
         file_scores.append(score)
 
@@ -250,7 +263,7 @@ def perform_analysis(
             }
         )
 
-    penalty, project_issues = get_project_issues(path, all_py_files, profile)
+    penalty, project_issues = get_project_issues(path, all_py_files, actual_profile)
     project_score = max(0, 100 - penalty)
 
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
@@ -274,7 +287,7 @@ def perform_analysis(
         "file_results": file_results,
         "final_score": final_score,
         "missing_docs": scan_project_docs(
-            path, cast(List[str], profile.get("required_files", []))
+            path, actual_profile.get("required_files", [])
         ),
         "project_issues": project_issues,
         "dep_analysis": dep_analysis_val,

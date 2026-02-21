@@ -1,8 +1,10 @@
 import textwrap
 from pathlib import Path
+from typing import cast
 from agent_scorecard.analyzer import calculate_acl
 from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
+from agent_scorecard.types import Profile
 
 
 # TODO: Add type hints for Agent clarity
@@ -47,7 +49,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path):
 
     # Score the file
     score, details, loc, avg_comp, type_cov, func_metrics = score_file(
-        str(py_file), PROFILES["generic"]
+        str(py_file), cast(Profile, PROFILES["generic"])
     )
 
     # RESOLUTION: Verify the specific output format from scoring.py
