@@ -9,7 +9,7 @@ from agent_scorecard.main import cli
 from agent_scorecard.scoring import score_file
 
 
-def test_get_loc(tmp_path: Path):
+def test_get_loc(tmp_path: Path) -> None:
     """Tests that get_loc correctly counts lines, ignoring comments and blank lines."""
     content = "# This is a comment\n\n"
     content += "import os\n" * 10
@@ -21,7 +21,7 @@ def test_get_loc(tmp_path: Path):
     assert loc == 10
 
 
-def test_get_function_stats(tmp_path: Path):
+def test_get_function_stats(tmp_path: Path) -> None:
     """Tests that get_function_stats calculates ACL correctly."""
     content = textwrap.dedent("""
     def simple_func(a: int):
@@ -54,7 +54,7 @@ def test_get_function_stats(tmp_path: Path):
     assert complex_fn["acl"] == 3.25
 
 
-def test_check_type_hints(tmp_path: Path):
+def test_check_type_hints(tmp_path: Path) -> None:
     """Tests that check_type_hints calculates coverage."""
     # File with 100% type hint coverage
     typed_content = """
@@ -80,7 +80,7 @@ def untyped_function(a, b):
     assert untyped_coverage == 0
 
 
-def test_score_file_logic(tmp_path: Path):
+def test_score_file_logic(tmp_path: Path) -> None:
     """Tests scoring logic, including penalties for low type safety."""
     content = textwrap.dedent("""
     def untyped_but_simple(a):
@@ -108,7 +108,7 @@ def test_score_file_logic(tmp_path: Path):
     assert "Type Safety Index 0% < 90%" in issues
 
 
-def test_advise_command(tmp_path: Path):
+def test_advise_command(tmp_path: Path) -> None:
     """Tests the advise command."""
     (tmp_path / "test.py").write_text("def f(a,b,c): pass")
     # Add README to prevent missing doc noise (though advice doesn't check docs usually)
@@ -123,7 +123,7 @@ def test_advise_command(tmp_path: Path):
     assert "Agent Cognitive Load" in result.output
 
 
-def test_score_command_with_report(tmp_path: Path):
+def test_score_command_with_report(tmp_path: Path) -> None:
     """Tests the score command with the --report option."""
     (tmp_path / "test.py").write_text("def f(a,b,c): pass")
     (tmp_path / "README.md").write_text("# README")

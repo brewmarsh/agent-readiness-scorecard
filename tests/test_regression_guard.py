@@ -5,7 +5,7 @@ from agent_scorecard.constants import PROFILES
 from agent_scorecard import analyzer
 
 
-def test_bloated_files_penalty(tmp_path: Path):
+def test_bloated_files_penalty(tmp_path: Path) -> None:
     """Verify that files over 200 lines get a penalty."""
     # Base 100 score. 310 lines - 200 = 110. 110 // 10 = 11 penalty points.
     content = "x = 1\n" * 310
@@ -21,7 +21,7 @@ def test_bloated_files_penalty(tmp_path: Path):
     assert score == 89  # 100 - 11
 
 
-def test_acl_strictness(tmp_path: Path):
+def test_acl_strictness(tmp_path: Path) -> None:
     """Verify ACL thresholds: Red > 15, Yellow 10-15."""
     # ACL = Complexity + (LOC / 20).
     # For this function: CC=1, LOC=300. ACL = 1 + 15 = 16.0 (Red status)
@@ -44,7 +44,7 @@ def test_acl_strictness(tmp_path: Path):
     assert "1 Red ACL functions (-15)" in details
 
 
-def test_empty_directory(tmp_path: Path):
+def test_empty_directory(tmp_path: Path) -> None:
     """Verify handling of empty directories."""
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
@@ -55,7 +55,7 @@ def test_empty_directory(tmp_path: Path):
     assert results["final_score"] < 100
 
 
-def test_malformed_pyproject(tmp_path: Path):
+def test_malformed_pyproject(tmp_path: Path) -> None:
     """Verify that malformed pyproject.toml is detected and penalized."""
     bad_toml = "[[[ invalid toml"
     (tmp_path / "pyproject.toml").write_text(bad_toml, encoding="utf-8")
@@ -68,7 +68,7 @@ def test_malformed_pyproject(tmp_path: Path):
     assert results["final_score"] == 80.0
 
 
-def test_missing_dependencies_parsing(tmp_path: Path):
+def test_missing_dependencies_parsing(tmp_path: Path) -> None:
     """Verify that imports are parsed via AST regardless of system installation."""
     content = "import non_existent_package\nfrom another_one import something"
     py_file = tmp_path / "imports.py"

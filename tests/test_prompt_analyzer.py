@@ -2,7 +2,7 @@ from agent_scorecard.prompt_analyzer import PromptAnalyzer
 
 
 # TODO: Add type hints for Agent clarity
-def test_prompt_analyzer_perfect():
+def test_prompt_analyzer_perfect() -> None:
     """Test a prompt that satisfies all positive heuristics without penalties."""
     analyzer = PromptAnalyzer()
     text = """
@@ -29,7 +29,7 @@ def test_prompt_analyzer_perfect():
 
 
 # TODO: Add type hints for Agent clarity
-def test_prompt_analyzer_low_score_clamping():
+def test_prompt_analyzer_low_score_clamping() -> None:
     """Test that scores are clamped to 0 when penalties exceed positive points."""
     analyzer = PromptAnalyzer()
     # No positive heuristics found, 1 negative constraint penalty (-10)
@@ -46,7 +46,7 @@ def test_prompt_analyzer_low_score_clamping():
 
 
 # TODO: Add type hints for Agent clarity
-def test_negative_constraints_context_awareness():
+def test_negative_constraints_context_awareness() -> None:
     """Verify that negative constraints are only flagged in imperative contexts (lists)."""
     analyzer = PromptAnalyzer()
     padding = "y" * 100
@@ -79,7 +79,7 @@ def test_negative_constraints_context_awareness():
 
 
 # TODO: Add type hints for Agent clarity
-def test_empty_prompt():
+def test_empty_prompt() -> None:
     """Test handling of empty or whitespace strings."""
     analyzer = PromptAnalyzer()
 
@@ -93,7 +93,7 @@ def test_empty_prompt():
 
 
 # TODO: Add type hints for Agent clarity
-def test_delimiter_variants():
+def test_delimiter_variants() -> None:
     """Verify different delimiter patterns are recognized."""
     analyzer = PromptAnalyzer()
 
@@ -114,7 +114,7 @@ def test_delimiter_variants():
 
 
 # TODO: Add type hints for Agent clarity
-def test_cot_relaxed_variants():
+def test_cot_relaxed_variants() -> None:
     """Verify variations of Chain-of-Thought phrasing."""
     analyzer = PromptAnalyzer()
     assert analyzer.analyze("Make a Plan.")["results"]["cognitive_scaffolding"] is True

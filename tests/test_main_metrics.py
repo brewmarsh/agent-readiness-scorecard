@@ -3,7 +3,7 @@ from agent_scorecard.main import cli
 
 
 # TODO: Add type hints for Agent clarity
-def test_main_metrics_god_module(tmp_path):
+def test_main_metrics_god_module(tmp_path) -> None:
     # Create 55 files importing 'god_module'
     """TODO: Add docstring for AI context."""
     (tmp_path / "god_module.py").write_text("x = 1")
@@ -19,7 +19,7 @@ def test_main_metrics_god_module(tmp_path):
 
 
 # TODO: Add type hints for Agent clarity
-def test_main_metrics_directory_entropy(tmp_path):
+def test_main_metrics_directory_entropy(tmp_path) -> None:
     # Create 55 files in one directory
     """TODO: Add docstring for AI context."""
     for i in range(55):

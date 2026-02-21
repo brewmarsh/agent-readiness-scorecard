@@ -3,7 +3,7 @@ from agent_scorecard.constants import PROFILES
 
 
 # TODO: Add type hints for Agent clarity
-def test_score_file_acl_penalty(tmp_path):
+def test_score_file_acl_penalty(tmp_path) -> None:
     # Create a file with high ACL function
     # ACL = CC + LOC/20
     # Let's make LOC high ~300 lines -> 15.

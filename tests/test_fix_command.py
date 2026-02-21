@@ -8,10 +8,10 @@ from agent_scorecard.main import cli
 
 class TestFixCommand:
     @pytest.fixture
-    def runner(self):
+    def runner(self) -> CliRunner:
         return CliRunner()
 
-    def test_fix_command_happy_path(self, runner):
+    def test_fix_command_happy_path(self, runner: CliRunner) -> None:
         """Test the standalone fix command using the generic profile."""
         with runner.isolated_filesystem():
             # Create a dummy python file
@@ -55,7 +55,7 @@ class TestFixCommand:
             assert "A docstring." in content
             assert "-> None" in content
 
-    def test_fix_command_specific_path(self, runner):
+    def test_fix_command_specific_path(self, runner: CliRunner) -> None:
         """Test fix command on a subdirectory with a specific agent profile."""
         with runner.isolated_filesystem():
             # Create a dummy python file in a subdirectory
@@ -88,7 +88,7 @@ class TestFixCommand:
             assert "Returns x." in content
             assert "x: int" in content
 
-    def test_fix_flag_in_score_command(self, runner):
+    def test_fix_flag_in_score_command(self, runner: CliRunner) -> None:
         """Regression test for the --fix flag inside the score command."""
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
@@ -106,7 +106,7 @@ class TestFixCommand:
                 assert result.exit_code == 0
                 assert "Applying Fixes" in result.output
 
-    def test_fix_command_invalid_agent(self, runner):
+    def test_fix_command_invalid_agent(self, runner: CliRunner) -> None:
         """Verify fallback to generic profile when an invalid agent is provided."""
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:

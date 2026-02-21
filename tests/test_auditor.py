@@ -4,7 +4,7 @@ from agent_scorecard import auditor
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_directory_entropy():
+def test_check_directory_entropy() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a few folders and files
@@ -29,7 +29,7 @@ def test_check_directory_entropy():
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_directory_entropy_warning():
+def test_check_directory_entropy_warning() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         for i in range(20):
@@ -43,7 +43,7 @@ def test_check_directory_entropy_warning():
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_directory_entropy_max_files():
+def test_check_directory_entropy_max_files() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a "God Directory" with 60 files
@@ -66,7 +66,7 @@ def test_check_directory_entropy_max_files():
 
 
 # TODO: Add type hints for Agent clarity
-def test_get_python_signatures():
+def test_get_python_signatures() -> None:
     """TODO: Add docstring for AI context."""
     code = """
 def func1(a: int) -> str:
@@ -95,7 +95,7 @@ class MyClass:
 
 
 # TODO: Add type hints for Agent clarity
-def test_get_python_signatures_with_decorators():
+def test_get_python_signatures_with_decorators() -> None:
     """TODO: Add docstring for AI context."""
     code = """
 @deco1
@@ -127,7 +127,7 @@ class DecoratedClass:
 
 
 # TODO: Add type hints for Agent clarity
-def test_get_python_signatures_multiline():
+def test_get_python_signatures_multiline() -> None:
     """TODO: Add docstring for AI context."""
     code = """
 def multiline_func(
@@ -150,7 +150,7 @@ def multiline_func(
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_critical_context_tokens():
+def test_check_critical_context_tokens() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
@@ -165,7 +165,7 @@ def test_check_critical_context_tokens():
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_critical_context_tokens_single_file():
+def test_check_critical_context_tokens_single_file() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         readme_path = os.path.join(tmpdir, "README.md")
@@ -192,7 +192,7 @@ def test_check_critical_context_tokens_single_file():
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_environment_health():
+def test_check_environment_health() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Initial: everything False
@@ -221,7 +221,7 @@ def test_check_environment_health():
 
 
 # TODO: Add type hints for Agent clarity
-def test_check_environment_health_pyproject_ruff():
+def test_check_environment_health_pyproject_ruff() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "pyproject.toml"), "w") as f:
