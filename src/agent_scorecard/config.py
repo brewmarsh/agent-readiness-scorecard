@@ -7,14 +7,16 @@ from .constants import DEFAULT_THRESHOLDS
 tomllib: Any = None
 try:
     import tomllib as _tomllib  # type: ignore
+
     tomllib = _tomllib
 except ImportError:
     try:
         import tomli as _tomli
+
         tomllib = _tomli
     except ImportError:
-        # Fallback for environments where neither is installed yet
         tomllib = None
+
 
 class Thresholds(TypedDict, total=False):
     acl_yellow: int
@@ -22,9 +24,11 @@ class Thresholds(TypedDict, total=False):
     complexity: int
     type_safety: int
 
+
 class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
+
 
 # Unified defaults representing core Agent Physics
 # RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
@@ -33,6 +37,7 @@ DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
+
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge user settings into the default configuration."""
@@ -43,6 +48,7 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
         else:
             result[key] = value
     return result
+
 
 def load_config(path: str = ".") -> Config:
     """
@@ -55,21 +61,23 @@ def load_config(path: str = ".") -> Config:
         search_dir = path
 
     config_path = os.path.join(search_dir, "pyproject.toml")
-    user_config = {}
+    user_config: Dict[str, Any] = {}
 
     if tomllib and os.path.exists(config_path):
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
                 # Parse settings from the standardized [tool.agent-scorecard] table
+                # RESOLUTION: Adhering to the PEP 518 standard for tool-specific configuration.
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
+            # Fallback to defaults if file is malformed
             pass
 
     return typing_cast(
         Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
     )
+
 
 def cast(t: Any, v: Any) -> Any:
     """Helper for type hinting merged dictionaries in a dynamic context."""
