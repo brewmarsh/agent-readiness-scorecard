@@ -85,6 +85,24 @@ def _print_environment_health(path: str, results: Union[Dict[str, Any], Analysis
     console.print(health_table)
     console.print("")
 
+def _print_project_issues(results: Union[Dict[str, Any], AnalysisResult], verbosity: str) -> None:
+    """Prints project-wide issues."""
+    if verbosity == "quiet":
+        return
+
+    issues = results.get("project_issues", [])
+    if not issues:
+        return
+
+    table = Table(title="Project Issues Detected", style="red")
+    table.add_column("Issue Description", style="red")
+
+    for issue in issues:
+        table.add_row(issue)
+
+    console.print(table)
+    console.print("")
+
 def _print_file_analysis(results: Union[Dict[str, Any], AnalysisResult], verbosity: str) -> None:
     """Prints the file analysis table based on verbosity."""
     if verbosity == "quiet":
@@ -106,16 +124,88 @@ def _print_file_analysis(results: Union[Dict[str, Any], AnalysisResult], verbosi
     if has_rows:
         console.print(table)
 
-    score_color = "green" if results["final_score"] >= 70 else "red"
-    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
-
 # --- COMMANDS ---
+
+@cli.command(name="check-prompts")
+@click.argument("path", required=True)
+@click.option("--plain", is_flag=True, help="Output plain text results.")
+def check_prompts(path: str, plain: bool) -> None:
+    """Static analysis for LLM prompts."""
+    try:
+        if path == "-":
+            content = sys.stdin.read()
+            filename = "stdin"
+        else:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            filename = path
+    except Exception as e:
+        console.print(f"[red]Error reading prompt file: {e}[/red]")
+        sys.exit(1)
+
+    analyzer_instance = PromptAnalyzer()
+    result = analyzer_instance.analyze(content)
+
+    if plain:
+        print(f"Prompt Analysis: {filename}")
+        print("-" * 30)
+        for key, passed in result["results"].items():
+            status = "PASS" if passed else "FAIL"
+            print(f"{key.replace('_', ' ').title()}: {status}")
+        print("-" * 30)
+
+        if result["improvements"]:
+            print("Suggested Improvements:")
+            for imp in result["improvements"]:
+                print(f"- {imp}")
+            print("-" * 30)
+
+        print(f"Prompt Score: {result['score']}/100")
+        if result["score"] >= 80:
+            print("PASSED: Prompt is optimized!")
+        else:
+            print("FAILED: Prompt needs improvement.")
+            sys.exit(1)
+    else:
+        console.print(Panel(f"[bold cyan]Prompt Analysis: {filename}[/bold cyan]", expand=False))
+
+        # Print Heuristics Table
+        table = Table(title="Heuristic Checks")
+        table.add_column("Heuristic", style="cyan")
+        table.add_column("Status", justify="right")
+
+        for key, passed in result["results"].items():
+            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+            table.add_row(key.replace("_", " ").title(), status)
+
+        console.print(table)
+        console.print("")
+
+        if result["improvements"]:
+            console.print("[bold yellow]Suggested Improvements:[/bold yellow]")
+            for imp in result["improvements"]:
+                console.print(f"- {imp}")
+            console.print("")
+
+        score_color = "green" if result["score"] >= 80 else "red"
+        console.print(f"[bold]Prompt Score: [{score_color}]{result['score']}/100[/{score_color}][/bold]")
+
+        if result["score"] >= 80:
+            console.print("[green]PASSED: Prompt is optimized![/green]")
+        else:
+            console.print("[red]FAILED: Prompt needs improvement.[/red]")
+            sys.exit(1)
+
 
 @cli.command(name="fix")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 def fix(path: str, agent: str) -> None:
     """Automatically fix common issues using configuration thresholds."""
+    if agent not in PROFILES:
+        console.print(f"Unknown agent profile: {agent}. using generic.")
+        agent = "generic"
+
     cfg = load_config(path)
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     
@@ -134,20 +224,42 @@ def fix(path: str, agent: str) -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
 @click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity.")
-def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str) -> None:
+@click.option("--badge", is_flag=True, help="Generate SVG badge.")
+def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool) -> None:
     """Scores a codebase based on agent compatibility."""
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
+    if final_verbosity != "quiet":
+        console.print(Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False))
+
     if fix:
+        if agent not in PROFILES:
+            console.print(f"Unknown agent profile: {agent}. using generic.")
+            agent = "generic"
+
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
         apply_fixes(path, profile)
 
     results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
     
     _print_environment_health(path, results, final_verbosity)
+    _print_project_issues(results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
+
+    # Final Score (Always printed unless handled differently, but requirement says print even in quiet)
+    score_color = "green" if results["final_score"] >= 70 else "red"
+    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
+
+    if badge:
+        svg_content = generate_badge(results["final_score"])
+        badge_path = "agent_score.svg"
+        with open(badge_path, "w", encoding="utf-8") as f:
+            f.write(svg_content)
+        if final_verbosity != "quiet":
+            console.print(f"[bold green]Badge saved to {badge_path}[/bold green]")
 
     if report_path:
         content = report.generate_markdown_report(
@@ -156,6 +268,11 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str) ->
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
+
+    # Exit with error code if score is low or critical issues exist
+    # Threshold < 70 is failing based on Red color logic
+    if results["final_score"] < 70 or results.get("missing_docs"):
+        sys.exit(1)
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))

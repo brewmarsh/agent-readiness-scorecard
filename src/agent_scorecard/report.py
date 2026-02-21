@@ -220,6 +220,11 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
+    if entropy_stats:
+        report += "### 📂 Directory Entropy\n"
+        for d, c in entropy_stats.items():
+            report += f"- `{d}`: {c} files\n"
+
     return report
 
 def generate_recommendations_report(
@@ -232,14 +237,14 @@ def generate_recommendations_report(
 
     for res in file_list:
         if res.get("complexity", 0) > 20:
-            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context overflow.", "Recommendation": "Refactor units."})
+            recommendations.append({"Finding": f"High Complexity: {res['file']}", "Agent Impact": "Context window overflow.", "Recommendation": "Refactor units."})
         if "Circular dependency" in str(res.get("issues", "")):
             recommendations.append({"Finding": f"Circular Dependency: {res['file']}", "Agent Impact": "Recursive loops.", "Recommendation": "Use DI."})
         if res.get("type_coverage", 100) < 90:
-            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination.", "Recommendation": "Add PEP 484 hints."})
+            recommendations.append({"Finding": f"Low Type Safety: {res['file']}", "Agent Impact": "Hallucination of signatures.", "Recommendation": "Add PEP 484 hints."})
 
     if any(doc.lower() == "agents.md" for doc in missing_docs):
-        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Guessing repo structure.", "Recommendation": "Create AGENTS.md."})
+        recommendations.append({"Finding": "Missing AGENTS.md", "Agent Impact": "Agent guesses repository structure.", "Recommendation": "Create AGENTS.md."})
 
     if not recommendations:
         return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
