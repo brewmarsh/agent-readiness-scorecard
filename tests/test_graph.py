@@ -72,7 +72,7 @@ def test_god_module() -> None:
     Returns:
         None
     """
-    graph = nx.DiGraph()
+    graph: nx.DiGraph = nx.DiGraph()
     god_node = "god.py"
     graph.add_node(god_node)
     for i in range(51):
