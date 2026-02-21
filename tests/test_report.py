@@ -15,6 +15,7 @@ def test_generate_markdown_report():
             "loc": 250,
             "complexity": 15,
             "type_coverage": 0,
+            "acl": 25.0,
             "function_metrics": [
                 {
                     "name": "complex_untyped",
@@ -32,6 +33,7 @@ def test_generate_markdown_report():
             "loc": 50,
             "complexity": 2,
             "type_coverage": 100,
+            "acl": 3.0,
             "function_metrics": [
                 {
                     "name": "simple_typed",
@@ -56,6 +58,10 @@ def test_generate_markdown_report():
     assert "# Agent Scorecard Report" in report_content
     assert "Overall Score: 70.0/100" in report_content
     assert "PASSED" in report_content
+
+    # Verify New Summary Metrics (Average ACL & Type Safety)
+    assert "**Average ACL:** 14.0" in report_content
+    assert "**Average Type Safety:** 50%" in report_content
 
     # Verify Upgrade Branch Features (ACL & Type Safety)
     assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in report_content

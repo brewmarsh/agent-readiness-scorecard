@@ -1,4 +1,3 @@
-import os
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
@@ -12,7 +11,15 @@ def _generate_summary_section(
     """Creates the executive summary section of the report."""
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
-    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n"
+
+    if stats:
+        avg_acl = sum(f.get("acl", 0.0) for f in stats) / len(stats)
+        avg_type_safety = sum(f.get("type_coverage", 0.0) for f in stats) / len(stats)
+        summary += f"**Average ACL:** {avg_acl:.1f}\n"
+        summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n"
+
+    summary += "\n"
 
     if stats:
         avg_acl = sum(f.get("acl", 0) for f in stats) / len(stats)
@@ -107,7 +114,6 @@ def _generate_prompts_section(
     """Generates structured CRAFT prompts for systemic remediation."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
 
     prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
 
