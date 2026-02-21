@@ -23,11 +23,14 @@ INSTRUCTIONS_TEMPLATE = """# Instructions
 3. **Lint:** `pylint src/`
 """
 
+from typing import Dict
+from .types import Thresholds, Profile
+
 TYPE_HINT_STUB = "# TODO: Add type hints for Agent clarity"
 DOCSTRING_TEXT = '"""TODO: Add docstring for AI context."""'
 
 # --- CONSTANTS ---
-DEFAULT_THRESHOLDS = {
+DEFAULT_THRESHOLDS: Thresholds = {
     "acl_yellow": 10,  # Warning threshold for cognitive load
     "acl_red": 15,  # Critical failure threshold
     "complexity": 10,  # McCabe complexity limit
@@ -35,20 +38,23 @@ DEFAULT_THRESHOLDS = {
 }
 
 # --- AGENT PROFILES ---
-PROFILES = {
+PROFILES: Dict[str, Profile] = {
     "generic": {
         "min_type_coverage": 90,
         "required_files": ["README.md"],
         "description": "Standard Agent Readiness checks (ACL & Type Safety).",
+        "thresholds": None,
     },
     "jules": {
         "min_type_coverage": 90,
         "required_files": ["agents.md", "instructions.md"],
         "description": "High autonomy profile with strict requirements.",
+        "thresholds": None,
     },
     "copilot": {
         "min_type_coverage": 90,
         "required_files": [],
         "description": "Optimized for small context completion.",
+        "thresholds": None,
     },
 }

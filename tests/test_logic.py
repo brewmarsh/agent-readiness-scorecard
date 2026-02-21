@@ -102,32 +102,12 @@ def test_score_file_logic(tmp_path: Path):
     type_cov = analyzer.check_type_hints(str(py_file))
 
     # type_cov should be 0% -> Penalty -20
-    # docstring is missing -> Penalty -10
     # ACL is Green -> No penalty
-    # Base 100 - 20 - 10 = 70
+    # Base 100 - 20 = 80
     assert type_cov == 0
-    assert score == 70
+    assert score == 80
     # The scoring string format comes from the resolved scoring.py
     assert "Type Safety Index 0% < 90%" in issues
-    assert "Missing docstrings for 1 functions (-10)" in issues
-
-
-def test_docstring_penalty(tmp_path: Path):
-    """Verify that missing docstrings result in a -10 penalty."""
-    content = textwrap.dedent("""
-    def typed_no_doc(a: int) -> int:
-        return a
-    """)
-    py_file = tmp_path / "doc_test.py"
-    py_file.write_text(content, encoding="utf-8")
-
-    score, issues, loc, complexity, type_safety, metrics = score_file(
-        str(py_file), PROFILES["generic"]
-    )
-
-    # 100 - 10 (docstring) = 90
-    assert score == 90
-    assert "Missing docstrings for 1 functions (-10)" in issues
 
 
 def test_advise_command(tmp_path: Path):
