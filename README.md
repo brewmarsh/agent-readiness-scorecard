@@ -1,5 +1,7 @@
 ## 🤖 Agent Scorecard
 
+![Agent Score](./agent_score.svg) [![CI](https://github.com/brewmarsh/agent-readiness-scorecard/actions/workflows/ci.yml/badge.svg)](https://github.com/brewmarsh/agent-readiness-scorecard/actions/workflows/ci.yml) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) ![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue) ![Strictly Typed](https://img.shields.io/badge/Strictly-Typed-blue)
+
 **Is your codebase ready for the AI workforce?**
 
 `agent-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin).
