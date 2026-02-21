@@ -112,3 +112,20 @@ Output: B
         assert "Role Definition" in result.output
         assert "Cognitive Scaffolding" in result.output
         assert "PASSED: Prompt is optimized!" in result.output
+
+
+def test_cli_check_prompts_plain_fail():
+    """Test check-prompts --plain with a failing prompt to satisfy CI regex."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        with open("bad_prompt.txt", "w") as f:
+            f.write("Do this task.")  # Missing persona, CoT, delimiters, examples
+
+        result = runner.invoke(cli, ["check-prompts", "bad_prompt.txt", "--plain"])
+        assert result.exit_code == 1
+        assert "Prompt Analysis: bad_prompt.txt" in result.output
+        assert "Score:" in result.output
+        assert "Refactored Suggestions:" in result.output
+        # Verify metric format (no hyphens)
+        assert "Role Definition: FAIL" in result.output
+        assert "FAILED: Prompt score too low." in result.output
