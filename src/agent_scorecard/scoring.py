@@ -12,8 +12,8 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability 
-    # instead of hardcoded magic numbers.
+    # RESOLUTION: Unified configuration logic. Uses DEFAULT_THRESHOLDS constant
+    # to ensure consistency across report generation and scoring.
     p_thresholds = profile.get("thresholds", {})
 
     if thresholds is None:
@@ -76,6 +76,16 @@ def score_file(
         score -= penalty
         details.append(
             f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+        )
+
+    # 6. Docstring Coverage Check (Merged from GitHub Workflow branch)
+    # RESOLUTION: Preserve the penalty for missing semantic context.
+    missing_doc_count = sum(1 for m in metrics if not m.get("has_docstring", False))
+    if missing_doc_count > 0:
+        penalty = 10
+        score -= penalty
+        details.append(
+            f"Missing docstrings for {missing_doc_count} functions (-{penalty})"
         )
 
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)

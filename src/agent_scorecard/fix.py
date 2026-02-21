@@ -3,6 +3,7 @@ from typing import Dict, Any
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
+from .utils import collect_python_files
 
 console = Console()
 
@@ -67,41 +68,41 @@ def fix_file_issues(filepath: str) -> None:
         )
 
 
+def _ensure_project_docs(path: str, profile: Dict[str, Any]) -> None:
+    """Ensures that required project documentation files exist."""
+    if not os.path.isdir(path):
+        return
+
+    required = profile.get("required_files", [])
+    existing = [f.lower() for f in os.listdir(path)]
+
+    for req in required:
+        if req.lower() not in existing:
+            filepath = os.path.join(path, req)
+            content = ""
+            if req.lower() == "agents.md":
+                content = AGENT_CONTEXT_TEMPLATE.format(
+                    project_name=os.path.basename(os.path.abspath(path))
+                )
+            elif req.lower() == "instructions.md":
+                content = INSTRUCTIONS_TEMPLATE
+            elif req.lower() == "readme.md":
+                content = "# Project\n\nAuto-generated README."
+
+            if content:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                console.print(f"[bold green][Fixed][/bold green] Created {req}")
+
+
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """Applies fixes to project files and structure."""
 
     # 1. Project Docs
-    if os.path.isdir(path):
-        required = profile.get("required_files", [])
-        existing = [f.lower() for f in os.listdir(path)]
-
-        for req in required:
-            if req.lower() not in existing:
-                filepath = os.path.join(path, req)
-                content = ""
-                if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(
-                        project_name=os.path.basename(os.path.abspath(path))
-                    )
-                elif req.lower() == "instructions.md":
-                    content = INSTRUCTIONS_TEMPLATE
-                elif req.lower() == "readme.md":
-                    content = "# Project\n\nAuto-generated README."
-
-                if content:
-                    with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    console.print(f"[bold green][Fixed][/bold green] Created {req}")
+    _ensure_project_docs(path, profile)
 
     # 2. File Fixes
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
+    py_files = collect_python_files(path)
 
     for py_file in py_files:
         fix_file_issues(py_file)
