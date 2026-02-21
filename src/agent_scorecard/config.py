@@ -7,12 +7,10 @@ from .constants import DEFAULT_THRESHOLDS
 tomllib: Any = None
 try:
     import tomllib as _tomllib  # type: ignore
-
     tomllib = _tomllib
 except ImportError:
     try:
         import tomli as _tomli
-
         tomllib = _tomli
     except ImportError:
         # Fallback for environments where neither is installed yet
@@ -32,7 +30,7 @@ class Config(TypedDict):
 
 
 # Unified defaults representing core Agent Physics
-# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants
+# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
 # to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",

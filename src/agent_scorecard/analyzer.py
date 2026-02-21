@@ -19,7 +19,6 @@ from .metrics import (  # noqa: F401
 
 # --- METRICS & GRAPH ANALYSIS ---
 
-
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
@@ -55,7 +54,6 @@ def _parse_imports(filepath: str) -> Set[str]:
 
 def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
     """Builds a dependency graph of the project for structural analysis."""
-
     if os.path.isfile(root_path) and root_path.endswith(".py"):
         all_py_files = [os.path.basename(root_path)]
         root_path = os.path.dirname(root_path)
@@ -229,7 +227,6 @@ def perform_analysis(
     file_scores: List[int] = []
 
     for filepath in py_files:
-        # RESOLUTION: Unified score_file call using explicit thresholds from config.py
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
             filepath, profile, thresholds=thresholds
         )

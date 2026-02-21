@@ -23,7 +23,7 @@ def test_bloated_files_penalty(tmp_path: Path):
 
 def test_acl_strictness(tmp_path: Path):
     """Verify ACL thresholds: Red > 15, Yellow 10-15."""
-    # ACL = Complexity + (LOC / 20).
+    # ACL = Complexity + (LOC / 20). 
     # For this function: CC=1, LOC=300. ACL = 1 + 15 = 16.0 (Red status)
     content = textwrap.dedent("""
     def hall_func():
@@ -60,11 +60,16 @@ def test_malformed_pyproject(tmp_path: Path):
     bad_toml = "[[[ invalid toml"
     (tmp_path / "pyproject.toml").write_text(bad_toml, encoding="utf-8")
     (tmp_path / "README.md").write_text("# README", encoding="utf-8")
-    (tmp_path / "ok.py").write_text("def f(): pass", encoding="utf-8")
+    (tmp_path / "ok.py").write_text(
+        'def f():\n    """Docstring."""\n    pass', encoding="utf-8"
+    )
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
-    # Final score handles both file results and project penalties.
+    
+    # RESOLUTION: ok.py score: 80 (type penalty, docstring added). 
+    # project score: 80 (malformed penalty).
+    # Final score handles both file results and project penalties: 80.0
     assert results["final_score"] == 80.0
 
 

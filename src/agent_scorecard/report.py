@@ -1,3 +1,4 @@
+import os
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
@@ -9,7 +10,7 @@ def _generate_summary_section(
     profile: Dict[str, Any],
     project_issues: Optional[List[str]],
 ) -> str:
-    """Creates the executive summary section of the report."""
+    """Creates the executive summary section of the report with aggregated metrics."""
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n"
@@ -21,12 +22,6 @@ def _generate_summary_section(
         summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n"
 
     summary += "\n"
-
-    if stats:
-        avg_acl = sum(f.get("acl", 0) for f in stats) / len(stats)
-        avg_type_safety = sum(f.get("type_coverage", 0) for f in stats) / len(stats)
-        summary += f"**Average ACL:** {avg_acl:.1f}\n"
-        summary += f"**Average Type Safety:** {avg_type_safety:.0f}%\n\n"
 
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
@@ -273,7 +268,7 @@ def generate_advisor_report(
         report += "✅ No Circular Dependencies detected.\n"
 
     if entropy_stats:
-        report += "### 📂 Directory Entropy\n"
+        report += "\n## 4. Directory Entropy\n"
         for d, c in entropy_stats.items():
             report += f"- `{d}`: {c} files\n"
 
@@ -313,6 +308,17 @@ def generate_recommendations_report(
                     "Finding": f"Low Type Safety: {res['file']}",
                     "Agent Impact": "Hallucination of signatures.",
                     "Recommendation": "Add PEP 484 hints.",
+                }
+            )
+
+        # RESOLUTION: Preserve docstring logic from GitHub Workflow branch
+        issues_text = str(res.get("issues", ""))
+        if "Missing docstrings" in issues_text:
+            recommendations.append(
+                {
+                    "Finding": f"Missing Docstrings: {res['file']}",
+                    "Agent Impact": "Agent misses semantic context of functions.",
+                    "Recommendation": "Add triple-quote docstrings to all functions.",
                 }
             )
 
