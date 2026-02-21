@@ -1,4 +1,5 @@
 from typing import Dict, Any, Tuple, List, Optional
+from .constants import DEFAULT_THRESHOLDS
 from .metrics import get_loc, get_function_stats
 from .types import FunctionMetric
 
@@ -11,13 +12,19 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
+    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
+    # instead of hardcoded magic numbers.
     p_thresholds = profile.get("thresholds", {})
 
     if thresholds is None:
         thresholds = {
-            "acl_yellow": p_thresholds.get("acl_yellow", 10),
-            "acl_red": p_thresholds.get("acl_red", 15),
-            "type_safety": p_thresholds.get("type_safety", 90),
+            "acl_yellow": p_thresholds.get(
+                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+            ),
+            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
+            "type_safety": p_thresholds.get(
+                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+            ),
         }
 
     metrics = get_function_stats(filepath)
@@ -38,10 +45,12 @@ def score_file(
     if not metrics:
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
-    # 3. Extract granular thresholds
-    acl_yellow = thresholds.get("acl_yellow", 10)
-    acl_red = thresholds.get("acl_red", 15)
-    type_safety_threshold = thresholds.get("type_safety", 90)
+    # 3. Extract granular thresholds (Synchronized with Constants)
+    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    )
 
     # 4. ACL Scoring (Agent Cognitive Load)
     # Red functions represent "hallucination zones" where agents lose tracking.
