@@ -1,14 +1,19 @@
 import os
 import copy
-from typing import Dict, Any, TypedDict
+from typing import Dict, Any, TypedDict, cast as typing_cast
+from .constants import DEFAULT_THRESHOLDS
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
-tomllib: Any
+tomllib: Any = None
 try:
-    import tomllib  # type: ignore
+    import tomllib as _tomllib  # type: ignore
+
+    tomllib = _tomllib
 except ImportError:
     try:
-        import tomli as tomllib  # type: ignore
+        import tomli as _tomli
+
+        tomllib = _tomli
     except ImportError:
         # Fallback for environments where neither is installed yet
         tomllib = None
@@ -27,15 +32,11 @@ class Config(TypedDict):
 
 
 # Unified defaults representing core Agent Physics
-# RESOLUTION: Maintained explicit defaults for package-wide consistency.
+# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants
+# to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
-    "thresholds": {
-        "acl_yellow": 10,  # Warning threshold for cognitive load
-        "acl_red": 15,   # Critical failure threshold
-        "complexity": 10,  # McCabe complexity limit
-        "type_safety": 90,  # Minimum type hint coverage %
-    },
+    "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
 
 
@@ -72,8 +73,6 @@ def load_config(path: str = ".") -> Config:
         except Exception:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass
-
-    from typing import cast as typing_cast
 
     return typing_cast(
         Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
