@@ -3,8 +3,13 @@ from click.testing import CliRunner
 from agent_scorecard.main import cli
 
 
-def test_cli_happy_path():
-    """Test standard CLI execution (smoke test)."""
+def test_cli_happy_path() -> None:
+    """
+    Test standard CLI execution (smoke test).
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -22,8 +27,13 @@ def test_cli_happy_path():
         assert "Final Agent Score" in result.output
 
 
-def test_cli_profiles_jules_fail_missing_agents_md():
-    """Test jules profile fails if agents.md is missing."""
+def test_cli_profiles_jules_fail_missing_agents_md() -> None:
+    """
+    Test jules profile fails if agents.md is missing.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
@@ -34,8 +44,13 @@ def test_cli_profiles_jules_fail_missing_agents_md():
         assert "Missing Critical Agent Docs" in result.output
 
 
-def test_cli_fix_flag():
-    """Test --fix flag behavior."""
+def test_cli_fix_flag() -> None:
+    """
+    Test --fix flag behavior.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a blank python file
@@ -53,8 +68,13 @@ def test_cli_fix_flag():
         assert os.path.exists("instructions.md")
 
 
-def test_cli_badge_generation():
-    """Test SVG badge generation."""
+def test_cli_badge_generation() -> None:
+    """
+    Test SVG badge generation.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -69,8 +89,13 @@ def test_cli_badge_generation():
         assert "Badge saved" in result.output
 
 
-def test_cli_advise_command():
-    """Test advise command output."""
+def test_cli_advise_command() -> None:
+    """
+    Test advise command output.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create dummy python file
@@ -89,8 +114,13 @@ def test_cli_advise_command():
             assert "Agent Advisor Report" in content
 
 
-def test_cli_check_prompts():
-    """Test the Beta branch command for prompt best-practice analysis."""
+def test_cli_check_prompts() -> None:
+    """
+    Test the Beta branch command for prompt best-practice analysis.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a perfect prompt file
@@ -114,8 +144,13 @@ Output: B
         assert "PASSED: Prompt is optimized!" in result.output
 
 
-def test_cli_check_prompts_plain_fail():
-    """Test check-prompts --plain with a failing prompt to satisfy CI regex."""
+def test_cli_check_prompts_plain_fail() -> None:
+    """
+    Test check-prompts --plain with a failing prompt to satisfy CI regex.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open("bad_prompt.txt", "w") as f:

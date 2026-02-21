@@ -9,8 +9,16 @@ from agent_scorecard.main import cli
 from agent_scorecard.scoring import score_file
 
 
-def test_get_loc(tmp_path: Path):
-    """Tests that get_loc correctly counts lines, ignoring comments and blank lines."""
+def test_get_loc(tmp_path: Path) -> None:
+    """
+    Tests that get_loc correctly counts lines, ignoring comments and blank lines.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     content = "# This is a comment\n\n"
     content += "import os\n" * 10
 
@@ -21,8 +29,16 @@ def test_get_loc(tmp_path: Path):
     assert loc == 10
 
 
-def test_get_function_stats(tmp_path: Path):
-    """Tests that get_function_stats calculates ACL correctly."""
+def test_get_function_stats(tmp_path: Path) -> None:
+    """
+    Tests that get_function_stats calculates ACL correctly.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     content = textwrap.dedent("""
     def simple_func(a: int):
         return a + 1
@@ -54,8 +70,16 @@ def test_get_function_stats(tmp_path: Path):
     assert complex_fn["acl"] == 3.25
 
 
-def test_check_type_hints(tmp_path: Path):
-    """Tests that check_type_hints calculates coverage."""
+def test_check_type_hints(tmp_path: Path) -> None:
+    """
+    Tests that check_type_hints calculates coverage.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     # File with 100% type hint coverage
     typed_content = """
 def fully_typed_function(a: int, b: str) -> bool:
@@ -80,8 +104,16 @@ def untyped_function(a, b):
     assert untyped_coverage == 0
 
 
-def test_score_file_logic(tmp_path: Path):
-    """Tests scoring logic, including penalties for low type safety."""
+def test_score_file_logic(tmp_path: Path) -> None:
+    """
+    Tests scoring logic, including penalties for low type safety.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     content = textwrap.dedent("""
     def untyped_but_simple(a):
         return a
@@ -108,8 +140,16 @@ def test_score_file_logic(tmp_path: Path):
     assert "Type Safety Index 0% < 90%" in issues
 
 
-def test_advise_command(tmp_path: Path):
-    """Tests the advise command."""
+def test_advise_command(tmp_path: Path) -> None:
+    """
+    Tests the advise command.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     (tmp_path / "test.py").write_text("def f(a,b,c): pass")
     # Add README to prevent missing doc noise (though advice doesn't check docs usually)
     (tmp_path / "README.md").write_text("# README")
@@ -123,8 +163,16 @@ def test_advise_command(tmp_path: Path):
     assert "Agent Cognitive Load" in result.output
 
 
-def test_score_command_with_report(tmp_path: Path):
-    """Tests the score command with the --report option."""
+def test_score_command_with_report(tmp_path: Path) -> None:
+    """
+    Tests the score command with the --report option.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
     (tmp_path / "test.py").write_text("def f(a,b,c): pass")
     (tmp_path / "README.md").write_text("# README")
     report_path = tmp_path / "report.md"

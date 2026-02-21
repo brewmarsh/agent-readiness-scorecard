@@ -3,7 +3,13 @@ import tempfile
 from agent_scorecard.config import load_config, DEFAULT_CONFIG
 
 
-def test_load_config_defaults():
+def test_load_config_defaults() -> None:
+    """
+    Test loading default configuration when no pyproject.toml is present.
+
+    Returns:
+        None
+    """
     # Test loading from a directory with no pyproject.toml
     with tempfile.TemporaryDirectory() as tmpdir:
         config = load_config(tmpdir)
@@ -11,7 +17,13 @@ def test_load_config_defaults():
         assert config["thresholds"] == DEFAULT_CONFIG["thresholds"]
 
 
-def test_load_config_with_pyproject():
+def test_load_config_with_pyproject() -> None:
+    """
+    Test loading configuration from a pyproject.toml file.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         pyproject_content = """
 [tool.agent-scorecard]
@@ -32,7 +44,13 @@ type_safety = 80
         assert config["thresholds"]["type_safety"] == 80
 
 
-def test_load_config_invalid_toml():
+def test_load_config_invalid_toml() -> None:
+    """
+    Test that invalid TOML falls back to default configuration.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "pyproject.toml"), "w") as f:
             f.write("invalid = [")

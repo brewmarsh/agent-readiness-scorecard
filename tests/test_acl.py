@@ -5,9 +5,13 @@ from agent_scorecard.scoring import score_file
 from agent_scorecard.constants import PROFILES
 
 
-# TODO: Add type hints for Agent clarity
-def test_acl_calculation_logic():
-    """Tests the ACL calculation formula."""
+def test_acl_calculation_logic() -> None:
+    """
+    Tests the ACL calculation formula.
+
+    Returns:
+        None
+    """
     # Formula: ACL = CC + (LOC / 20)
 
     # Case 1: Simple file
@@ -29,8 +33,16 @@ def test_acl_calculation_logic():
     assert calculate_acl(cc, loc) == 20.0
 
 
-def test_scoring_with_acl_penalty(tmp_path: Path):
-    """Tests that a function with high ACL receives a penalty."""
+def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
+    """
+    Tests that a function with high ACL receives a penalty.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory.
+
+    Returns:
+        None
+    """
 
     # RESOLUTION: We use the Advisor-Mode setup (Large Function) because
     # the new logic ignores global scope for ACL calculations.

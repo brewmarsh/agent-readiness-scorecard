@@ -2,8 +2,13 @@ from click.testing import CliRunner
 from agent_scorecard.main import cli
 
 
-def test_verbosity_quiet():
-    """Test quiet mode behavior (should only print score and critical issues)."""
+def test_verbosity_quiet() -> None:
+    """
+    Test quiet mode behavior (should only print score and critical issues).
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open("hello.py", "w") as f:
@@ -20,8 +25,13 @@ def test_verbosity_quiet():
         assert "Final Agent Score" in result.output
 
 
-def test_verbosity_summary():
-    """Test summary mode behavior (default)."""
+def test_verbosity_summary() -> None:
+    """
+    Test summary mode behavior (default).
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # One passing file (score 100), one failing file (score < 70)
@@ -51,8 +61,13 @@ def test_verbosity_summary():
         assert "pass.py" not in result.output
 
 
-def test_verbosity_detailed():
-    """Test detailed mode behavior."""
+def test_verbosity_detailed() -> None:
+    """
+    Test detailed mode behavior.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open("hello.py", "w") as f:

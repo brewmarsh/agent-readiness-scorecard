@@ -41,7 +41,16 @@ DEFAULT_CONFIG: Config = {
 
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge user settings into the default configuration."""
+    """
+    Recursively merge user settings into the default configuration.
+
+    Args:
+        base (Dict[str, Any]): The base dictionary.
+        override (Dict[str, Any]): The dictionary with overriding values.
+
+    Returns:
+        Dict[str, Any]: The merged dictionary.
+    """
     result = copy.deepcopy(base)
     for key, value in override.items():
         if isinstance(value, dict) and key in result and isinstance(result[key], dict):
@@ -54,7 +63,14 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
 def load_config(path: str = ".") -> Config:
     """
     Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
+
     Looks for the [tool.agent-scorecard] section in accordance with PEP 518.
+
+    Args:
+        path (str): The path to the project or pyproject.toml file (default: ".").
+
+    Returns:
+        Config: The merged configuration dictionary.
     """
     if os.path.isfile(path):
         search_dir = os.path.dirname(os.path.abspath(path))
@@ -80,5 +96,14 @@ def load_config(path: str = ".") -> Config:
 
 
 def cast(t: Any, v: Any) -> Any:
-    """Helper for type hinting merged dictionaries in a dynamic context."""
+    """
+    Helper for type hinting merged dictionaries in a dynamic context.
+
+    Args:
+        t (Any): The type to cast to (ignored at runtime).
+        v (Any): The value to cast.
+
+    Returns:
+        Any: The value v.
+    """
     return v

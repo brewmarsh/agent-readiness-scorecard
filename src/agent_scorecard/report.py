@@ -6,7 +6,17 @@ from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 def _generate_summary_section(
     final_score: float, profile: Dict[str, Any], project_issues: Optional[List[str]]
 ) -> str:
-    """Creates the executive summary section of the report."""
+    """
+    Creates the executive summary section of the report.
+
+    Args:
+        final_score (float): The overall project score.
+        profile (Dict[str, Any]): The agent profile used.
+        project_issues (Optional[List[str]]): List of project-level issues.
+
+    Returns:
+        str: Markdown string for the summary section.
+    """
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
     summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
@@ -30,7 +40,16 @@ def _generate_acl_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
 ) -> str:
-    """Analyzes and reports on units with high Agent Cognitive Load."""
+    """
+    Analyzes and reports on units with high Agent Cognitive Load.
+
+    Args:
+        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
+        thresholds (Dict[str, Any]): Scoring thresholds.
+
+    Returns:
+        str: Markdown string for the ACL section.
+    """
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
@@ -68,7 +87,17 @@ def _generate_type_safety_section(
     thresholds: Dict[str, Any],
     verbosity: str = "detailed",
 ) -> str:
-    """Summarizes type hint coverage across the project."""
+    """
+    Summarizes type hint coverage across the project.
+
+    Args:
+        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
+        thresholds (Dict[str, Any]): Scoring thresholds.
+        verbosity (str): Output verbosity level (default: "detailed").
+
+    Returns:
+        str: Markdown string for the type safety section.
+    """
     type_safety_threshold = thresholds.get(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
@@ -90,7 +119,19 @@ def _generate_type_safety_section(
 def _format_craft_prompt(
     context: str, request: str, actions: List[str], frame: str, template: str
 ) -> str:
-    """Formats a prompt using the CRAFT framework (Context, Request, Actions, Frame, Template)."""
+    """
+    Formats a prompt using the CRAFT framework (Context, Request, Actions, Frame, Template).
+
+    Args:
+        context (str): The persona or context for the prompt.
+        request (str): The specific request or goal.
+        actions (List[str]): List of action steps to take.
+        frame (str): Constraints or framing for the response.
+        template (str): Desired output format or template.
+
+    Returns:
+        str: Formatted CRAFT prompt in Markdown.
+    """
     action_items = "\n".join([f"- {a}" for a in actions])
     indented_actions = action_items.replace("\n", "\n> ")
     return (
@@ -108,7 +149,17 @@ def _generate_prompts_section(
     thresholds: Dict[str, Any],
     project_issues: Optional[List[str]] = None,
 ) -> str:
-    """Generates structured CRAFT prompts for systemic remediation."""
+    """
+    Generates structured CRAFT prompts for systemic remediation.
+
+    Args:
+        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
+        thresholds (Dict[str, Any]): Scoring thresholds.
+        project_issues (Optional[List[str]]): List of project-level issues.
+
+    Returns:
+        str: Markdown string for the prompts section.
+    """
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
     # RESOLUTION: Re-integrated type safety threshold for remediation logic
@@ -188,7 +239,16 @@ def _generate_file_table_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     verbosity: str = "detailed",
 ) -> str:
-    """Creates a breakdown of analysis for every file."""
+    """
+    Creates a breakdown of analysis for every file.
+
+    Args:
+        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
+        verbosity (str): Output verbosity level (default: "detailed").
+
+    Returns:
+        str: Markdown string for the file analysis table.
+    """
     if verbosity == "summary":
         table = "### 📂 Failing File Analysis\n\n"
     else:
@@ -220,7 +280,21 @@ def generate_markdown_report(
     thresholds: Optional[Dict[str, Any]] = None,
     verbosity: str = "detailed",
 ) -> str:
-    """Orchestrates the Markdown report generation."""
+    """
+    Orchestrates the Markdown report generation.
+
+    Args:
+        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
+        final_score (float): The overall project score.
+        path (str): The project path.
+        profile (Dict[str, Any]): The agent profile used.
+        project_issues (Optional[List[str]]): List of project-level issues.
+        thresholds (Optional[Dict[str, Any]]): Scoring thresholds.
+        verbosity (str): Output verbosity level (default: "detailed").
+
+    Returns:
+        str: Full Markdown report string.
+    """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
@@ -251,7 +325,18 @@ def generate_advisor_report(
     entropy_stats: Dict[str, int],
     cycles: List[List[str]],
 ) -> str:
-    """Generates the advanced Advisor Report based on Agent Physics."""
+    """
+    Generates the advanced Advisor Report based on Agent Physics.
+
+    Args:
+        stats (Union[List[AdvisorFileResult], List[Dict[str, Any]]]): File analysis results for Advisor.
+        dependency_stats (Dict[str, int]): Dictionary of god module inbound counts.
+        entropy_stats (Dict[str, int]): Dictionary of directory file counts.
+        cycles (List[List[str]]): List of detected circular dependencies.
+
+    Returns:
+        str: Markdown string for the Advisor report.
+    """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
     report += (
@@ -313,7 +398,15 @@ def generate_advisor_report(
 def generate_recommendations_report(
     results: Union[AnalysisResult, List[FileAnalysisResult], Any],
 ) -> str:
-    """Creates a RECOMMENDATIONS.md file to guide systemic improvements."""
+    """
+    Creates a RECOMMENDATIONS.md content to guide systemic improvements.
+
+    Args:
+        results (Union[AnalysisResult, List[FileAnalysisResult], Any]): Analysis results.
+
+    Returns:
+        str: Markdown string for recommendations.
+    """
     recommendations = []
     file_list = (
         results.get("file_results", []) if isinstance(results, dict) else results

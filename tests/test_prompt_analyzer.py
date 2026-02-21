@@ -1,9 +1,13 @@
 from agent_scorecard.prompt_analyzer import PromptAnalyzer
 
 
-# TODO: Add type hints for Agent clarity
-def test_prompt_analyzer_perfect():
-    """Test a prompt that satisfies all positive heuristics without penalties."""
+def test_prompt_analyzer_perfect() -> None:
+    """
+    Test a prompt that satisfies all positive heuristics without penalties.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     text = """
     You are a professional coder.
@@ -28,9 +32,13 @@ def test_prompt_analyzer_perfect():
     assert len(results["improvements"]) == 0
 
 
-# TODO: Add type hints for Agent clarity
-def test_prompt_analyzer_low_score_clamping():
-    """Test that scores are clamped to 0 when penalties exceed positive points."""
+def test_prompt_analyzer_low_score_clamping() -> None:
+    """
+    Test that scores are clamped to 0 when penalties exceed positive points.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     # No positive heuristics found, 1 negative constraint penalty (-10)
     # Note: 'Don't' must be in a list/imperative format to trigger the context-aware penalty
@@ -45,9 +53,13 @@ def test_prompt_analyzer_low_score_clamping():
     assert len(results["improvements"]) == 5
 
 
-# TODO: Add type hints for Agent clarity
-def test_negative_constraints_context_awareness():
-    """Verify that negative constraints are only flagged in imperative contexts (lists)."""
+def test_negative_constraints_context_awareness() -> None:
+    """
+    Verify that negative constraints are only flagged in imperative contexts (lists).
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     padding = "y" * 100
 
@@ -78,9 +90,13 @@ def test_negative_constraints_context_awareness():
     )
 
 
-# TODO: Add type hints for Agent clarity
-def test_empty_prompt():
-    """Test handling of empty or whitespace strings."""
+def test_empty_prompt() -> None:
+    """
+    Test handling of empty or whitespace strings.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
 
     res_empty = analyzer.analyze("")
@@ -92,9 +108,13 @@ def test_empty_prompt():
     assert "Prompt is empty." in res_space["improvements"]
 
 
-# TODO: Add type hints for Agent clarity
-def test_delimiter_variants():
-    """Verify different delimiter patterns are recognized."""
+def test_delimiter_variants() -> None:
+    """
+    Verify different delimiter patterns are recognized.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
 
     # Triple quotes
@@ -113,9 +133,13 @@ def test_delimiter_variants():
     )
 
 
-# TODO: Add type hints for Agent clarity
-def test_cot_relaxed_variants():
-    """Verify variations of Chain-of-Thought phrasing."""
+def test_cot_relaxed_variants() -> None:
+    """
+    Verify variations of Chain-of-Thought phrasing.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     assert analyzer.analyze("Make a Plan.")["results"]["cognitive_scaffolding"] is True
     assert analyzer.analyze("Step 1: Init.")["results"]["cognitive_scaffolding"] is True
