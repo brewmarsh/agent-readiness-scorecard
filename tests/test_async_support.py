@@ -65,3 +65,15 @@ async def process_data(data):
 
     assert result.exit_code == 0
     assert "Type Safety Index 0%" in result.output
+
+
+def test_cli_check_prompts_async_context_plain():
+    """Verify check-prompts --plain handles async context suggestions correctly."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        with open("async_prompt.txt", "w") as f:
+            f.write("Write an async function.")
+
+        result = runner.invoke(cli, ["check-prompts", "async_prompt.txt", "--plain"])
+        assert "Refactored Suggestions:" in result.output
+        assert "FAILED: Prompt score too low." in result.output
