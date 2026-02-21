@@ -11,7 +11,6 @@ class FunctionMetric(TypedDict):
     has_docstring: bool
 
 
-
 class FileAnalysisResult(TypedDict):
     file: str
     score: int

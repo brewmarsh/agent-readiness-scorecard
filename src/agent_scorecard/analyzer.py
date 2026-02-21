@@ -19,6 +19,7 @@ from .metrics import (  # noqa: F401
 
 # --- METRICS & GRAPH ANALYSIS ---
 
+
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """Checks for existence of agent-critical markdown files."""
     missing = []
