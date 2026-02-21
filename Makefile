@@ -34,6 +34,11 @@ lint-prompts:
 	@echo "📝 Validating internal agent prompts..."
 	uv run agent-score check-prompts src/agent_scorecard/prompts/*.txt
 
+run-scorecard:
+	@uv run agent-score score . --report .scorecard.md.tmp --verbosity quiet > /dev/null
+	@cat .scorecard.md.tmp
+	@rm .scorecard.md.tmp
+
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
