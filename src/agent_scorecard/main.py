@@ -67,19 +67,14 @@ def get_changed_files(base_ref: str = "origin/main") -> List[str]:
         return []
 
 
-def _print_project_issues(
-    results: Union[Dict[str, Any], AnalysisResult], verbosity: str
-) -> None:
-    """Prints critical project-level issues with high visibility."""
-    if verbosity == "quiet":
+def _print_project_issues(project_issues: List[str], verbosity: str) -> None:
+    """Prints systemic project issues (God Modules, Cycles) using a high-visibility bulleted list."""
+    if not project_issues or verbosity == "quiet":
         return
 
-    issues = results.get("project_issues", [])
-    if issues:
-        console.print(Panel("[bold red]Project Issues Detected[/bold red]", expand=False))
-        for issue in issues:
-            console.print(f"[red]• {issue}[/red]")
-        console.print("")
+    console.print("\n[bold yellow]Project Issues Detected:[/bold yellow]")
+    for issue in project_issues:
+        console.print(f"- [red]{issue}[/red]")
 
 
 def _print_environment_health(
@@ -150,47 +145,54 @@ def _print_file_analysis(
 # --- COMMANDS ---
 
 @cli.command(name="check-prompts")
-@click.argument("path", type=click.Path(exists=True, dir_okay=False))
-@click.option("--plain", is_flag=True, help="Output plain text.")
+@click.argument("path", required=True)
+@click.option("--plain", is_flag=True, help="Plain output for CI.")
 def check_prompts(path: str, plain: bool) -> None:
     """Checks a prompt file for LLM best practices."""
-    try:
+    content = ""
+    if path == "-":
+        content = sys.stdin.read()
+    elif os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
-    except Exception:
-        sys.exit(1)
+    else:
+        console.print(f"[bold red]Error:[/bold red] File not found: {path}")
+        sys.exit(2)
 
     analyzer_inst = PromptAnalyzer()
-    res = analyzer_inst.analyze(content)
+    result = analyzer_inst.analyze(content)
 
     if plain:
-        print(f"Score: {res['score']}")
-        for imp in res["improvements"]:
-            print(f"- {imp}")
+        print(f"Prompt Analysis: {path}")
+        print(f"Score: {result['score']}/100")
+        for k, passed in result["results"].items():
+            print(f"- {k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
+        if result["score"] >= 80:
+            print("PASSED: Prompt is optimized!")
     else:
-        style = "green" if res["score"] >= 80 else "red"
-        console.print(
-            Panel(
-                f"Prompt Score: [{style}]{res['score']}/100[/{style}]",
-                title=f"Prompt Analysis: {os.path.basename(path)}",
-                expand=False,
-            )
-        )
+        console.print(Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False))
+        style = "green" if result["score"] >= 80 else "red"
+        console.print(f"Score: [bold {style}]{result['score']}/100[/bold {style}]\n")
 
-        for check, passed in res["results"].items():
-            icon = "✅" if passed else "❌"
-            name = check.replace("_", " ").title()
-            console.print(f"{icon} {name}")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Metric")
+        table.add_column("Status")
 
-        if res["score"] >= 80:
+        for k, passed in result["results"].items():
+            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+            table.add_row(k.replace("_", " ").title(), status)
+
+        console.print(table)
+
+        if result["improvements"]:
+            console.print("\n[bold yellow]Suggestions:[/bold yellow]")
+            for imp in result["improvements"]:
+                console.print(f"💡 {imp}")
+
+        if result["score"] >= 80:
             console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
 
-        if res["improvements"]:
-            console.print("\n[bold]Improvements Needed:[/bold]")
-            for imp in res["improvements"]:
-                console.print(f"[yellow]• {imp}[/yellow]")
-
-    if res["score"] < 80:
+    if result["score"] < 80:
         sys.exit(1)
 
 
@@ -225,6 +227,9 @@ def fix(path: str, agent: str) -> None:
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool) -> None:
     """Scores a codebase based on agent compatibility."""
+    if agent not in PROFILES:
+        agent = "generic"
+
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
@@ -240,9 +245,10 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, ba
     results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
 
     _print_environment_health(path, results, final_verbosity)
-    _print_project_issues(results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
+    _print_project_issues(cast(List[str], results.get("project_issues", [])), final_verbosity)
 
+    # Always print final score
     score_color = "green" if results["final_score"] >= 70 else "red"
     console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
@@ -250,7 +256,8 @@ def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, ba
         svg = generate_badge(results["final_score"])
         with open("agent_score.svg", "w", encoding="utf-8") as f:
             f.write(svg)
-        console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
+        if final_verbosity != "quiet":
+            console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
 
     if report_path:
         content = report.generate_markdown_report(

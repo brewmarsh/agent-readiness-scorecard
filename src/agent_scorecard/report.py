@@ -79,19 +79,10 @@ def _generate_type_safety_section(
     types_section += "| :--- | :---------------: | :----- |\n"
 
     sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
-    has_rows = False
     for res in sorted_types:
         coverage = res.get("type_coverage", 0)
-        if verbosity == "summary" and coverage >= type_safety_threshold:
-            continue
         status = "✅" if coverage >= type_safety_threshold else "❌"
         types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
-        has_rows = True
-
-    if not has_rows and verbosity == "summary":
-        return (
-            "## 🛡️ Type Safety Index\n\n✅ All files meet type safety requirements.\n\n"
-        )
 
     return types_section + "\n"
 
@@ -99,7 +90,7 @@ def _generate_type_safety_section(
 def _format_craft_prompt(
     context: str, request: str, actions: List[str], frame: str, template: str
 ) -> str:
-    """Formats a prompt using the CRAFT framework for high-quality LLM output."""
+    """Formats a prompt using the CRAFT framework (Context, Request, Actions, Frame, Template)."""
     action_items = "\n".join([f"- {a}" for a in actions])
     indented_actions = action_items.replace("\n", "\n> ")
     return (
@@ -120,7 +111,7 @@ def _generate_prompts_section(
     """Generates structured CRAFT prompts for systemic remediation."""
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    # RESOLUTION: Type Safety threshold added from Beta branch for prompt logic
+    # RESOLUTION: Re-integrated type safety threshold for remediation logic
     type_safety_threshold = thresholds.get(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
@@ -172,7 +163,7 @@ def _generate_prompts_section(
                 + "\n\n"
             )
 
-        # RESOLUTION: Type Safety remediation prompt logic re-integrated
+        # RESOLUTION: Type Safety remediation prompt logic re-integrated from Beta branch
         if f_res.get("type_coverage", 0) < type_safety_threshold:
             prompts += f"### File: `{file_path}` - Low Type Safety\n"
             prompts += (
@@ -197,7 +188,7 @@ def _generate_file_table_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     verbosity: str = "detailed",
 ) -> str:
-    """Creates a full breakdown of analysis for every file."""
+    """Creates a breakdown of analysis for every file."""
     if verbosity == "summary":
         table = "### 📂 Failing File Analysis\n\n"
     else:
@@ -205,13 +196,11 @@ def _generate_file_table_section(
 
     table += "| File | Score | Issues |\n"
     table += "| :--- | :---: | :--- |\n"
-
     has_rows = False
     for res in stats:
         score = res.get("score", 0)
         if verbosity == "summary" and score >= 70:
             continue
-
         status = "✅" if score >= 70 else "❌"
         table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
         has_rows = True
