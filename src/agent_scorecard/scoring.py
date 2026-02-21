@@ -69,6 +69,16 @@ def score_file(
             f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
         )
 
+    # 6. Docstring Coverage Check
+    # -10 penalty if any function is missing a docstring (100% requirement from agents.md)
+    missing_doc_count = sum(1 for m in metrics if not m.get("has_docstring", False))
+    if missing_doc_count > 0:
+        penalty = 10
+        score -= penalty
+        details.append(
+            f"Missing docstrings for {missing_doc_count} functions (-{penalty})"
+        )
+
     avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
 
     # Ensure score doesn't dip below 0
