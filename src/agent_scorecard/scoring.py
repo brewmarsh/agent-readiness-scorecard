@@ -15,12 +15,12 @@ def score_file(
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
     """
     # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
-    # instead of hardcoded magic numbers.
+    # RESOLUTION: Unified configuration logic using DEFAULT_THRESHOLDS constant 
+    # for package-wide consistency.
     p_thresholds: Thresholds = profile.get("thresholds") or {}
 
     if thresholds is None:
-        new_thresholds: Thresholds = {
+        thresholds = {
             "acl_yellow": p_thresholds.get(
                 "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
             ),
@@ -29,7 +29,6 @@ def score_file(
                 "type_safety", DEFAULT_THRESHOLDS["type_safety"]
             ),
         }
-        thresholds = new_thresholds
 
     metrics = get_function_stats(filepath)
     loc = get_loc(filepath)
@@ -50,17 +49,10 @@ def score_file(
         return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
     # 3. Extract granular thresholds (Synchronized with Constants)
-    acl_yellow = (
-        thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-        or DEFAULT_THRESHOLDS["acl_yellow"]
-    )
-    acl_red = (
-        thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-        or DEFAULT_THRESHOLDS["acl_red"]
-    )
-    type_safety_threshold = (
-        thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
-        or DEFAULT_THRESHOLDS["type_safety"]
+    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
 
     # 4. ACL Scoring (Agent Cognitive Load)

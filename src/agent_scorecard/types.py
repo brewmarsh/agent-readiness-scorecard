@@ -23,7 +23,6 @@ class FunctionMetric(TypedDict):
     acl: float
     is_typed: bool
 
-
 class FileAnalysisResult(TypedDict):
     file: str
     score: int

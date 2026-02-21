@@ -17,7 +17,6 @@ except ImportError:
 
         tomllib = _tomli
     except ImportError:
-        # Fallback for environments where neither is installed yet
         tomllib = None
 
 
@@ -57,16 +56,17 @@ def load_config(path: Union[str, Path] = ".") -> Config:
         search_dir = str(path)
 
     config_path = os.path.join(search_dir, "pyproject.toml")
-    user_config = {}
+    user_config: Dict[str, Any] = {}
 
     if tomllib and os.path.exists(config_path):
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
                 # Parse settings from the standardized [tool.agent-scorecard] table
+                # RESOLUTION: Adhering to the PEP 518 standard for tool-specific configuration.
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
-            # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
+            # Fallback to defaults if file is malformed
             pass
 
     return cast(Config, _deep_merge(cast(Dict[str, Any], DEFAULT_CONFIG), user_config))

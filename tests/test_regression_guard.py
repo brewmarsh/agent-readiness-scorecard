@@ -66,7 +66,10 @@ def test_malformed_pyproject(tmp_path: Path):
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
-    # Final score handles both file results and project penalties.
+
+    # RESOLUTION: ok.py score: 80 (type penalty, docstring added).
+    # project score: 80 (malformed penalty).
+    # Final score handles both file results and project penalties: 80.0
     assert results["final_score"] == 80.0
 
 

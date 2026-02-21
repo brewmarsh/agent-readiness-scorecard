@@ -58,3 +58,12 @@ PROFILES: Dict[str, Profile] = {
         "thresholds": None,
     },
 }
+
+# --- DEFAULTS ---
+DEFAULT_VERBOSITY = "summary"
+DEFAULT_THRESHOLDS = {
+    "acl_yellow": 10,
+    "acl_red": 15,
+    "complexity": 10,
+    "type_safety": 90,
+}
