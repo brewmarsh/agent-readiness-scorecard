@@ -109,6 +109,16 @@ my-project/
 
 ```
 
+## 🚀 Beta Features
+
+The `beta` branch includes upcoming capabilities for enhanced agent-readiness:
+
+* **`pyproject.toml` Configuration**: Centralize settings alongside your other tools.
+* **Prompt Linter (`check-prompts`)**: Validate your system prompts against LLM best practices (Role Definition, Few-Shot, etc.).
+* **Verbosity Control (`--verbosity`)**: Choose between `quiet`, `summary` (default), or `detailed` output.
+* **Enhanced Metrics**: Track "Average ACL" and "Average Type Safety" in the summary report.
+* **CI/CD Automation**: Automated badge updates and GitHub Actions workflows for continuous agent-readiness.
+
 ## 🛡 Badges
 
 Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_score.svg` for your repo.

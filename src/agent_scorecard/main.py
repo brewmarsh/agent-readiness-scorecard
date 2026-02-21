@@ -228,6 +228,7 @@ def fix(path: str, agent: str) -> None:
 def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool) -> None:
     """Scores a codebase based on agent compatibility."""
     if agent not in PROFILES:
+        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
         agent = "generic"
 
     cfg = load_config(path)
