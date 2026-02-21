@@ -10,6 +10,7 @@ def test_score_file_acl_penalty(tmp_path):
 
     """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"
+    code += '    """A high ACL function."""\n'
     code += "    x = 0\n"
     # 320 lines of assignment
     for i in range(320):

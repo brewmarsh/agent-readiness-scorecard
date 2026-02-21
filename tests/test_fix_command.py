@@ -9,6 +9,7 @@ from agent_scorecard.main import cli
 class TestFixCommand:
     @pytest.fixture
     def runner(self):
+        """Fixture to provide a Click CliRunner."""
         return CliRunner()
 
     def test_fix_command_happy_path(self, runner):

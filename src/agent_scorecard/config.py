@@ -1,15 +1,19 @@
 import os
 import copy
 from typing import Dict, Any, TypedDict, cast as typing_cast
-from .constants import DEFAULT_VERBOSITY, DEFAULT_THRESHOLDS
+from .constants import DEFAULT_THRESHOLDS
 
 # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
-tomllib: Any
+tomllib: Any = None
 try:
-    import tomllib  # type: ignore
+    import tomllib as _tomllib  # type: ignore
+
+    tomllib = _tomllib
 except ImportError:
     try:
-        import tomli as tomllib  # type: ignore
+        import tomli as _tomli
+
+        tomllib = _tomli
     except ImportError:
         tomllib = None
 
@@ -26,8 +30,11 @@ class Config(TypedDict):
     thresholds: Thresholds
 
 
+# Unified defaults representing core Agent Physics
+# RESOLUTION: Use the centralized DEFAULT_THRESHOLDS from .constants 
+# to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
-    "verbosity": DEFAULT_VERBOSITY,
+    "verbosity": "summary",
     "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
 
@@ -46,7 +53,7 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
 def load_config(path: str = ".") -> Config:
     """
     Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
-    Looks for the [tool.agent-scorecard] section.
+    Looks for the [tool.agent-scorecard] section in accordance with PEP 518.
     """
     if os.path.isfile(path):
         search_dir = os.path.dirname(os.path.abspath(path))
@@ -60,6 +67,8 @@ def load_config(path: str = ".") -> Config:
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
+                # Parse settings from the standardized [tool.agent-scorecard] table
+                # RESOLUTION: Adhering to the PEP 518 standard for tool-specific configuration.
                 user_config = data.get("tool", {}).get("agent-scorecard", {})
         except Exception:
             # Fallback to defaults if file is malformed
@@ -68,3 +77,8 @@ def load_config(path: str = ".") -> Config:
     return typing_cast(
         Config, _deep_merge(typing_cast(Dict[str, Any], DEFAULT_CONFIG), user_config)
     )
+
+
+def cast(t: Any, v: Any) -> Any:
+    """Helper for type hinting merged dictionaries in a dynamic context."""
+    return v
