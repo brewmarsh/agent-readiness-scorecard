@@ -71,17 +71,14 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
 
     if hasattr(ast, "unparse"):
         # Python 3.9+ logic: Replace body with 'pass' to get just the signature
-        # Use getattr/setattr for maximum compatibility with various AST implementations
         orig_body = getattr(node, "body", [])
         setattr(node, "body", [ast.Pass()])
         try:
             unparsed = ast.unparse(node)
             lines = unparsed.splitlines()
             if lines:
-                # For functions/classes, unparse usually includes the signature and 'pass'
-                # We want just the signature.
                 sig = "\n".join(lines[:-1]).strip()
-                if not sig:  # Fallback if it's a single line
+                if not sig:
                     sig = lines[0]
                 return sig
         except Exception:
@@ -139,8 +136,7 @@ def count_python_tokens(filepath: str) -> int:
 
 def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     """
-    Counts tokens for the project's 'Critical Context':
-    (README + AGENTS.md + All Python Signatures).
+    Counts tokens for the project's 'Critical Context'.
     If this exceeds 32k, an Agent will likely lose track of the overall architecture.
     """
 
@@ -149,7 +145,6 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
     except Exception:
         return {"token_count": 0, "alert": False}
 
-    # Gather documentation
     total_content = ""
     critical_files = ["README.md", "AGENTS.md"]
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
@@ -163,7 +158,6 @@ def check_critical_context_tokens(path: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
-    # Gather signatures
     if os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
@@ -210,17 +204,14 @@ def check_environment_health(path: str) -> Dict[str, Any]:
     if "pyproject.toml" in root_files:
         filepath = os.path.join(base_dir, "pyproject.toml")
         try:
-            # Handle TOML parsing for Python 3.11+ (tomllib) and older (tomli)
+            # RESOLUTION: Use toml_tool alias to unify tomllib and tomli
             try:
-                import tomllib  # type: ignore
+                import tomllib as toml_tool  # type: ignore
             except ImportError:
-                import tomli as tomllib  # type: ignore
+                import tomli as toml_tool  # type: ignore
 
             with open(filepath, "rb") as f:
-                tomllib.load(f)
-        except ImportError:
-            # Fallback for environments where neither is installed yet
-            pass
+                toml_tool.load(f)
         except Exception:
             results["pyproject_valid"] = False
 

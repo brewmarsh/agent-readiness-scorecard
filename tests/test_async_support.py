@@ -61,5 +61,7 @@ async def process_data(data):
     # as established in the configuration-heavy Beta branch.
     result = runner.invoke(cli, ["score", str(p), "--verbosity", "detailed"])
 
-    assert result.exit_code == 0
+    # RESOLUTION: Strict thresholds mean low Type Safety results in a non-zero exit code (1).
+    # This ensures CI/CD pipelines fail if code is not "Agent Ready".
+    assert result.exit_code == 1
     assert "Type Safety Index 0%" in result.output

@@ -1,3 +1,1 @@
-You are a helpful assistant.
-Please provide a summary of the text.
-Don't include any personal opinions.
+Test prompt
