@@ -3,7 +3,7 @@ from click.testing import CliRunner
 from agent_scorecard.main import cli
 
 
-def test_cli_happy_path():
+def test_cli_happy_path() -> None:
     """Test standard CLI execution (smoke test)."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -22,7 +22,7 @@ def test_cli_happy_path():
         assert "Final Agent Score" in result.output
 
 
-def test_cli_profiles_jules_fail_missing_agents_md():
+def test_cli_profiles_jules_fail_missing_agents_md() -> None:
     """Test jules profile fails if agents.md is missing."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -34,7 +34,7 @@ def test_cli_profiles_jules_fail_missing_agents_md():
         assert "Missing Critical Agent Docs" in result.output
 
 
-def test_cli_fix_flag():
+def test_cli_fix_flag() -> None:
     """Test --fix flag behavior."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -53,7 +53,7 @@ def test_cli_fix_flag():
         assert os.path.exists("instructions.md")
 
 
-def test_cli_badge_generation():
+def test_cli_badge_generation() -> None:
     """Test SVG badge generation."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -69,7 +69,7 @@ def test_cli_badge_generation():
         assert "Badge saved" in result.output
 
 
-def test_cli_advise_command():
+def test_cli_advise_command() -> None:
     """Test advise command output."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -89,7 +89,7 @@ def test_cli_advise_command():
             assert "Agent Advisor Report" in content
 
 
-def test_cli_check_prompts():
+def test_cli_check_prompts() -> None:
     """Test the Beta branch command for prompt best-practice analysis."""
     runner = CliRunner()
     with runner.isolated_filesystem():

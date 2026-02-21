@@ -3,7 +3,7 @@ from agent_scorecard.main import cli
 
 
 # TODO: Add type hints for Agent clarity
-def test_report_full(tmp_path):
+def test_report_full(tmp_path) -> None:
     # Create file with high ACL
     """TODO: Add docstring for AI context."""
     code = "def high_acl():\n"

@@ -6,7 +6,7 @@ from agent_scorecard.main import cli
 from agent_scorecard.analyzer import check_type_hints
 
 
-def test_async_function_support_checks(tmp_path: Path):
+def test_async_function_support_checks(tmp_path: Path) -> None:
     """Test that check_type_hints correctly identifies async functions."""
     p = tmp_path / "async_test.py"
     p.write_text("""
@@ -19,7 +19,7 @@ async def fetch_data(url):
     assert cov == 0
 
 
-def test_fix_async_function(tmp_path: Path):
+def test_fix_async_function(tmp_path: Path) -> None:
     """Test that 'fix' command adds docstrings and type hints to async functions."""
     p = tmp_path / "async_fix.py"
     p.write_text("""
@@ -47,7 +47,7 @@ async def process_data(data):
     assert "data: dict" in content
 
 
-def test_score_async_function(tmp_path: Path):
+def test_score_async_function(tmp_path: Path) -> None:
     """Test that 'score' command detects issues in async functions."""
     p = tmp_path / "async_score.py"
     p.write_text("""

@@ -3,7 +3,7 @@ from agent_scorecard.analyzer import get_function_stats
 
 
 # TODO: Add type hints for Agent clarity
-def test_get_function_stats(tmp_path):
+def test_get_function_stats(tmp_path) -> None:
     """TODO: Add docstring for AI context."""
     code = textwrap.dedent("""
     def simple():

@@ -14,7 +14,7 @@ from agent_scorecard.report import generate_advisor_report
 
 
 # TODO: Add type hints for Agent clarity
-def test_calculate_acl():
+def test_calculate_acl() -> None:
     # ACL = CC + (LOC / 20)
     """TODO: Add docstring for AI context."""
     assert calculate_acl(10, 100) == 10 + (100 / 20)  # 15.0
@@ -22,7 +22,7 @@ def test_calculate_acl():
 
 
 # TODO: Add type hints for Agent clarity
-def test_get_directory_entropy(tmp_path):
+def test_get_directory_entropy(tmp_path) -> None:
     # Create 25 files in tmp_path
     """TODO: Add docstring for AI context."""
     for i in range(25):
@@ -44,7 +44,7 @@ def test_get_directory_entropy(tmp_path):
 
 
 # TODO: Add type hints for Agent clarity
-def test_dependency_analysis(tmp_path):
+def test_dependency_analysis(tmp_path) -> None:
     # main.py imports utils, utils imports shared
     """TODO: Add docstring for AI context."""
     (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
@@ -65,7 +65,7 @@ def test_dependency_analysis(tmp_path):
 
 
 # TODO: Add type hints for Agent clarity
-def test_cycle_detection(tmp_path):
+def test_cycle_detection(tmp_path) -> None:
     # a.py <-> b.py
     """TODO: Add docstring for AI context."""
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
@@ -81,7 +81,7 @@ def test_cycle_detection(tmp_path):
 
 
 # TODO: Add type hints for Agent clarity
-def test_generate_advisor_report_standalone():
+def test_generate_advisor_report_standalone() -> None:
     """Tests the standalone Advisor Report used in 'agent-score advise' command."""
     stats = [
         {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
@@ -109,7 +109,7 @@ def test_generate_advisor_report_standalone():
 
 
 # TODO: Add type hints for Agent clarity
-def test_function_stats_parsing(tmp_path):
+def test_function_stats_parsing(tmp_path) -> None:
     """Tests that we can parse a file and extract function stats correctly."""
     code = textwrap.dedent("""
         def complex_function():
@@ -136,7 +136,7 @@ def test_function_stats_parsing(tmp_path):
 
 
 # TODO: Add type hints for Agent clarity
-def test_unified_score_report_content(tmp_path):
+def test_unified_score_report_content(tmp_path) -> None:
     """Tests the Markdown report generated during the 'score' command."""
     # Setup a project that triggers advisor warnings
     code = "def hallucinate():\n"

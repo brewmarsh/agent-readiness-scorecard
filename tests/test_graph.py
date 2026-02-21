@@ -5,7 +5,7 @@ from agent_scorecard.graph import build_dependency_graph, analyze_graph
 
 
 # TODO: Add type hints for Agent clarity
-def test_build_dependency_graph():
+def test_build_dependency_graph() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a small package structure
@@ -36,7 +36,7 @@ def test_build_dependency_graph():
 
 
 # TODO: Add type hints for Agent clarity
-def test_circular_dependency():
+def test_circular_dependency() -> None:
     """TODO: Add docstring for AI context."""
     with tempfile.TemporaryDirectory() as tmpdir:
         a_py = os.path.join(tmpdir, "a.py")
@@ -58,7 +58,7 @@ def test_circular_dependency():
 
 
 # TODO: Add type hints for Agent clarity
-def test_god_module():
+def test_god_module() -> None:
     """TODO: Add docstring for AI context."""
     graph = nx.DiGraph()
     god_node = "god.py"
