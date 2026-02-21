@@ -51,7 +51,6 @@ def cli() -> None:
 
 # --- HELPERS ---
 
-
 def _print_environment_health(
     path: str, results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
@@ -96,22 +95,16 @@ def _print_environment_health(
 def _print_project_issues(
     results: Union[Dict[str, Any], AnalysisResult], verbosity: str
 ) -> None:
-    """Prints project-wide issues."""
+    """Prints systemic project issues if detected."""
     if verbosity == "quiet":
         return
 
     issues = results.get("project_issues", [])
-    if not issues:
-        return
-
-    table = Table(title="Project Issues Detected", style="red")
-    table.add_column("Issue Description", style="red")
-
-    for issue in issues:
-        table.add_row(issue)
-
-    console.print(table)
-    console.print("")
+    if issues:
+        console.print(Panel("[bold red]Project Issues Detected[/bold red]", expand=False))
+        for issue in issues:
+            console.print(f"[red]• {issue}[/red]")
+        console.print("")
 
 
 def _print_file_analysis(
@@ -140,9 +133,7 @@ def _print_file_analysis(
 
 def _print_rich_prompt_analysis(result: Dict[str, Any], filename: str) -> None:
     """Prints a styled report for LLM prompt analysis."""
-    console.print(
-        Panel(f"[bold cyan]Prompt Analysis: {filename}[/bold cyan]", expand=False)
-    )
+    console.print(Panel(f"[bold cyan]Prompt Analysis: {filename}[/bold cyan]", expand=False))
     table = Table(title="Heuristic Checks")
     table.add_column("Heuristic", style="cyan")
     table.add_column("Status", justify="right")
@@ -158,9 +149,7 @@ def _print_rich_prompt_analysis(result: Dict[str, Any], filename: str) -> None:
             console.print(f"- {imp}")
 
     score_color = "green" if result["score"] >= 80 else "red"
-    console.print(
-        f"\n[bold]Prompt Score: [{score_color}]{result['score']}/100[/{score_color}][/bold]"
-    )
+    console.print(f"\n[bold]Prompt Score: [{score_color}]{result['score']}/100[/{score_color}][/bold]")
     if result["score"] >= 80:
         console.print("[bold green]PASSED: Prompt is optimized![/bold green]")
     else:
@@ -169,28 +158,21 @@ def _print_rich_prompt_analysis(result: Dict[str, Any], filename: str) -> None:
 
 # --- COMMANDS ---
 
-
 @cli.command(name="check-prompts")
 @click.argument("path", required=True)
 @click.option("--plain", is_flag=True, help="Output plain text results.")
 def check_prompts(path: str, plain: bool) -> None:
     """Static analysis for LLM prompts."""
     try:
-        content = (
-            sys.stdin.read()
-            if path == "-"
-            else open(path, "r", encoding="utf-8").read()
-        )
+        content = sys.stdin.read() if path == "-" else open(path, "r", encoding="utf-8").read()
     except Exception as e:
         console.print(f"[red]Error reading prompt file: {e}[/red]")
         sys.exit(1)
 
     result = PromptAnalyzer().analyze(content)
     if plain:
-        # Fallback to simple printing for CI logs
         print(f"Prompt Score: {result['score']}/100")
-        for key, val in result["results"].items():
-            print(f"{key}: {val}")
+        for key, val in result["results"].items(): print(f"{key}: {val}")
     else:
         _print_rich_prompt_analysis(result, path)
 
@@ -201,18 +183,15 @@ def check_prompts(path: str, plain: bool) -> None:
 def fix(path: str, agent: str) -> None:
     """Automatically fix issues using configuration thresholds."""
     cfg = load_config(path)
+    if agent not in PROFILES:
+        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
+        agent = "generic"
+
     profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
     if cfg.get("thresholds"):
-        cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(
-            cast(Dict[str, Any], cfg["thresholds"])
-        )
+        cast(Dict[str, Any], profile.setdefault("thresholds", {})).update(cast(Dict[str, Any], cfg["thresholds"]))
 
-    console.print(
-        Panel(
-            f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
-            expand=False,
-        )
-    )
+    console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
     apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
 
@@ -221,78 +200,44 @@ def fix(path: str, agent: str) -> None:
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
-@click.option(
-    "--report", "report_path", type=click.Path(), help="Save Markdown report."
-)
-@click.option(
-    "--verbosity",
-    type=click.Choice(["quiet", "summary", "detailed"]),
-    help="Override verbosity.",
-)
+@click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
+@click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]), help="Override verbosity.")
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 @click.option("--diff", "diff_base", help="Ref to diff against (e.g. origin/main).")
-def score(
-    path: str,
-    agent: str,
-    fix: bool,
-    report_path: str,
-    verbosity: str,
-    badge: bool,
-    diff_base: Optional[str],
-) -> None:
+def score(path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool, diff_base: Optional[str]) -> None:
     """Scores a codebase based on agent compatibility."""
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if final_verbosity != "quiet":
-        console.print(
-            Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False)
-        )
+        console.print(Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False))
 
     if fix:
         if agent not in PROFILES:
-            console.print(
-                f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]"
-            )
-            agent = "generic"
-
-        if final_verbosity != "quiet":
-            console.print(
-                Panel(
-                    f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
-                    expand=False,
-                )
-            )
+             console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
+             agent = "generic"
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
         apply_fixes(path, copy.deepcopy(PROFILES.get(agent, PROFILES["generic"])))
 
     limit_files = get_changed_files(diff_base) if diff_base else None
-    results = analyzer.perform_analysis(
-        path, agent, thresholds=thresholds, limit_to_files=limit_files
-    )
+    results = analyzer.perform_analysis(path, agent, thresholds=thresholds, limit_to_files=limit_files)
 
     _print_environment_health(path, results, final_verbosity)
     _print_project_issues(results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
 
     score_color = "green" if results["final_score"] >= 70 else "red"
-    console.print(
-        f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]"
-    )
+    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
 
     if badge:
         with open("agent_score.svg", "w", encoding="utf-8") as f:
             f.write(generate_badge(results["final_score"]))
-        console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
+        if final_verbosity != "quiet":
+            console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
 
     if report_path:
-        content = report.generate_markdown_report(
-            cast(List[Dict[str, Any]], results["file_results"]),
-            results["final_score"],
-            path,
-            PROFILES[agent],
-            thresholds=thresholds,
-        )
+        content = report.generate_markdown_report(cast(List[Dict[str, Any]], results["file_results"]), results["final_score"], path, PROFILES[agent], thresholds=thresholds)
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
 
@@ -302,46 +247,33 @@ def score(
 
 @cli.command(name="advise")
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option(
-    "--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown."
-)
+@click.option("--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown.")
 def advise(path: str, output_file: Optional[str]) -> None:
     """Detailed advice based on Agent Physics."""
     console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
     cfg = load_config(path)
-    results = analyzer.perform_analysis(
-        path, "generic", thresholds=cast(Dict[str, Any], cfg.get("thresholds"))
-    )
+    results = analyzer.perform_analysis(path, "generic", thresholds=cast(Dict[str, Any], cfg.get("thresholds")))
 
     stats: List[AdvisorFileResult] = []
     for res in results.get("file_results", []):
         tokens = auditor.check_critical_context_tokens(os.path.join(path, res["file"]))
         m_acl = max([m["acl"] for m in res.get("function_metrics", [])] or [0.0])
-        stats.append(
-            cast(
-                AdvisorFileResult,
-                {**res, "acl": m_acl, "tokens": tokens["token_count"]},
-            )
-        )
+        stats.append(cast(AdvisorFileResult, {**res, "acl": m_acl, "tokens": tokens["token_count"]}))
 
     report_md = report.generate_advisor_report(
         stats=cast(List[Dict[str, Any]], stats),
         dependency_stats=results.get("dep_analysis", {}).get("god_modules", {}),
-        entropy_stats={
-            d["path"]: d["file_count"] for d in results.get("directory_stats", [])
-        },
-        cycles=results.get("dep_analysis", {}).get("cycles", []),
+        entropy_stats={d["path"]: d["file_count"] for d in results.get("directory_stats", [])},
+        cycles=results.get("dep_analysis", {}).get("cycles", [])
     )
 
     if output_file:
         dest = os.path.abspath(output_file)
         with open(dest, "w", encoding="utf-8") as f:
-            f.write(
-                report_md if stats else "# Advisor Report\n\nNo Python files found."
-            )
+            f.write(report_md if stats else "# Advisor Report\n\nNo Python files found.")
         console.print(f"[bold green]Report saved to {dest}[/bold green]")
     else:
-        console.print(Markdown(report_md) if "Markdown" in globals() else report_md)
+        console.print(Markdown(report_md) if 'Markdown' in globals() else report_md)
 
 
 if __name__ == "__main__":

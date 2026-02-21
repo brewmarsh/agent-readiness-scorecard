@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Optional, Union
+import os
+from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 from .report_sections import (
@@ -22,6 +23,7 @@ def generate_markdown_report(
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
+    # Orchestration of modular report components
     summary = generate_summary_section(stats, final_score, profile, project_issues)
     targets = generate_acl_section(stats, thresholds)
     types_section = generate_type_safety_section(stats, thresholds)
@@ -90,10 +92,15 @@ def generate_advisor_report(
     else:
         report += "✅ No Circular Dependencies detected.\n"
 
-    if entropy_stats:
-        report += "\n## 4. Directory Entropy\n"
-        for d, c in entropy_stats.items():
-            report += f"- `{d}`: {c} files\n"
+    # RESOLUTION: Combined v0.3.0 visual clarity with Beta branch threshold logic
+    report += "\n## 4. Directory Entropy\n"
+    crowded_dirs = {k: v for k, v in entropy_stats.items() if v > 15}
+    if crowded_dirs:
+        report += "### 📂 Crowded Directories (> 15 files)\n| Directory | File Count |\n|---|---|\n"
+        for k, v in crowded_dirs.items():
+            report += f"| `{k}` | {v} |\n"
+    else:
+        report += "✅ Directory structure is balanced.\n"
 
     return report
 
@@ -134,7 +141,7 @@ def generate_recommendations_report(
                 }
             )
 
-        # RESOLUTION: Preserve docstring logic from GitHub Workflow branch
+        # RESOLUTION: Preserve docstring logic for agent semantic understanding
         issues_text = str(res.get("issues", ""))
         if "Missing docstrings" in issues_text:
             recommendations.append(
