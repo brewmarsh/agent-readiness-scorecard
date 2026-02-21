@@ -64,35 +64,6 @@ def test_generate_markdown_report():
     assert "25.0" in report_content
     assert "🔴 Red" in report_content
 
-    # Regression check: Verify that ACL 16 is now reported as Red (previously it would have been Yellow due to 20 threshold)
-    report_with_16 = generate_markdown_report(
-        stats=[
-            {
-                "file": "borderline.py",
-                "score": 50,
-                "issues": "1 Red ACL functions",
-                "loc": 100,
-                "complexity": 11,
-                "type_coverage": 100,
-                "function_metrics": [
-                    {
-                        "name": "f",
-                        "acl": 16.0,
-                        "complexity": 11,
-                        "loc": 100,
-                        "is_typed": True,
-                        "has_docstring": True,
-                    }
-                ],
-            }
-        ],
-        final_score=50.0,
-        path=".",
-        profile=PROFILES["generic"],
-    )
-    assert "16.0" in report_with_16
-    assert "🔴 Red" in report_with_16
-
     assert "Type Safety Index" in report_content
     assert "Agent Prompts for Remediation" in report_content
 

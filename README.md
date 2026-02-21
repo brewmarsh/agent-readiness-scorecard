@@ -49,38 +49,6 @@ agent-score . --fix
 
 ```
 
-## 🤖 Using the CRAFT Prompts
-
-`agent-scorecard` uses the **CRAFT** framework to generate high-quality remediation prompts. If you prefer not to use the `--fix` flag, you can use these prompts manually to guide your favorite AI agent.
-
-### The CRAFT Framework
-
-* **Context**: Defines the persona and background for the task.
-* **Request**: The specific goal or improvement needed.
-* **Actions**: Step-by-step instructions for the agent to follow.
-* **Frame**: The constraints and boundaries (e.g., "don't change logic").
-* **Template**: The expected format of the output.
-
-### Example Prompt: Fixing a God Module
-
-When the scorecard identifies a "God Module" (a file with too many inbound dependencies), it generates a prompt like this:
-
-> **Context**: You are a Software Architect specializing in modular system design.
-> **Request**: Decompose the God Module `main.py` to reduce context pressure.
-> **Actions**:
-> - Identify distinct responsibilities within the module.
-> - Extract logic into smaller, cohesive sub-modules.
-> - Refactor imports to maintain internal dependencies.
-> **Frame**: Inbound imports must stay below 50. Maintain existing functionality.
-> **Template**: A refactoring plan followed by the new module code structure.
-
-### Manual Usage Guide
-
-1. **Run the Scorecard**: Generate your report using `agent-score .`.
-2. **Copy the Prompt**: Locate the "Agent Prompts for Remediation" section in the output.
-3. **Paste into AI**: Copy and paste the CRAFT prompt directly into **Cursor**, **GitHub Copilot**, or **ChatGPT**.
-4. **Apply Fixes**: Use the AI's output to refactor your code with confidence.
-
 ## ⚙️ Configuration
 
 `agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
@@ -142,6 +110,16 @@ my-project/
 └── src/               # Your source code (Typed & Docstringed)
 
 ```
+
+## 🚀 Beta Features
+
+The `beta` branch includes upcoming capabilities for enhanced agent-readiness:
+
+* **`pyproject.toml` Configuration**: Centralize settings alongside your other tools.
+* **Prompt Linter (`check-prompts`)**: Validate your system prompts against LLM best practices (Role Definition, Few-Shot, etc.).
+* **Verbosity Control (`--verbosity`)**: Choose between `quiet`, `summary` (default), or `detailed` output.
+* **Enhanced Metrics**: Track "Average ACL" and "Average Type Safety" in the summary report.
+* **CI/CD Automation**: Automated badge updates and GitHub Actions workflows for continuous agent-readiness.
 
 ## 🛡 Badges
 

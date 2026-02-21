@@ -112,7 +112,6 @@ def get_function_stats(filepath: str) -> List[FunctionMetric]:
                     "acl": acl,
                     "is_typed": (node.returns is not None)
                     or any(arg.annotation is not None for arg in node.args.args),
-                    "has_docstring": ast.get_docstring(node) is not None,
                 }
             )
     return stats

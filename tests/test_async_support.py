@@ -54,6 +54,8 @@ def test_score_async_function(tmp_path: Path):
 async def process_data(data):
     pass
 """)
+    # Ensure README.md exists to avoid project issues failure
+    (tmp_path / "README.md").write_text("# Project")
 
     runner = CliRunner()
 

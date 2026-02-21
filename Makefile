@@ -4,10 +4,8 @@ install:
 	uv sync --all-extras
 
 lint:
-	uv run ruff check . --fix
-	uv run ruff format .
-	@echo "✅ Linting fixed and code formatted."
-
+	uv run ruff check .
+	uv run ruff format --check .
 
 format:
 	uv run ruff check --fix .
