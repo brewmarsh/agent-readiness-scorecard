@@ -1,12 +1,16 @@
 name: 🛡️ Agent Quality Gate
 
 on:
+  push:
+    branches: [ main, beta ]
   pull_request:
     branches: [ main, beta ]
 
 jobs:
   agent-review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,7 +33,14 @@ jobs:
 
       - name: Run Agent Scorecard
         run: |
-          agent-score . --verbosity summary --report pr_health.md
+          agent-score . --verbosity summary --report pr_health.md --badge
+
+      - name: Commit Badge
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta')
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update agent score badge"
+          file_pattern: 'agent_score.svg'
 
       - name: Post Summary to GITHUB_STEP_SUMMARY
         if: always()
