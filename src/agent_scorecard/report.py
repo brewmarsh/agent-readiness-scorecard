@@ -1,8 +1,9 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AdvisorFileResult
+from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
 
+# RESOLUTION: Maintained explicit exports from Beta branch for external tool compatibility
 __all__ = [
     "generate_markdown_report",
     "generate_advisor_report",
@@ -130,13 +131,6 @@ def _generate_file_table_section(
 ) -> str:
     """
     Creates a breakdown of analysis for every file.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        verbosity (str): Output verbosity level (default: "detailed").
-
-    Returns:
-        str: Markdown string for the file analysis table.
     """
     if verbosity == "summary":
         table = "### 📂 Failing File Analysis\n\n"
@@ -171,18 +165,6 @@ def generate_markdown_report(
 ) -> str:
     """
     Orchestrates the Markdown report generation.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        final_score (float): The overall project score.
-        path (str): The project path.
-        profile (Dict[str, Any]): The agent profile used.
-        project_issues (Optional[List[str]]): List of project-level issues.
-        thresholds (Optional[Dict[str, Any]]): Scoring thresholds.
-        verbosity (str): Output verbosity level (default: "detailed").
-
-    Returns:
-        str: The full Markdown report.
     """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
@@ -194,6 +176,7 @@ def generate_markdown_report(
 
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
+    # RESOLUTION: Modular prompts generation from deduplicated remediation module
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
@@ -216,15 +199,6 @@ def generate_advisor_report(
 ) -> str:
     """
     Generates the advanced Advisor Report based on Agent Physics.
-
-    Args:
-        stats (Union[List[AdvisorFileResult], List[Dict[str, Any]]]): File analysis statistics.
-        dependency_stats (Dict[str, int]): Dependency statistics.
-        entropy_stats (Dict[str, int]): Entropy statistics.
-        cycles (List[List[str]]): List of dependency cycles.
-
-    Returns:
-        str: The full Advisor Report.
     """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
