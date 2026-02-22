@@ -15,3 +15,6 @@
 - Keep files small (<150 LOC)
 - Bash scripts must use standard POSIX syntax (e.g., `else` instead of `else:`)
 - Codebase must be strictly formatted and linted with Ruff
+
+## Operational Requirements
+- **Fault-Tolerant Automation:** GitHub Actions workflows must handle transient states gracefully. Specifically, the 'Prompt Physics' workflow is designed to ignore 404 errors when removing labels to prevent unnecessary pipeline failures if a label has already been removed or is missing.

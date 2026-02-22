@@ -48,13 +48,20 @@ jobs:
 
             const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
 
-            // Always remove prompt-check
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              name: 'prompt-check'
-            });
+            // Gracefully remove label if it exists
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'prompt-check'
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+              console.log('Label prompt-check not found on issue, skipping removal.');
+            }
 
             if (exitCode !== 0) {
               // Extract suggestions from output
