@@ -1,6 +1,15 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .remediation import generate_prompts_section, generate_recommendations_report
+
+# RESOLUTION: Maintained explicit exports from Beta branch for external tool compatibility
+__all__ = [
+    "generate_markdown_report",
+    "generate_advisor_report",
+    "generate_prompts_section",
+    "generate_recommendations_report",
+]
 
 
 def _generate_summary_section(
@@ -116,105 +125,6 @@ def _generate_type_safety_section(
     return types_section + "\n"
 
 
-def _format_craft_prompt(
-    context: str, request: str, actions: List[str], frame: str, template: str
-) -> str:
-    """
-    Formats a prompt using the CRAFT framework (Context, Request, Actions, Frame, Template).
-    """
-    action_items = "\n".join([f"- {a}" for a in actions])
-    indented_actions = action_items.replace("\n", "\n> ")
-    return (
-        f"> **Context**: {context}\n"
-        f"> **Request**: {request}\n"
-        f"> **Actions**:\n"
-        f"> {indented_actions}\n"
-        f"> **Frame**: {frame}\n"
-        f"> **Template**: {template}"
-    )
-
-
-def generate_prompts_section(
-    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
-    thresholds: Dict[str, Any],
-    project_issues: Optional[List[str]] = None,
-) -> str:
-    """
-    Generates structured CRAFT prompts for systemic remediation.
-    """
-    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get(
-        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-    )
-
-    prompts = "## 🤖 Agent Prompts for Remediation (CRAFT Format)\n\n"
-
-    if project_issues:
-        for issue in project_issues:
-            if "God Module" in issue:
-                mods = issue.split(": ")[1].split(", ")
-                for mod in mods:
-                    prompts += f"### Project Issue: God Module `{mod}`\n"
-                    prompts += (
-                        _format_craft_prompt(
-                            context="You are a Software Architect specializing in modular system design.",
-                            request=f"Decompose the God Module `{mod}` to reduce context pressure.",
-                            actions=[
-                                "Identify distinct responsibilities within the module.",
-                                "Extract logic into cohesive sub-modules.",
-                                "Refactor imports to maintain functionality.",
-                            ],
-                            frame="Inbound imports must stay below 50. Maintain existing logic.",
-                            template="A refactoring plan followed by the new module code structure.",
-                        )
-                        + "\n\n"
-                    )
-
-    problematic_files = [f for f in stats if f.get("score", 0) < 90]
-    for f_res in problematic_files:
-        file_path = f_res["file"]
-        metrics = f_res.get("function_metrics", [])
-        red_functions = [m for m in metrics if m.get("acl", 0) > acl_red]
-
-        if red_functions:
-            fn_names = ", ".join([f"`{m['name']}`" for m in red_functions])
-            prompts += f"### File: `{file_path}` - High Cognitive Load\n"
-            prompts += (
-                _format_craft_prompt(
-                    context="You are a Senior Python Engineer focused on code maintainability.",
-                    request=f"Refactor functions in `{file_path}` with Red ACL scores.",
-                    actions=[
-                        f"Target functions: {fn_names}.",
-                        "Extract nested logic into smaller helper functions.",
-                        f"Ensure all units result in an ACL score < {acl_yellow}.",
-                    ],
-                    frame="Keep functions under 50 lines. Ensure all tests pass.",
-                    template="Markdown code blocks for the refactored code.",
-                )
-                + "\n\n"
-            )
-
-        if f_res.get("type_coverage", 0) < type_safety_threshold:
-            prompts += f"### File: `{file_path}` - Low Type Safety\n"
-            prompts += (
-                _format_craft_prompt(
-                    context="You are a Python Developer focused on static analysis.",
-                    request=f"Add PEP 484 type hints to `{file_path}`.",
-                    actions=[
-                        "Analyze functions missing explicit type signatures.",
-                        "Add comprehensive type hints to arguments and return values.",
-                        "Use the `typing` module for complex structures.",
-                    ],
-                    frame=f"Target {type_safety_threshold}% type coverage. Do not change runtime logic.",
-                    template="The full updated content of the Python file.",
-                )
-                + "\n\n"
-            )
-
-    return prompts
-
-
 def _generate_file_table_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     verbosity: str = "detailed",
@@ -266,6 +176,7 @@ def generate_markdown_report(
 
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
+    # RESOLUTION: Modular prompts generation from deduplicated remediation module
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
@@ -343,6 +254,7 @@ def generate_advisor_report(
         else:
             report += "✅ Directory structure is balanced.\n"
 
+<<<<<<< beta-3375679688981418290
     return report
 
 
@@ -403,3 +315,6 @@ def generate_recommendations_report(
         )
 
     return "# Recommendations\n\n" + table
+=======
+    return report
+>>>>>>> beta
