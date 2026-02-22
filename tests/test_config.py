@@ -4,6 +4,12 @@ from agent_scorecard.config import load_config, DEFAULT_CONFIG
 
 
 def test_load_config_defaults() -> None:
+    """
+    Test loading default configuration when no pyproject.toml is present.
+
+    Returns:
+        None
+    """
     # Test loading from a directory with no pyproject.toml
     with tempfile.TemporaryDirectory() as tmpdir:
         config = load_config(tmpdir)
@@ -12,6 +18,12 @@ def test_load_config_defaults() -> None:
 
 
 def test_load_config_with_pyproject() -> None:
+    """
+    Test loading configuration from a pyproject.toml file with deep merging.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         pyproject_content = """
 [tool.agent-scorecard]
@@ -24,15 +36,25 @@ type_safety = 80
             f.write(pyproject_content)
 
         config = load_config(tmpdir)
+        
+        # Verify specific overrides
         assert config["verbosity"] == "detailed"
         assert config["thresholds"]["acl_yellow"] == 5
+        assert config["thresholds"]["type_safety"] == 80
+        
+        # Verify that non-overridden thresholds preserve global defaults
         assert (
             config["thresholds"]["acl_red"] == DEFAULT_CONFIG["thresholds"]["acl_red"]
         )
-        assert config["thresholds"]["type_safety"] == 80
 
 
 def test_load_config_invalid_toml() -> None:
+    """
+    Test that invalid TOML syntax falls back to default configuration safely.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "pyproject.toml"), "w") as f:
             f.write("invalid = [")

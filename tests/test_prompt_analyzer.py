@@ -1,9 +1,13 @@
 from agent_scorecard.prompt_analyzer import PromptAnalyzer
 
 
-# TODO: Add type hints for Agent clarity
 def test_prompt_analyzer_perfect() -> None:
-    """Test a prompt that satisfies all positive heuristics without penalties."""
+    """
+    Test a prompt that satisfies all positive heuristics without penalties.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     text = """
     You are a professional coder.
@@ -23,35 +27,44 @@ def test_prompt_analyzer_perfect() -> None:
     assert results["results"]["cognitive_scaffolding"] is True
     assert results["results"]["delimiter_hygiene"] is True
     assert results["results"]["few_shot"] is True
-    # Negative constraints should be True because the key tracks "No issue found"
+    # Negative constraints should be True because the key tracks "No issues found"
     assert results["results"]["negative_constraints"] is True
     assert len(results["improvements"]) == 0
 
 
-# TODO: Add type hints for Agent clarity
 def test_prompt_analyzer_low_score_clamping() -> None:
-    """Test that scores are clamped to 0 when penalties exceed positive points."""
+    """
+    Test that scores are clamped to 0 when penalties exceed positive points.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     # No positive heuristics found, 1 negative constraint penalty (-10)
-    # Note: 'Don't' must be in a list/imperative format to trigger the context-aware penalty
+    # Note: 'Don't' must be in a list/imperative format to trigger the penalty
     text = "x" * 100 + "\n* Don't fail."
     results = analyzer.analyze(text)
 
-    # 0 - 10 = -10, clamped to 0
+    # Math: 0 (Positive Points) - 10 (Penalty) = -10, clamped to 0
     assert results["score"] == 0
     assert results["results"]["role_definition"] is False
     assert results["results"]["negative_constraints"] is False
-    # 4 missing positive improvements + 1 negative constraint improvement = 5
+    # 4 missing positive improvements + 1 negative constraint improvement = 5 total
     assert len(results["improvements"]) == 5
 
 
-# TODO: Add type hints for Agent clarity
 def test_negative_constraints_context_awareness() -> None:
-    """Verify that negative constraints are only flagged in imperative contexts (lists)."""
+    """
+    Verify that negative constraints are only flagged in imperative contexts (lists).
+    This reduces false positives when descriptive prose contains negative words.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     padding = "y" * 100
 
-    # Case 1: Flagged in a list
+    # Case 1: Properly flagged in an imperative list context
     assert (
         analyzer.analyze(padding + "\n* Do not fail.")["results"][
             "negative_constraints"
@@ -63,7 +76,7 @@ def test_negative_constraints_context_awareness() -> None:
         is False
     )
 
-    # Case 2: Ignored in descriptive prose (Reduced false positives)
+    # Case 2: Ignored in descriptive prose to reduce noise
     assert (
         analyzer.analyze(padding + "\nI do not like this.")["results"][
             "negative_constraints"
@@ -78,9 +91,13 @@ def test_negative_constraints_context_awareness() -> None:
     )
 
 
-# TODO: Add type hints for Agent clarity
 def test_empty_prompt() -> None:
-    """Test handling of empty or whitespace strings."""
+    """
+    Test handling of empty or whitespace strings.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
 
     res_empty = analyzer.analyze("")
@@ -92,19 +109,23 @@ def test_empty_prompt() -> None:
     assert "Prompt is empty." in res_space["improvements"]
 
 
-# TODO: Add type hints for Agent clarity
 def test_delimiter_variants() -> None:
-    """Verify different delimiter patterns are recognized."""
+    """
+    Verify different delimiter patterns (Markdown, XML, Quotes) are recognized.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
 
-    # Triple quotes
+    # Triple quotes check
     assert analyzer.analyze("'''\ncode\n'''")["results"]["delimiter_hygiene"] is True
-    # Markdown code blocks
+    # Markdown code blocks check
     assert (
         analyzer.analyze("```python\nprint()```")["results"]["delimiter_hygiene"]
         is True
     )
-    # XML-style tags
+    # XML-style tags check
     assert (
         analyzer.analyze("<instructions>do this</instructions>")["results"][
             "delimiter_hygiene"
@@ -113,9 +134,13 @@ def test_delimiter_variants() -> None:
     )
 
 
-# TODO: Add type hints for Agent clarity
 def test_cot_relaxed_variants() -> None:
-    """Verify variations of Chain-of-Thought phrasing."""
+    """
+    Verify variations of Chain-of-Thought (CoT) phrasing are recognized.
+
+    Returns:
+        None
+    """
     analyzer = PromptAnalyzer()
     assert analyzer.analyze("Make a Plan.")["results"]["cognitive_scaffolding"] is True
     assert analyzer.analyze("Step 1: Init.")["results"]["cognitive_scaffolding"] is True

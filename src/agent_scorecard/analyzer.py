@@ -20,7 +20,16 @@ from .metrics import (  # noqa: F401
 
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
-    """Checks for existence of agent-critical markdown files."""
+    """
+    Checks for existence of agent-critical markdown files.
+
+    Args:
+        root_path (str): The root path of the project.
+        required_files (List[str]): List of filenames required for the agent.
+
+    Returns:
+        List[str]: List of missing required files.
+    """
     missing = []
     root_files = (
         [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
@@ -33,7 +42,15 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
 
 
 def _collect_python_files(path: str) -> List[str]:
-    """Collects all Python files in the given path, ignoring hidden directories."""
+    """
+    Collects all Python files in the given path, ignoring hidden directories.
+
+    Args:
+        path (str): The path to scan.
+
+    Returns:
+        List[str]: A list of absolute paths to Python files.
+    """
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
         py_files = [path]
@@ -49,7 +66,15 @@ def _collect_python_files(path: str) -> List[str]:
 
 
 def _parse_imports(filepath: str) -> Set[str]:
-    """Parses a Python file and returns a set of imported module names."""
+    """
+    Parses a Python file and returns a set of imported module names.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        Set[str]: A set of unique module names imported in the file.
+    """
     imported_names: Set[str] = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -69,7 +94,15 @@ def _parse_imports(filepath: str) -> Set[str]:
 
 
 def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
-    """Builds a dependency graph of the project."""
+    """
+    Builds a dependency graph of the project.
+
+    Args:
+        root_path (str): The root path to analyze.
+
+    Returns:
+        Dict[str, Set[str]]: A mapping of file relative paths to their dependencies.
+    """
     if os.path.isfile(root_path) and root_path.endswith(".py"):
         all_py_files = [os.path.basename(root_path)]
         root_path = os.path.dirname(root_path)
@@ -100,7 +133,15 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
 
 
 def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
-    """Returns {file: count} of inbound imports to identify 'God Modules'."""
+    """
+    Returns {file: count} of inbound imports to identify 'God Modules'.
+
+    Args:
+        graph (Dict[str, Set[str]]): The project's dependency graph.
+
+    Returns:
+        Dict[str, int]: A mapping of file paths to their inbound import counts.
+    """
     inbound: Dict[str, int] = {node: 0 for node in graph}
     for source, targets in graph.items():
         for target in targets:
@@ -112,7 +153,15 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
 
 
 def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """Returns list of unique cycles using DFS and canonicalization."""
+    """
+    Returns list of unique cycles using DFS and canonicalization.
+
+    Args:
+        graph (Dict[str, Set[str]]): The project's dependency graph.
+
+    Returns:
+        List[List[str]]: A list of unique circular dependency paths.
+    """
     cycles: List[List[str]] = []
     visited_global: Set[str] = set()
     path_set: Set[str] = set()
@@ -162,7 +211,17 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
 def get_project_issues(
     path: str, py_files: List[str], profile: Dict[str, Any]
 ) -> Tuple[int, List[str]]:
-    """Analyzes global project health: docs, environment, god modules, and entropy."""
+    """
+    Analyzes global project health: docs, environment, god modules, and entropy.
+
+    Args:
+        path (str): Project root path.
+        py_files (List[str]): List of Python files in the project.
+        profile (Dict[str, Any]): The agent profile being used.
+
+    Returns:
+        Tuple[int, List[str]]: A tuple of (total penalty, list of issue descriptions).
+    """
     penalty = 0
     issues: List[str] = []
 
@@ -217,7 +276,19 @@ def perform_analysis(
     profile: Optional[Dict[str, Any]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
 ) -> AnalysisResult:
-    """Orchestrates the full project analysis pipeline."""
+    """
+    Orchestrates the full project analysis pipeline.
+
+    Args:
+        path (str): The project path to analyze.
+        agent (str): The agent profile name (default: "generic").
+        limit_to_files (Optional[List[str]]): Optional list of files to limit analysis to.
+        profile (Optional[Dict[str, Any]]): Optional override for agent profile.
+        thresholds (Optional[Dict[str, Any]]): Optional override for scoring thresholds.
+
+    Returns:
+        AnalysisResult: The comprehensive analysis result.
+    """
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
 

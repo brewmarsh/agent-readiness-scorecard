@@ -5,7 +5,15 @@ from .types import FunctionMetric
 
 
 def get_loc(filepath: str) -> int:
-    """Returns lines of code excluding whitespace/comments roughly."""
+    """
+    Returns lines of code excluding whitespace/comments roughly.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        int: Logical lines of code.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             return sum(
@@ -16,7 +24,15 @@ def get_loc(filepath: str) -> int:
 
 
 def get_complexity_score(filepath: str) -> float:
-    """Returns average cyclomatic complexity for all functions in a file."""
+    """
+    Returns average cyclomatic complexity for all functions in a file.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        float: Average cyclomatic complexity.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -35,7 +51,15 @@ def get_complexity_score(filepath: str) -> float:
 
 
 def check_type_hints(filepath: str) -> float:
-    """Returns type hint coverage percentage for functions and async functions."""
+    """
+    Returns type hint coverage percentage for functions and async functions.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        float: Type hint coverage percentage (0-100).
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()
@@ -64,13 +88,29 @@ def check_type_hints(filepath: str) -> float:
 def calculate_acl(complexity: float, loc: int) -> float:
     """
     Calculates Agent Cognitive Load (ACL).
+
     Formula: ACL = Cyclomatic Complexity + (Logical Lines of Code / 20)
+
+    Args:
+        complexity (float): Cyclomatic complexity of the code unit.
+        loc (int): Logical lines of code of the code unit.
+
+    Returns:
+        float: Calculated ACL value.
     """
     return complexity + (loc / 20.0)
 
 
 def count_tokens(filepath: str) -> int:
-    """Estimates the number of tokens in a file (approx 4 chars/token)."""
+    """
+    Estimates the number of tokens in a file (approx 4 chars/token).
+
+    Args:
+        filepath (str): Path to the file.
+
+    Returns:
+        int: Estimated token count.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
@@ -80,7 +120,15 @@ def count_tokens(filepath: str) -> int:
 
 
 def get_function_stats(filepath: str) -> List[FunctionMetric]:
-    """Returns statistics for each function in the file including ACL and Type coverage."""
+    """
+    Returns statistics for each function in the file including ACL and Type coverage.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        List[FunctionMetric]: A list of metrics for each function found.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             code = f.read()

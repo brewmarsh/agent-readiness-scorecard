@@ -9,10 +9,24 @@ from agent_scorecard.main import cli
 class TestFixCommand:
     @pytest.fixture
     def runner(self) -> CliRunner:
+        """
+        Pytest fixture for CliRunner.
+
+        Returns:
+            CliRunner: The CLI runner instance.
+        """
         return CliRunner()
 
     def test_fix_command_happy_path(self, runner: CliRunner) -> None:
-        """Test the standalone fix command using the generic profile."""
+        """
+        Test the standalone fix command using the generic profile.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             # Create a dummy python file
             os.makedirs("src")
@@ -21,7 +35,7 @@ class TestFixCommand:
                     textwrap.dedent("""
                     def foo():
                         pass
-                """)
+                    """)
                 )
 
             # RESOLUTION: Mock LLM.generate to simulate CRAFT refactoring
@@ -56,7 +70,15 @@ class TestFixCommand:
             assert "-> None" in content
 
     def test_fix_command_specific_path(self, runner: CliRunner) -> None:
-        """Test fix command on a subdirectory with a specific agent profile."""
+        """
+        Test fix command on a subdirectory with a specific agent profile.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             # Create a dummy python file in a subdirectory
             os.makedirs("subdir")
@@ -65,7 +87,7 @@ class TestFixCommand:
                     textwrap.dedent("""
                     def bar(x):
                         return x
-                """)
+                    """)
                 )
 
             fixed_code = textwrap.dedent("""
@@ -89,7 +111,15 @@ class TestFixCommand:
             assert "x: int" in content
 
     def test_fix_flag_in_score_command(self, runner: CliRunner) -> None:
-        """Regression test for the --fix flag inside the score command."""
+        """
+        Regression test for the --fix flag inside the score command.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")
@@ -107,7 +137,15 @@ class TestFixCommand:
                 assert "Applying Fixes" in result.output
 
     def test_fix_command_invalid_agent(self, runner: CliRunner) -> None:
-        """Verify fallback to generic profile when an invalid agent is provided."""
+        """
+        Verify fallback to generic profile when an invalid agent is provided.
+
+        Args:
+            runner (CliRunner): The CLI runner instance.
+
+        Returns:
+            None
+        """
         with runner.isolated_filesystem():
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")

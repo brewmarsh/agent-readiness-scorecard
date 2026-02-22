@@ -54,7 +54,15 @@ class PromptAnalyzer:
     }
 
     def analyze(self, text: str) -> PromptAnalysisResult:
-        """Evaluates a raw string against key prompt engineering dimensions."""
+        """
+        Evaluates a raw string against key prompt engineering dimensions.
+
+        Args:
+            text (str): The prompt text to analyze.
+
+        Returns:
+            PromptAnalysisResult: A dictionary containing the score, results, and improvements.
+        """
         results: Dict[str, bool] = {}
         improvements: List[str] = []
         score = 0
@@ -97,7 +105,15 @@ class PromptAnalyzer:
         return {"score": score, "results": results, "improvements": improvements}
 
     def _check_few_shot(self, text: str) -> bool:
-        """Heuristic for detecting few-shot examples with context awareness."""
+        """
+        Heuristic for detecting few-shot examples with context awareness.
+
+        Args:
+            text (str): The prompt text to check.
+
+        Returns:
+            bool: True if few-shot examples are likely present.
+        """
         h = cast(HeuristicConfig, self.HEURISTICS["few_shot"])
         pattern = cast(str, h["pattern"])
 
@@ -122,7 +138,12 @@ class PromptAnalyzer:
     def _check_negative_constraints(self, text: str) -> bool:
         """
         Heuristic for detecting negative constraints with context awareness.
-        Returns True if a penalty-worthy violation is found.
+
+        Args:
+            text (str): The prompt text to check.
+
+        Returns:
+            bool: True if a penalty-worthy violation is found.
         """
         h = cast(HeuristicConfig, self.HEURISTICS["negative_constraints"])
         pattern = cast(str, h["pattern"])

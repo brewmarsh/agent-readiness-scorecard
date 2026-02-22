@@ -9,7 +9,22 @@ def score_file(
 ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
+
     Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
+
+    Args:
+        filepath (str): Path to the Python file.
+        profile (Dict[str, Any]): The agent profile being used.
+        thresholds (Optional[Dict[str, Any]]): Optional overrides for scoring thresholds.
+
+    Returns:
+        Tuple[int, str, int, float, float, List[FunctionMetric]]: A tuple containing:
+            - score (int): The final file score.
+            - details (str): Comma-separated list of scoring details/penalties.
+            - loc (int): Logical lines of code.
+            - avg_complexity (float): Average cyclomatic complexity.
+            - type_safety_index (float): Type hint coverage percentage.
+            - metrics (List[FunctionMetric]): List of per-function metrics.
     """
     # 1. Initialize Thresholds
     # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
@@ -92,7 +107,15 @@ def score_file(
 
 
 def generate_badge(score: float) -> str:
-    """Generates an SVG badge based on the final agent readiness score."""
+    """
+    Generates an SVG badge based on the final agent readiness score.
+
+    Args:
+        score (float): The final agent readiness score.
+
+    Returns:
+        str: SVG string representing the badge.
+    """
     if score >= 90:
         color = "#4c1"  # Bright Green
     elif score >= 70:

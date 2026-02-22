@@ -3,13 +3,21 @@ from pathlib import Path
 from agent_scorecard.analyzer import get_import_graph, get_inbound_imports
 
 
-# TODO: Add type hints for Agent clarity
-def test_analyze_imports_internal_only(tmp_path) -> None:
-    # Create internal module
-    """TODO: Add docstring for AI context."""
+def test_analyze_imports_internal_only(tmp_path: Path) -> None:
+    """
+    Tests that only internal project modules are tracked in the import graph,
+    ignoring external standard library or third-party imports.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
+    # Create internal module to be imported
     (tmp_path / "internal.py").write_text("x = 1", encoding="utf-8")
 
-    # Create client importing internal and external
+    # Create client module importing both internal and external modules
     code = textwrap.dedent("""
     import internal
     import os
@@ -19,24 +27,15 @@ def test_analyze_imports_internal_only(tmp_path) -> None:
     """)
     (tmp_path / "client.py").write_text(code, encoding="utf-8")
 
-    # get_import_graph takes root_path
+    # Build graph and calculate inbound counts using the root path
     graph = get_import_graph(str(tmp_path))
     inbound = get_inbound_imports(graph)
 
-    # Graph keys are relative paths
-    print(f"Graph: {graph}")
-    print(f"Inbound: {inbound}")
-
-    # internal.py should have 0 inbound imports (nobody imports it? Wait, client.py imports it)
-    # client.py imports internal.py.
-    # So internal.py inbound count should be > 0.
-
-    # In graph: 'client.py': {'internal.py'}
-    # In inbound: 'internal.py': 1
-
+    # In graph: 'client.py' depends on 'internal.py'
+    # In inbound: 'internal.py' should have 1 inbound import
     assert inbound.get("internal.py", 0) >= 1
 
-    # os and sys should NOT be in the graph or inbound (as they are external)
+    # Standard library modules (os, sys) should NOT be tracked in the project graph
     assert "os" not in inbound
     assert "sys" not in inbound
     assert "os.py" not in inbound
@@ -46,6 +45,7 @@ if __name__ == "__main__":
     import shutil
     import tempfile
 
+    # Manual test execution harness
     path = Path(tempfile.mkdtemp())
     try:
         test_analyze_imports_internal_only(path)

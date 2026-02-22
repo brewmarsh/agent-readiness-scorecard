@@ -4,9 +4,16 @@ import networkx as nx
 from agent_scorecard.graph import build_dependency_graph, analyze_graph
 
 
-# TODO: Add type hints for Agent clarity
 def test_build_dependency_graph() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests building a dependency graph from a simple package structure.
+
+    This test verifies that the builder correctly identifies internal 
+    module dependencies while correctly handling relative imports.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a small package structure
         pkg_dir = os.path.join(tmpdir, "mypkg")
@@ -35,9 +42,16 @@ def test_build_dependency_graph() -> None:
         assert graph.has_edge(os.path.abspath(main_py), os.path.abspath(utils_py))
 
 
-# TODO: Add type hints for Agent clarity
 def test_circular_dependency() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests detection of circular dependencies in the graph.
+
+    Circular dependencies increase 'Dependency Entanglement' and 
+    confuse AI agents during recursive analysis.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         a_py = os.path.join(tmpdir, "a.py")
         b_py = os.path.join(tmpdir, "b.py")
@@ -57,12 +71,22 @@ def test_circular_dependency() -> None:
         assert os.path.abspath(b_py) in cycle
 
 
-# TODO: Add type hints for Agent clarity
 def test_god_module() -> None:
-    """TODO: Add docstring for AI context."""
-    graph = nx.DiGraph()
+    """
+    Tests detection of 'God Modules' based on in-degree.
+
+    A 'God Module' is defined as a file with > 50 inbound references, 
+    representing a high-pressure context point for AI agents.
+
+    Returns:
+        None
+    """
+    # RESOLUTION: Maintained Beta branch explicit typing for graph object
+    graph: nx.DiGraph = nx.DiGraph()
     god_node = "god.py"
     graph.add_node(god_node)
+    
+    # Create a star-pattern graph to trigger the God Module threshold
     for i in range(51):
         other = f"other_{i}.py"
         graph.add_edge(other, god_node)
