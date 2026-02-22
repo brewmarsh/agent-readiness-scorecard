@@ -8,7 +8,7 @@ from agent_scorecard.constants import PROFILES
 def test_acl_calculation_logic() -> None:
     """
     Tests the Agent Cognitive Load (ACL) calculation formula.
-    
+
     The formula verified is: ACL = Cyclomatic Complexity + (Lines of Code / 20)
 
     Returns:
@@ -66,7 +66,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
     # Math: 322 LOC / 20 + 1 CC = 17.1 ACL -> Red ACL status (>15)
     assert "Red ACL functions" in details
     assert "(-15)" in details
-    
+
     # Verify secondary penalty: Bloated file penalty for total LOC > 200
     assert "Bloated File" in details
     assert any(m["name"] == "big_function" for m in func_metrics)

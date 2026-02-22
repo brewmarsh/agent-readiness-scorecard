@@ -18,20 +18,20 @@ def test_verbosity_quiet() -> None:
 
         # In quiet mode, we suppress metadata and headers
         result = runner.invoke(cli, ["score", ".", "--verbosity", "quiet"])
-        
+
         assert result.exit_code == 0
         # Verify that Rich-enhanced components are suppressed
         assert "Environment Health" not in result.output
         assert "File Analysis" not in result.output
         assert "Running Agent Scorecard" not in result.output
-        
+
         # Only the core outcome should be visible
         assert "Final Agent Score" in result.output
 
 
 def test_verbosity_summary() -> None:
     """
-    Test summary mode behavior (default). 
+    Test summary mode behavior (default).
     Passing files (score 100) should be hidden to reduce noise.
 
     Returns:
@@ -57,21 +57,21 @@ def test_verbosity_summary() -> None:
             f.write("# README")
 
         result = runner.invoke(cli, ["score", ".", "--verbosity", "summary"])
-        
+
         # Environmental and File tables should be visible
         assert "Environment Health" in result.output
         assert "File Analysis" in result.output
-        
+
         # fail.py must be present as it requires action
         assert "fail.py" in result.output
-        
+
         # RESOLUTION: pass.py should be hidden in summary mode to satisfy Cisco Meraki scanability guidelines
         assert "pass.py" not in result.output
 
 
 def test_verbosity_detailed() -> None:
     """
-    Test detailed mode behavior. 
+    Test detailed mode behavior.
     All files and metadata should be visible regardless of score.
 
     Returns:
@@ -85,7 +85,7 @@ def test_verbosity_detailed() -> None:
             f.write("# README")
 
         result = runner.invoke(cli, ["score", ".", "--verbosity", "detailed"])
-        
+
         assert result.exit_code == 0
         assert "Environment Health" in result.output
         assert "File Analysis" in result.output

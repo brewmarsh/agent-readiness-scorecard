@@ -8,7 +8,7 @@ from agent_scorecard.constants import PROFILES
 def test_generate_markdown_report() -> None:
     """
     Tests the Markdown report generation with new Agent Readiness metrics.
-    
+
     Verifies that ACL violations, Type Safety Index, and remediation prompts
     are correctly formatted in the final output.
 
@@ -76,15 +76,13 @@ def test_generate_markdown_report() -> None:
     assert "Agent Prompts for Remediation" in report_content
 
     # Verify Project Issues reporting
-    assert (
-        "Missing Critical Documentation" in report_content
-    )
+    assert "Missing Critical Documentation" in report_content
 
 
 def test_generate_recommendations_report() -> None:
     """
     Tests the recommendations report generation for systemic improvements.
-    
+
     Ensures that technical debt findings are mapped to specific "Agent Impacts"
     to provide context for why fixes are necessary.
 

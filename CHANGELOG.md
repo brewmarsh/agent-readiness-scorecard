@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - **core:** Implement docstring coverage tracking.
 
 ### Bug Fixes
+- **ci:** Fix invalid Bash syntax in Scorecard Automation workflow.
+- **lint:** Apply Ruff formatting and linting across the entire codebase.
 - **cli:** Resolve output inconsistencies and enhance formatting.
 - **lint:** Fix unused imports and formatting issues.
 - **metrics:** Fix ACL threshold calculation and defaults.

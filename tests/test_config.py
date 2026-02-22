@@ -36,12 +36,12 @@ type_safety = 80
             f.write(pyproject_content)
 
         config = load_config(tmpdir)
-        
+
         # Verify specific overrides
         assert config["verbosity"] == "detailed"
         assert config["thresholds"]["acl_yellow"] == 5
         assert config["thresholds"]["type_safety"] == 80
-        
+
         # Verify that non-overridden thresholds preserve global defaults
         assert (
             config["thresholds"]["acl_red"] == DEFAULT_CONFIG["thresholds"]["acl_red"]

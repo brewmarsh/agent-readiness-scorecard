@@ -1,15 +1,9 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .types import FileAnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
 
-# RESOLUTION: Maintained explicit exports from Beta branch for external tool compatibility
-__all__ = [
-    "generate_markdown_report",
-    "generate_advisor_report",
-    "generate_prompts_section",
-    "generate_recommendations_report",
-]
+__all__ = ["generate_recommendations_report", "generate_prompts_section"]
 
 
 def _generate_summary_section(
@@ -176,7 +170,6 @@ def generate_markdown_report(
 
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
-    # RESOLUTION: Modular prompts generation from deduplicated remediation module
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 

@@ -41,7 +41,7 @@ def test_report_full(tmp_path: Path) -> None:
 
     assert "# Agent Scorecard Report" in content
     assert "high_acl.py" in content
-    
+
     # Verify the high-fidelity sections established in the Beta branch
     assert "Top Refactoring Targets (Agent Cognitive Load (ACL))" in content
     assert "Type Safety Index" in content

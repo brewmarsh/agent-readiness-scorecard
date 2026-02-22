@@ -49,7 +49,7 @@ def test_check_directory_entropy_warning() -> None:
 
 def test_check_directory_entropy_max_files() -> None:
     """
-    Tests that a high file count in a single "God Directory" triggers an entropy warning 
+    Tests that a high file count in a single "God Directory" triggers an entropy warning
     even if the global average is diluted by empty folders.
 
     Returns:
@@ -191,7 +191,7 @@ def test_check_critical_context_tokens() -> None:
 
 def test_check_critical_context_tokens_single_file() -> None:
     """
-    Tests critical context token counting when targeting a single file, ensuring 
+    Tests critical context token counting when targeting a single file, ensuring
     it still retrieves global context (like README.md) from the parent directory.
 
     Returns:
@@ -208,9 +208,10 @@ def test_check_critical_context_tokens_single_file() -> None:
 
         result = auditor.check_critical_context_tokens(py_path)
         assert result["token_count"] > 0
-        
+
         # Verify the count includes the README content plus signature tokens
         import tiktoken
+
         enc = tiktoken.get_encoding("cl100k_base")
         sig_tokens = len(enc.encode("def foo():"))
         assert result["token_count"] > sig_tokens
@@ -251,7 +252,7 @@ def test_check_environment_health() -> None:
 
 def test_check_environment_health_pyproject_ruff() -> None:
     """
-    Tests that ruff configuration within pyproject.toml is correctly recognized 
+    Tests that ruff configuration within pyproject.toml is correctly recognized
     as a valid linter configuration.
 
     Returns:
