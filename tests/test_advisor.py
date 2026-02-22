@@ -13,6 +13,7 @@ from agent_scorecard.report import generate_advisor_report
 
 # --- Core Metric Tests ---
 
+
 def test_calculate_acl() -> None:
     """
     Tests the Agent Cognitive Load (ACL) calculation formula.
@@ -131,6 +132,7 @@ def test_generate_advisor_report_standalone() -> None:
 
 
 # --- Integration Tests ---
+
 
 def test_function_stats_parsing(tmp_path: Path) -> None:
     """

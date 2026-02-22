@@ -56,13 +56,13 @@ def test_get_function_stats(tmp_path: Path) -> None:
     simple_func = next(s for s in stats if s["name"] == "simple")
     complex_func = next(s for s in stats if s["name"] == "complex_long")
 
-    # Simple function verification: Complexity 1, LOC 2. 
+    # Simple function verification: Complexity 1, LOC 2.
     # Calculation: 1 + 2/20 = 1.1 ACL
     assert simple_func["complexity"] == 1
     assert simple_func["loc"] == 2
     assert simple_func["acl"] == 1.1
 
-    # Complex function verification: Complexity 2 (if/else branching), LOC ~25. 
+    # Complex function verification: Complexity 2 (if/else branching), LOC ~25.
     # Calculation: 2 + 25/20 = 3.25 ACL
     assert complex_func["complexity"] == 2
     assert complex_func["loc"] >= 20
