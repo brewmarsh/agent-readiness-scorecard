@@ -5,7 +5,10 @@ from .types import FunctionMetric
 
 
 def score_file(
-    filepath: str, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]] = None
+    filepath: str,
+    profile: Dict[str, Any],
+    thresholds: Optional[Dict[str, Any]] = None,
+    cumulative_tokens: int = 0,
 ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
     """
     Calculates score based on the selected profile and Agent Readiness spec.
@@ -16,6 +19,7 @@ def score_file(
         filepath (str): Path to the Python file.
         profile (Dict[str, Any]): The agent profile being used.
         thresholds (Optional[Dict[str, Any]]): Optional overrides for scoring thresholds.
+        cumulative_tokens (int): Transitive token count of file and local imports.
 
     Returns:
         Tuple[int, str, int, float, float, List[FunctionMetric]]: A tuple containing:
@@ -39,6 +43,9 @@ def score_file(
             "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
             "type_safety": p_thresholds.get(
                 "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+            ),
+            "token_limit": p_thresholds.get(
+                "token_limit", DEFAULT_THRESHOLDS["token_limit"]
             ),
         }
 
@@ -66,8 +73,18 @@ def score_file(
     type_safety_threshold = thresholds.get(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
+    token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
 
-    # 4. ACL Scoring (Agent Cognitive Load)
+    # 4. Dynamic Token Economics
+    # If the cumulative token budget is exceeded, the agent loses architectural context.
+    if cumulative_tokens > token_limit:
+        penalty = 15
+        score -= penalty
+        details.append(
+            f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
+        )
+
+    # 5. ACL Scoring (Agent Cognitive Load)
     # Red functions represent "hallucination zones" where agents lose tracking.
     red_count = sum(1 for m in metrics if m["acl"] > acl_red)
     yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
@@ -82,7 +99,7 @@ def score_file(
         score -= penalty
         details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
-    # 5. Type Safety Index
+    # 6. Type Safety Index
     typed_count = sum(1 for m in metrics if m["is_typed"])
     type_safety_index = (typed_count / len(metrics)) * 100
 

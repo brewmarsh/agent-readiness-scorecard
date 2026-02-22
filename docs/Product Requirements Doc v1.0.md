@@ -24,9 +24,9 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 * *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. This replaces raw LOC as the heaviest weight in the Agent Cognitive Load (ACL) calculation.
 
 
-* **Dynamic Context Economics:**
+* **Dynamic Context Economics:** [COMPLETED]
 * *Feature:* Map the import graph to calculate the *cumulative* token load of a file plus its required dependencies.
-* *Value:* An agent cannot edit a file in isolation if it relies on a "God Module." The token budget must reflect the entire context window required to understand the target unit.
+* *Value:* An agent cannot edit a file in isolation if it relies on a "God Module." The token budget must reflect the entire context window required to understand the target unit. Implemented with a 32,000 token limit.
 
 
 * **Shadow Evaluation (LLM-in-the-Loop):**

@@ -28,7 +28,7 @@ def test_analyze_imports_internal_only(tmp_path: Path) -> None:
     (tmp_path / "client.py").write_text(code, encoding="utf-8")
 
     # Build graph and calculate inbound counts using the root path
-    graph = get_import_graph(str(tmp_path))
+    graph, _ = get_import_graph(str(tmp_path))
     inbound = get_inbound_imports(graph)
 
     # In graph: 'client.py' depends on 'internal.py'
