@@ -3,7 +3,7 @@ import re
 import subprocess
 import json
 import os
-from typing import List, Dict, Any
+from typing import List, Dict
 
 
 def check_issue_exists(file_path: str, issue_type: str) -> bool:

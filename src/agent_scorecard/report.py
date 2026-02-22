@@ -1,7 +1,14 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .types import FileAnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
+
+__all__ = [
+    "generate_markdown_report",
+    "generate_advisor_report",
+    "generate_prompts_section",
+    "generate_recommendations_report",
+]
 
 
 def _generate_summary_section(
