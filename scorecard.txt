@@ -8,7 +8,7 @@
 │ AGENTS.md            │          PASS │
 │ Linter Config        │          PASS │
 │ Lock File            │          PASS │
-│ Directory Entropy    │ 9.0 files/dir │
+│ Directory Entropy    │ 9.1 files/dir │
 │ Critical Token Count │  4,000 tokens │
 └──────────────────────┴───────────────┘
 
