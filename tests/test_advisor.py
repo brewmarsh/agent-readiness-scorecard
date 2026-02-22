@@ -70,7 +70,7 @@ def test_dependency_analysis(tmp_path: Path) -> None:
     (tmp_path / "utils.py").write_text("import shared", encoding="utf-8")
     (tmp_path / "shared.py").write_text("# no imports", encoding="utf-8")
 
-    graph = get_import_graph(str(tmp_path))
+    graph, _ = get_import_graph(str(tmp_path))
 
     assert "main.py" in graph
     assert "utils.py" in graph["main.py"]
@@ -96,7 +96,7 @@ def test_cycle_detection(tmp_path: Path) -> None:
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
     (tmp_path / "b.py").write_text("import a", encoding="utf-8")
 
-    graph = get_import_graph(str(tmp_path))
+    graph, _ = get_import_graph(str(tmp_path))
     cycles = detect_cycles(graph)
 
     assert len(cycles) > 0

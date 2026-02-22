@@ -20,6 +20,7 @@ class FileAnalysisResult(TypedDict):
     type_coverage: float
     function_metrics: List[FunctionMetric]
     tokens: int
+    cumulative_tokens: int
     acl: float
 
 

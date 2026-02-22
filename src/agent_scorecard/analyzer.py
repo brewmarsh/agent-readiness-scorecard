@@ -96,15 +96,17 @@ def _parse_imports(filepath: str) -> Set[str]:
     return imported_names
 
 
-def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+def get_import_graph(root_path: str) -> Tuple[Dict[str, Set[str]], Dict[str, int]]:
     """
-    Builds a dependency graph of the project.
+    Builds a dependency graph of the project and calculates individual token counts.
 
     Args:
         root_path (str): The root path to analyze.
 
     Returns:
-        Dict[str, Set[str]]: A mapping of file relative paths to their dependencies.
+        Tuple[Dict[str, Set[str]], Dict[str, int]]: A tuple containing:
+            - graph: mapping of file relative paths to their dependencies.
+            - tokens: mapping of file relative paths to their individual token counts.
     """
     if os.path.isfile(root_path) and root_path.endswith(".py"):
         all_py_files = [os.path.basename(root_path)]
@@ -114,9 +116,11 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
+    token_counts: Dict[str, int] = {}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
+        token_counts[rel_path] = auditor.count_python_tokens(full_path)
         imported_names = _parse_imports(full_path)
 
         for name in imported_names:
@@ -132,7 +136,7 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
                         or candidate_no_ext[-(match_len + 1)] == os.sep
                     ):
                         graph[rel_path].add(candidate)
-    return graph
+    return graph, token_counts
 
 
 def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
@@ -237,6 +241,42 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     return _canonicalize_cycles(raw_cycles)
 
 
+def _calculate_cumulative_tokens(
+    graph: Dict[str, Set[str]], file_tokens: Dict[str, int]
+) -> Dict[str, int]:
+    """
+    Calculates the cumulative token budget for each file in the graph.
+
+    The cumulative budget includes the file's own tokens plus the tokens
+    of all its unique reachable local dependencies.
+
+    Args:
+        graph (Dict[str, Set[str]]): The project's dependency graph.
+        file_tokens (Dict[str, int]): Map of file paths to individual token counts.
+
+    Returns:
+        Dict[str, int]: Map of file paths to cumulative token counts.
+    """
+    cumulative_map: Dict[str, int] = {}
+
+    for start_node in graph:
+        reachable: Set[str] = set()
+        stack = [start_node]
+
+        while stack:
+            current = stack.pop()
+            if current not in reachable:
+                reachable.add(current)
+                # Add neighbors to stack
+                for neighbor in graph.get(current, set()):
+                    stack.append(neighbor)
+
+        total_tokens = sum(file_tokens.get(f, 0) for f in reachable)
+        cumulative_map[start_node] = total_tokens
+
+    return cumulative_map
+
+
 def get_project_issues(
     path: str, py_files: List[str], profile: Dict[str, Any]
 ) -> Tuple[int, List[str]]:
@@ -271,7 +311,7 @@ def get_project_issues(
         issues.append(msg)
 
     # 2. Dependency Analysis
-    graph = get_import_graph(path)
+    graph, _ = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
     if god_modules:
@@ -334,16 +374,22 @@ def perform_analysis(
     file_results: List[FileAnalysisResult] = []
     file_scores: List[int] = []
 
-    for filepath in py_files:
-        # Pass thresholds to allow pyproject.toml overrides per file
-        score, issues, loc, complexity, type_safety, metrics_data = score_file(
-            filepath, profile, thresholds=thresholds
-        )
-        file_scores.append(score)
+    # Calculate graph and cumulative tokens once for the project
+    graph, individual_tokens = get_import_graph(path)
+    cumulative_tokens_map = _calculate_cumulative_tokens(graph, individual_tokens)
 
+    for filepath in py_files:
         rel_path = os.path.relpath(
             filepath, start=path if os.path.isdir(path) else os.path.dirname(path)
         )
+        cum_tokens = cumulative_tokens_map.get(rel_path, 0)
+
+        # Pass thresholds to allow pyproject.toml overrides per file
+        score, issues, loc, complexity, type_safety, metrics_data = score_file(
+            filepath, profile, thresholds=thresholds, cumulative_tokens=cum_tokens
+        )
+        file_scores.append(score)
+
         file_results.append(
             {
                 "file": rel_path,
@@ -353,7 +399,8 @@ def perform_analysis(
                 "complexity": complexity,
                 "type_coverage": type_safety,
                 "function_metrics": metrics_data,
-                "tokens": count_tokens(filepath),
+                "tokens": individual_tokens.get(rel_path, auditor.count_python_tokens(filepath)),
+                "cumulative_tokens": cum_tokens,
                 "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
             }
         )
@@ -368,7 +415,7 @@ def perform_analysis(
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
-    graph = get_import_graph(path)
+    # Re-use existing graph data
     inbound = get_inbound_imports(graph)
     cycles = detect_cycles(graph)
     god_modules = {mod: count for mod, count in inbound.items() if count > 50}
