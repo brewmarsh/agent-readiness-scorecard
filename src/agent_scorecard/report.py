@@ -1,15 +1,9 @@
 from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
+from .types import FileAnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
 
-# RESOLUTION: Maintained explicit exports from Beta branch for external tool compatibility
-__all__ = [
-    "generate_markdown_report",
-    "generate_advisor_report",
-    "generate_prompts_section",
-    "generate_recommendations_report",
-]
+__all__ = ["generate_recommendations_report", "generate_prompts_section"]
 
 
 def _generate_summary_section(
@@ -176,7 +170,6 @@ def generate_markdown_report(
 
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
-    # RESOLUTION: Modular prompts generation from deduplicated remediation module
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
@@ -254,67 +247,4 @@ def generate_advisor_report(
         else:
             report += "✅ Directory structure is balanced.\n"
 
-<<<<<<< beta-3375679688981418290
     return report
-
-
-def generate_recommendations_report(
-    results: Union[AnalysisResult, List[FileAnalysisResult], Any],
-) -> str:
-    """
-    Creates a RECOMMENDATIONS.md content to guide systemic improvements.
-    """
-    recommendations = []
-    file_list = (
-        results.get("file_results", []) if isinstance(results, dict) else results
-    )
-    missing_docs = results.get("missing_docs", []) if isinstance(results, dict) else []
-
-    for res in file_list:
-        if res.get("complexity", 0) > 20:
-            recommendations.append(
-                {
-                    "Finding": f"High Complexity: {res['file']}",
-                    "Agent Impact": "Context window overflow.",
-                    "Recommendation": "Refactor units.",
-                }
-            )
-        if "Circular dependency" in str(res.get("issues", "")):
-            recommendations.append(
-                {
-                    "Finding": f"Circular Dependency: {res['file']}",
-                    "Agent Impact": "Recursive loops.",
-                    "Recommendation": "Use DI.",
-                }
-            )
-        if res.get("type_coverage", 100) < 90:
-            recommendations.append(
-                {
-                    "Finding": f"Low Type Safety: {res['file']}",
-                    "Agent Impact": "Hallucination of signatures.",
-                    "Recommendation": "Add PEP 484 hints.",
-                }
-            )
-
-    if any(doc.lower() == "agents.md" for doc in missing_docs):
-        recommendations.append(
-            {
-                "Finding": "Missing AGENTS.md",
-                "Agent Impact": "Agent guesses repository structure.",
-                "Recommendation": "Create AGENTS.md.",
-            }
-        )
-
-    if not recommendations:
-        return "# Recommendations\n\n✅ Your codebase looks Agent-Ready!"
-
-    table = "| Finding | Agent Impact | Recommendation |\n| :--- | :--- | :--- |\n"
-    for rec in recommendations:
-        table += (
-            f"| {rec['Finding']} | {rec['Agent Impact']} | {rec['Recommendation']} |\n"
-        )
-
-    return "# Recommendations\n\n" + table
-=======
-    return report
->>>>>>> beta
