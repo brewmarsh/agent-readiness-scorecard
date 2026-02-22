@@ -399,7 +399,9 @@ def perform_analysis(
                 "complexity": complexity,
                 "type_coverage": type_safety,
                 "function_metrics": metrics_data,
-                "tokens": individual_tokens.get(rel_path, auditor.count_python_tokens(filepath)),
+                "tokens": individual_tokens.get(
+                    rel_path, auditor.count_python_tokens(filepath)
+                ),
                 "cumulative_tokens": cum_tokens,
                 "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
             }

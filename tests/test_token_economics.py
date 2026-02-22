@@ -1,7 +1,7 @@
 import os
 import tempfile
-import pytest
 from agent_scorecard.analyzer import perform_analysis
+
 
 def test_cumulative_token_budget_exceeded():
     """
@@ -40,6 +40,7 @@ def test_cumulative_token_budget_exceeded():
 
         # score should be less than 100
         assert main_result["score"] < 100
+
 
 def test_cumulative_token_budget_within_limit():
     """

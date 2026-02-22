@@ -1,6 +1,6 @@
 import ast
 import mccabe
-from typing import List, Dict, Any, Tuple, Set, Optional, cast
+from typing import List
 from .types import FunctionMetric
 
 
