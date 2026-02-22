@@ -2,6 +2,7 @@ from typing import List, Dict, TypedDict
 
 
 class FunctionMetric(TypedDict):
+    """Metrics for an individual function or method."""
     name: str
     lineno: int
     complexity: float
@@ -12,6 +13,7 @@ class FunctionMetric(TypedDict):
 
 
 class FileAnalysisResult(TypedDict):
+    """The result of analyzing a single source file."""
     file: str
     score: int
     issues: str
@@ -20,25 +22,30 @@ class FileAnalysisResult(TypedDict):
     type_coverage: float
     function_metrics: List[FunctionMetric]
     tokens: int
+    # RESOLUTION: Standardized on cumulative_tokens to reflect the full dependency context budget
     cumulative_tokens: int
     acl: float
 
 
 class AdvisorFileResult(FileAnalysisResult):
+    """File results with additional context for the Advisor report."""
     pass
 
 
 class DepAnalysis(TypedDict):
+    """Analysis of project-level dependencies and entanglements."""
     cycles: List[List[str]]
     god_modules: Dict[str, int]
 
 
 class DirectoryStat(TypedDict):
+    """Stats for directory entropy analysis."""
     path: str
     file_count: int
 
 
 class EnvironmentHealth(TypedDict):
+    """Checklist for the project's agent-readiness environment."""
     agents_md: bool
     linter_config: bool
     lock_file: bool
@@ -46,6 +53,7 @@ class EnvironmentHealth(TypedDict):
 
 
 class DirectoryEntropy(TypedDict):
+    """Metrics for repository structure complexity."""
     avg_files: float
     warning: bool
     max_files: int
@@ -53,11 +61,13 @@ class DirectoryEntropy(TypedDict):
 
 
 class TokenAnalysis(TypedDict):
+    """Simple token count analysis for a specific block or file."""
     token_count: int
     alert: bool
 
 
 class AnalysisResult(TypedDict):
+    """The final payload containing the full project analysis."""
     file_results: List[FileAnalysisResult]
     final_score: float
     missing_docs: List[str]
