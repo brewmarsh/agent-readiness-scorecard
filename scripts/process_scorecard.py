@@ -3,9 +3,10 @@ import re
 import subprocess
 import json
 import os
+from typing import List, Dict, Any
 
 
-def check_issue_exists(file_path, issue_type):
+def check_issue_exists(file_path: str, issue_type: str) -> bool:
     """
     Checks if an open GitHub issue with the same title already exists.
     Title format: Refactor: <file_path> (<issue_type>)
@@ -37,7 +38,7 @@ def check_issue_exists(file_path, issue_type):
         return False
 
 
-def create_issue(file_path, issue_type, craft_prompt):
+def create_issue(file_path: str, issue_type: str, craft_prompt: str) -> None:
     """
     Creates a new GitHub issue using the gh CLI.
     The CRAFT prompt is used as the issue body.
@@ -65,7 +66,7 @@ def create_issue(file_path, issue_type, craft_prompt):
         print(f"Error creating issue: {e}")
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python scripts/process_scorecard.py <scorecard_file>")
         sys.exit(1)
@@ -86,7 +87,7 @@ def main():
     pattern = r"### File: `(.+?)` - (High Cognitive Load|Low Type Safety)\n(.*?)(?=\n### File:|\n### 📂 Full File Analysis|\Z)"
     matches = re.finditer(pattern, content, re.DOTALL)
 
-    typing_tasks = []
+    typing_tasks: List[Dict[str, str]] = []
 
     for match in matches:
         file_path = match.group(1)
