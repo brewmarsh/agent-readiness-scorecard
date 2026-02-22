@@ -84,4 +84,3 @@ jobs:
           labels: |
             ai-ready
             automated-refactor
-            prompt-check
