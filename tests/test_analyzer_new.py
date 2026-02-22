@@ -68,7 +68,7 @@ def test_calculate_max_depth() -> None:
 
 def test_get_function_stats(tmp_path: Path) -> None:
     """
-    Tests extraction of function statistics including complexity, LOC, and ACL.
+    Tests extraction of function statistics including complexity, LOC, ACL, and Nesting Depth.
 
     This test verifies that the analyzer correctly calculates metrics for both
     simple linear functions and more complex functions with branching logic
@@ -108,25 +108,37 @@ def test_get_function_stats(tmp_path: Path) -> None:
         a = a + 1
         a = a + 1
         return a
+
+    def deeply_nested():
+        if True:
+            if True:
+                if True:
+                    pass
     """)
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
 
     # Analyzer expects a string path; convert from pathlib.Path object
     stats = get_function_stats(str(p))
-    assert len(stats) == 2
+    assert len(stats) == 3
 
     simple_func = next(s for s in stats if s["name"] == "simple")
     complex_func = next(s for s in stats if s["name"] == "complex_long")
+    nested_func = next(s for s in stats if s["name"] == "deeply_nested")
 
     # Simple function verification: Complexity 1, LOC 2.
     # Calculation: 1 + 2/20 = 1.1 ACL
     assert simple_func["complexity"] == 1
     assert simple_func["loc"] == 2
     assert simple_func["acl"] == 1.1
+    assert simple_func["nesting_depth"] == 0
 
     # Complex function verification: Complexity 2 (if/else branching), LOC ~25.
     # Calculation: 2 + 25/20 = 3.25 ACL
     assert complex_func["complexity"] == 2
     assert complex_func["loc"] >= 20
     assert complex_func["acl"] > 3.0
+    assert complex_func["nesting_depth"] == 1
+
+    # Deeply nested function
+    assert nested_func["nesting_depth"] == 3

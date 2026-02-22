@@ -8,6 +8,7 @@ class FunctionMetric(TypedDict):
     loc: int
     acl: float
     is_typed: bool
+    nesting_depth: int
 
 
 class FileAnalysisResult(TypedDict):
