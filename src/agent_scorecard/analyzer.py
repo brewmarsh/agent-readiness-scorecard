@@ -152,15 +152,15 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     return inbound
 
 
-def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+def _find_raw_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     """
-    Returns list of unique cycles using DFS and canonicalization.
+    Finds all cycles in the graph using DFS.
 
     Args:
         graph (Dict[str, Set[str]]): The project's dependency graph.
 
     Returns:
-        List[List[str]]: A list of unique circular dependency paths.
+        List[List[str]]: A list of raw cycles (paths).
     """
     cycles: List[List[str]] = []
     visited_global: Set[str] = set()
@@ -193,7 +193,19 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
-    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
+    return cycles
+
+
+def _canonicalize_cycles(cycles: List[List[str]]) -> List[List[str]]:
+    """
+    Canonicalizes cycles to remove duplicates.
+
+    Args:
+        cycles (List[List[str]]): A list of raw cycles.
+
+    Returns:
+        List[List[str]]: A list of unique, canonicalized cycles.
+    """
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
@@ -206,6 +218,20 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
             seen_cycle_sets.add(canonical)
             unique_cycles.append(list(canonical))
     return unique_cycles
+
+
+def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
+    """
+    Returns list of unique cycles using DFS and canonicalization.
+
+    Args:
+        graph (Dict[str, Set[str]]): The project's dependency graph.
+
+    Returns:
+        List[List[str]]: A list of unique circular dependency paths.
+    """
+    raw_cycles = _find_raw_cycles(graph)
+    return _canonicalize_cycles(raw_cycles)
 
 
 def get_project_issues(
