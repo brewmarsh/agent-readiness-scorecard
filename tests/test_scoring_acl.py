@@ -8,8 +8,8 @@ from agent_scorecard.main import cli
 def test_score_file_acl_penalty(tmp_path: Path) -> None:
     """
     Tests ACL (Agent Cognitive Load) penalty calculation within the scoring engine.
-    
-    This test verifies that the system correctly applies cumulative penalties for 
+
+    This test verifies that the system correctly applies cumulative penalties for
     high cognitive load, low type safety, and file bloat.
 
     Args:
@@ -52,7 +52,7 @@ def test_cli_check_prompts_scoring_context_plain() -> None:
     """
     Verify check-prompts --plain handles scoring context suggestions correctly.
 
-    This ensures that the CLI output remains compatible with the GitHub Action 
+    This ensures that the CLI output remains compatible with the GitHub Action
     regex requirements for refactored suggestions and failure strings.
 
     Returns:
@@ -64,7 +64,7 @@ def test_cli_check_prompts_scoring_context_plain() -> None:
             f.write("Analyze the ACL of this file.")
 
         result = runner.invoke(cli, ["check-prompts", "scoring_prompt.txt", "--plain"])
-        
+
         # RESOLUTION: Assert exact strings established for CI pipeline regex
         assert "Refactored Suggestions:" in result.output
         assert "FAILED: Prompt score too low." in result.output

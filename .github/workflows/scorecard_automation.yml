@@ -42,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: uv run python scripts/process_scorecard.py scorecard.txt
 
-      - name: Apply Type Hints (Simulation)
+      - name: Apply Type Hints (LLM Placeholder)
         run: |
           if [ -f typing_tasks.json ]; then
             echo "Processing typing tasks from typing_tasks.json..."
@@ -61,7 +61,7 @@ jobs:
           except Exception as e:
               print(f"Error in simulation: {e}")
           '
-          else:
+          else
             echo "No typing tasks to process."
           fi
 

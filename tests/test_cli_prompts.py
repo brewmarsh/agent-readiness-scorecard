@@ -2,6 +2,7 @@ from unittest.mock import patch
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 
+
 def test_check_prompts_plain_output_fail() -> None:
     """Test check-prompts --plain output when score is low."""
     runner = CliRunner()
@@ -12,7 +13,7 @@ def test_check_prompts_plain_output_fail() -> None:
         mock_result = {
             "score": 50,
             "results": {"role_definition": False, "few_shot": True},
-            "improvements": ["Add a role definition."]
+            "improvements": ["Add a role definition."],
         }
 
         with patch("agent_scorecard.main.PromptAnalyzer") as MockAnalyzer:
@@ -30,6 +31,7 @@ def test_check_prompts_plain_output_fail() -> None:
             assert "- Add a role definition." in result.output
             assert "FAILED: Prompt score too low." in result.output
 
+
 def test_check_prompts_plain_output_pass() -> None:
     """Test check-prompts --plain output when score is high."""
     runner = CliRunner()
@@ -40,7 +42,7 @@ def test_check_prompts_plain_output_pass() -> None:
         mock_result = {
             "score": 90,
             "results": {"role_definition": True},
-            "improvements": []
+            "improvements": [],
         }
 
         with patch("agent_scorecard.main.PromptAnalyzer") as MockAnalyzer:

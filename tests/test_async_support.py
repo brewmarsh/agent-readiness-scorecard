@@ -78,7 +78,7 @@ def test_score_async_function(tmp_path: Path) -> None:
 async def process_data(data):
     pass
 """)
-    # RESOLUTION: Ensure README.md exists to prevent project-level failures 
+    # RESOLUTION: Ensure README.md exists to prevent project-level failures
     # during the file scoring integration test.
     (tmp_path / "README.md").write_text("# Project")
 
