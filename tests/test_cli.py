@@ -4,7 +4,12 @@ from agent_scorecard.main import cli
 
 
 def test_cli_happy_path() -> None:
-    """Test standard CLI execution (smoke test)."""
+    """
+    Test standard CLI execution (smoke test).
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -23,7 +28,12 @@ def test_cli_happy_path() -> None:
 
 
 def test_cli_profiles_jules_fail_missing_agents_md() -> None:
-    """Test jules profile fails if agents.md is missing."""
+    """
+    Test jules profile fails if agents.md is missing.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Directory is empty (no agents.md)
@@ -35,7 +45,12 @@ def test_cli_profiles_jules_fail_missing_agents_md() -> None:
 
 
 def test_cli_fix_flag() -> None:
-    """Test --fix flag behavior."""
+    """
+    Test --fix flag behavior.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a blank python file
@@ -54,7 +69,12 @@ def test_cli_fix_flag() -> None:
 
 
 def test_cli_badge_generation() -> None:
-    """Test SVG badge generation."""
+    """
+    Test SVG badge generation.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -70,7 +90,12 @@ def test_cli_badge_generation() -> None:
 
 
 def test_cli_advise_command() -> None:
-    """Test advise command output."""
+    """
+    Test advise command output.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create dummy python file
@@ -85,15 +110,20 @@ def test_cli_advise_command() -> None:
         assert os.path.exists("report.md")
         with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
-            # RESOLUTION: Use Upgrade logic (Advisor Report header)
+            # RESOLUTION: Verified the Advisor Report header exists
             assert "Agent Advisor Report" in content
 
 
 def test_cli_check_prompts() -> None:
-    """Test the Beta branch command for prompt best-practice analysis."""
+    """
+    Test the command for prompt best-practice analysis.
+
+    Returns:
+        None
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
-        # Create a perfect prompt file
+        # Create a compliant prompt file
         with open("prompt.txt", "w") as f:
             f.write("""
 You are a helpful assistant.
@@ -112,3 +142,25 @@ Output: B
         assert "Role Definition" in result.output
         assert "Cognitive Scaffolding" in result.output
         assert "PASSED: Prompt is optimized!" in result.output
+
+
+def test_cli_check_prompts_plain_fail() -> None:
+    """
+    Test check-prompts --plain with a failing prompt to satisfy CI regex.
+
+    Returns:
+        None
+    """
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        with open("bad_prompt.txt", "w") as f:
+            f.write("Do this task.")  # Missing persona, CoT, delimiters, examples
+
+        result = runner.invoke(cli, ["check-prompts", "bad_prompt.txt", "--plain"])
+        assert result.exit_code == 1
+        assert "Prompt Analysis: bad_prompt.txt" in result.output
+        assert "Score:" in result.output
+        assert "Refactored Suggestions:" in result.output
+        # Verify metric format matches CI requirements
+        assert "Role Definition: FAIL" in result.output
+        assert "FAILED: Prompt score too low." in result.output

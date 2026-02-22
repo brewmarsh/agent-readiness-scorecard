@@ -24,7 +24,15 @@ class LLM:
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """
         Generates fixed code using an LLM.
+
         Note: This is a placeholder for real LLM integration.
+
+        Args:
+            system_prompt (str): The system prompt for the LLM.
+            user_prompt (str): The user prompt for the LLM.
+
+        Returns:
+            str: The generated code or text.
         """
         # In a real implementation, this would call OpenAI/Anthropic etc.
         # For now, we return the original code (simulating no changes).
@@ -34,7 +42,15 @@ class LLM:
 
 
 def fix_file_issues(filepath: str) -> None:
-    """Uses CRAFT prompts and LLM to fix code quality violations."""
+    """
+    Uses CRAFT prompts and LLM to fix code quality violations.
+
+    Args:
+        filepath (str): Path to the Python file to fix.
+
+    Returns:
+        None
+    """
     try:
         stats = get_function_stats(filepath)
     except Exception:
@@ -68,7 +84,16 @@ def fix_file_issues(filepath: str) -> None:
 
 
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
-    """Applies fixes to project files and structure."""
+    """
+    Applies fixes to project files and structure.
+
+    Args:
+        path (str): The path to the project or file.
+        profile (Dict[str, Any]): The agent profile being used.
+
+    Returns:
+        None
+    """
 
     # 1. Project Docs
     if os.path.isdir(path):

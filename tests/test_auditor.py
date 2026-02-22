@@ -3,11 +3,15 @@ import tempfile
 from agent_scorecard import auditor
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests the directory entropy calculation and warning status under normal conditions.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a few folders and files
+        # Create a few folders and files to simulate a balanced structure
         os.makedirs(os.path.join(tmpdir, "folder1"))
         os.makedirs(os.path.join(tmpdir, "folder2"))
 
@@ -19,34 +23,40 @@ def test_check_directory_entropy() -> None:
             with open(os.path.join(tmpdir, "folder2", f"file{i}.txt"), "w") as f:
                 f.write("test")
 
-        # total folders: root + folder1 + folder2 = 3
-        # total files: 10 + 5 = 15
-        # avg = 15 / 3 = 5
-
+        # Math: total folders (3) / total files (15) = 5.0 avg
         result = auditor.check_directory_entropy(tmpdir)
         assert result["avg_files"] == 5.0
         assert result["warning"] is False
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_warning() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests that a high average file count across the project triggers an entropy warning.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         for i in range(20):
             with open(os.path.join(tmpdir, f"file{i}.txt"), "w") as f:
                 f.write("test")
 
-        # 1 folder, 20 files -> avg 20
+        # Math: 1 folder, 20 files -> avg 20.0 (triggers threshold)
         result = auditor.check_directory_entropy(tmpdir)
         assert result["avg_files"] == 20.0
         assert result["warning"] is True
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_directory_entropy_max_files() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests that a high file count in a single "God Directory" triggers an entropy warning 
+    even if the global average is diluted by empty folders.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a "God Directory" with 60 files
+        # Create a "God Directory" with 60 files to trigger max_files alert
         god_dir = os.path.join(tmpdir, "god_dir")
         os.makedirs(god_dir)
         for i in range(60):
@@ -58,16 +68,20 @@ def test_check_directory_entropy_max_files() -> None:
             os.makedirs(os.path.join(tmpdir, f"empty{i}"))
 
         result = auditor.check_directory_entropy(tmpdir)
-        # Avg = 60 / 12 = 5.0, but Warning should be True
+        # Avg = 60 files / 12 folders = 5.0, but Warning should be True due to spike
         assert result["avg_files"] == 5.0
         assert result["warning"] is True
         assert result["max_files"] == 60
         assert god_dir in result["crowded_dirs"]
 
 
-# TODO: Add type hints for Agent clarity
 def test_get_python_signatures() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests extraction of Python function and class signatures for agent context.
+
+    Returns:
+        None
+    """
     code = """
 def func1(a: int) -> str:
     return str(a)
@@ -94,9 +108,13 @@ class MyClass:
             os.remove(tmp_path)
 
 
-# TODO: Add type hints for Agent clarity
 def test_get_python_signatures_with_decorators() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests extraction of Python signatures that include decorators.
+
+    Returns:
+        None
+    """
     code = """
 @deco1
 @deco2(x=1)
@@ -114,7 +132,6 @@ class DecoratedClass:
 
     try:
         sigs = auditor.get_python_signatures(tmp_path)
-        # It should contain the decorators and the function line
         assert "@deco1" in sigs
         assert "@deco2(x=1)" in sigs
         assert "def decorated_func(a, b):" in sigs
@@ -126,9 +143,13 @@ class DecoratedClass:
             os.remove(tmp_path)
 
 
-# TODO: Add type hints for Agent clarity
 def test_get_python_signatures_multiline() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests extraction of multi-line Python signatures to ensure they are normalized.
+
+    Returns:
+        None
+    """
     code = """
 def multiline_func(
     a: int,
@@ -142,16 +163,20 @@ def multiline_func(
 
     try:
         sigs = auditor.get_python_signatures(tmp_path)
-        # ast.unparse usually compacts it, but we want to make sure it's there
+        # Verify AST unparsing compacts the signature for token efficiency
         assert "def multiline_func(a: int, b: str) -> bool:" in sigs
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests the critical context token counting logic.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
             f.write("Hello world")
@@ -164,9 +189,14 @@ def test_check_critical_context_tokens() -> None:
         assert result["alert"] is False
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_critical_context_tokens_single_file() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests critical context token counting when targeting a single file, ensuring 
+    it still retrieves global context (like README.md) from the parent directory.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         readme_path = os.path.join(tmpdir, "README.md")
         with open(readme_path, "w") as f:
@@ -176,53 +206,57 @@ def test_check_critical_context_tokens_single_file() -> None:
         with open(py_path, "w") as f:
             f.write("def foo(): pass")
 
-        # Run on the file, it should still find README.md in the parent
         result = auditor.check_critical_context_tokens(py_path)
         assert result["token_count"] > 0
-        # It should have tokens from both README and the py signature
-        # We can't be 100% sure of the count without hardcoding, but it should be > tokens in just the signature
-
-        # Test just signature tokens
+        
+        # Verify the count includes the README content plus signature tokens
         import tiktoken
-
         enc = tiktoken.get_encoding("cl100k_base")
         sig_tokens = len(enc.encode("def foo():"))
-
         assert result["token_count"] > sig_tokens
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_environment_health() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests the environment health checks for AGENTS.md, linters, and lock files.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Initial: everything False
+        # Initial state: no critical files
         res = auditor.check_environment_health(tmpdir)
         assert res["agents_md"] is False
         assert res["linter_config"] is False
         assert res["lock_file"] is False
 
-        # Add AGENTS.md
+        # Verify detection of AGENTS.md
         with open(os.path.join(tmpdir, "AGENTS.md"), "w") as f:
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["agents_md"] is True
 
-        # Add Linter
+        # Verify detection of external linter config
         with open(os.path.join(tmpdir, "ruff.toml"), "w") as f:
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["linter_config"] is True
 
-        # Add Lock file
+        # Verify detection of lock file
         with open(os.path.join(tmpdir, "poetry.lock"), "w") as f:
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["lock_file"] is True
 
 
-# TODO: Add type hints for Agent clarity
 def test_check_environment_health_pyproject_ruff() -> None:
-    """TODO: Add docstring for AI context."""
+    """
+    Tests that ruff configuration within pyproject.toml is correctly recognized 
+    as a valid linter configuration.
+
+    Returns:
+        None
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "pyproject.toml"), "w") as f:
             f.write("[tool.ruff]\nline-length = 88")

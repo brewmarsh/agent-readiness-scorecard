@@ -36,6 +36,25 @@ class DirectoryStat(TypedDict):
     file_count: int
 
 
+class EnvironmentHealth(TypedDict):
+    agents_md: bool
+    linter_config: bool
+    lock_file: bool
+    pyproject_valid: bool
+
+
+class DirectoryEntropy(TypedDict):
+    avg_files: float
+    warning: bool
+    max_files: int
+    crowded_dirs: List[str]
+
+
+class TokenAnalysis(TypedDict):
+    token_count: int
+    alert: bool
+
+
 class AnalysisResult(TypedDict):
     file_results: List[FileAnalysisResult]
     final_score: float
