@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
@@ -83,6 +83,60 @@ def fix_file_issues(filepath: str) -> None:
         )
 
 
+def _ensure_project_files(path: str, profile: Dict[str, Any]) -> None:
+    """
+    Ensures that required project files exist.
+
+    Args:
+        path (str): The project root path.
+        profile (Dict[str, Any]): The agent profile being used.
+    """
+    if not os.path.isdir(path):
+        return
+
+    required = profile.get("required_files", [])
+    existing = [f.lower() for f in os.listdir(path)]
+
+    for req in required:
+        if req.lower() not in existing:
+            filepath = os.path.join(path, req)
+            content = ""
+            if req.lower() == "agents.md":
+                content = AGENT_CONTEXT_TEMPLATE.format(
+                    project_name=os.path.basename(os.path.abspath(path))
+                )
+            elif req.lower() == "instructions.md":
+                content = INSTRUCTIONS_TEMPLATE
+            elif req.lower() == "readme.md":
+                content = "# Project\n\nAuto-generated README."
+
+            if content:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                console.print(f"[bold green][Fixed][/bold green] Created {req}")
+
+
+def _collect_target_files(path: str) -> List[str]:
+    """
+    Collects Python files to be fixed.
+
+    Args:
+        path (str): The path to scan.
+
+    Returns:
+        List[str]: A list of Python file paths.
+    """
+    py_files = []
+    if os.path.isfile(path) and path.endswith(".py"):
+        py_files = [path]
+    elif os.path.isdir(path):
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+    return py_files
+
+
 def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     """
     Applies fixes to project files and structure.
@@ -94,39 +148,11 @@ def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     Returns:
         None
     """
-
     # 1. Project Docs
-    if os.path.isdir(path):
-        required = profile.get("required_files", [])
-        existing = [f.lower() for f in os.listdir(path)]
-
-        for req in required:
-            if req.lower() not in existing:
-                filepath = os.path.join(path, req)
-                content = ""
-                if req.lower() == "agents.md":
-                    content = AGENT_CONTEXT_TEMPLATE.format(
-                        project_name=os.path.basename(os.path.abspath(path))
-                    )
-                elif req.lower() == "instructions.md":
-                    content = INSTRUCTIONS_TEMPLATE
-                elif req.lower() == "readme.md":
-                    content = "# Project\n\nAuto-generated README."
-
-                if content:
-                    with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    console.print(f"[bold green][Fixed][/bold green] Created {req}")
+    _ensure_project_files(path, profile)
 
     # 2. File Fixes
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
+    py_files = _collect_target_files(path)
 
     for py_file in py_files:
         fix_file_issues(py_file)
