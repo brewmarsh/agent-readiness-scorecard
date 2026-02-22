@@ -1,0 +1,36 @@
+╭─────────────────────────╮
+│ Running Agent Scorecard │
+╰─────────────────────────╯
+           Environment Health           
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Check                ┃        Status ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ AGENTS.md            │          PASS │
+│ Linter Config        │          PASS │
+│ Lock File            │          PASS │
+│ Directory Entropy    │ 9.0 files/dir │
+│ Critical Token Count │  4,000 tokens │
+└──────────────────────┴───────────────┘
+
+                                 File Analysis                                  
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ File                             ┃ Score ┃ Issues                            ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ scripts/process_scorecard.py     │    75 │ 1 Yellow ACL functions (-5), Type │
+│                                  │       │ Safety Index 0% < 90% (-20)       │
+│ src/agent_scorecard/auditor.py   │    90 │ 2 Yellow ACL functions (-10)      │
+│ src/agent_scorecard/graph.py     │    90 │ 2 Yellow ACL functions (-10)      │
+│ src/agent_scorecard/remediation… │    90 │ 2 Yellow ACL functions (-10)      │
+│ src/agent_scorecard/analyzer.py  │    76 │ Bloated File: 294 lines (-9), 1   │
+│                                  │       │ Red ACL functions (-15)           │
+│ src/agent_scorecard/report.py    │    61 │ Bloated File: 348 lines (-14), 1  │
+│                                  │       │ Red ACL functions (-15), 2 Yellow │
+│                                  │       │ ACL functions (-10)               │
+│ src/agent_scorecard/main.py      │    65 │ Bloated File: 353 lines (-15), 1  │
+│                                  │       │ Red ACL functions (-15), 1 Yellow │
+│                                  │       │ ACL functions (-5)                │
+│ src/agent_scorecard/scoring.py   │    95 │ 1 Yellow ACL functions (-5)       │
+│ src/agent_scorecard/fix.py       │    85 │ 1 Red ACL functions (-15)         │
+└──────────────────────────────────┴───────┴───────────────────────────────────┘
+
+Final Agent Score: 96.3/100
