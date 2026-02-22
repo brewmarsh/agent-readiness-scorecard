@@ -35,7 +35,7 @@ class TestFixCommand:
                     textwrap.dedent("""
                     def foo():
                         pass
-                """)
+                    """)
                 )
 
             # RESOLUTION: Mock LLM.generate to simulate CRAFT refactoring
@@ -87,7 +87,7 @@ class TestFixCommand:
                     textwrap.dedent("""
                     def bar(x):
                         return x
-                """)
+                    """)
                 )
 
             fixed_code = textwrap.dedent("""

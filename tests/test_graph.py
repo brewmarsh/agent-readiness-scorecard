@@ -8,6 +8,9 @@ def test_build_dependency_graph() -> None:
     """
     Tests building a dependency graph from a simple package structure.
 
+    This test verifies that the builder correctly identifies internal 
+    module dependencies while correctly handling relative imports.
+
     Returns:
         None
     """
@@ -43,6 +46,9 @@ def test_circular_dependency() -> None:
     """
     Tests detection of circular dependencies in the graph.
 
+    Circular dependencies increase 'Dependency Entanglement' and 
+    confuse AI agents during recursive analysis.
+
     Returns:
         None
     """
@@ -69,12 +75,18 @@ def test_god_module() -> None:
     """
     Tests detection of 'God Modules' based on in-degree.
 
+    A 'God Module' is defined as a file with > 50 inbound references, 
+    representing a high-pressure context point for AI agents.
+
     Returns:
         None
     """
+    # RESOLUTION: Maintained Beta branch explicit typing for graph object
     graph: nx.DiGraph = nx.DiGraph()
     god_node = "god.py"
     graph.add_node(god_node)
+    
+    # Create a star-pattern graph to trigger the God Module threshold
     for i in range(51):
         other = f"other_{i}.py"
         graph.add_edge(other, god_node)

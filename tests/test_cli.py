@@ -110,20 +110,20 @@ def test_cli_advise_command() -> None:
         assert os.path.exists("report.md")
         with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
-            # RESOLUTION: Use Upgrade logic (Advisor Report header)
+            # RESOLUTION: Verified the Advisor Report header exists
             assert "Agent Advisor Report" in content
 
 
 def test_cli_check_prompts() -> None:
     """
-    Test the Beta branch command for prompt best-practice analysis.
+    Test the command for prompt best-practice analysis.
 
     Returns:
         None
     """
     runner = CliRunner()
     with runner.isolated_filesystem():
-        # Create a perfect prompt file
+        # Create a compliant prompt file
         with open("prompt.txt", "w") as f:
             f.write("""
 You are a helpful assistant.
@@ -161,6 +161,6 @@ def test_cli_check_prompts_plain_fail() -> None:
         assert "Prompt Analysis: bad_prompt.txt" in result.output
         assert "Score:" in result.output
         assert "Refactored Suggestions:" in result.output
-        # Verify metric format (no hyphens)
+        # Verify metric format matches CI requirements
         assert "Role Definition: FAIL" in result.output
         assert "FAILED: Prompt score too low." in result.output

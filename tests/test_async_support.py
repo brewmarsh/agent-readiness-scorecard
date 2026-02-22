@@ -78,7 +78,8 @@ def test_score_async_function(tmp_path: Path) -> None:
 async def process_data(data):
     pass
 """)
-    # Ensure README.md exists to avoid project issues failure
+    # RESOLUTION: Ensure README.md exists to prevent project-level failures 
+    # during the file scoring integration test.
     (tmp_path / "README.md").write_text("# Project")
 
     runner = CliRunner()
@@ -103,6 +104,7 @@ def test_cli_check_prompts_async_context_plain() -> None:
         with open("async_prompt.txt", "w") as f:
             f.write("Write an async function.")
 
+        # RESOLUTION: Asserting exact strings required for the new GitHub Action regex
         result = runner.invoke(cli, ["check-prompts", "async_prompt.txt", "--plain"])
         assert "Refactored Suggestions:" in result.output
         assert "FAILED: Prompt score too low." in result.output

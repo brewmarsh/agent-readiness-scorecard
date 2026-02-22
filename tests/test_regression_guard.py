@@ -26,7 +26,7 @@ def test_bloated_files_penalty(tmp_path: Path) -> None:
 
     assert loc == 310
     assert "Bloated File: 310 lines (-11)" in details
-    assert score == 89  # 100 - 11
+    assert score == 89  # Calculation: 100 - 11
 
 
 def test_acl_strictness(tmp_path: Path) -> None:
@@ -39,13 +39,13 @@ def test_acl_strictness(tmp_path: Path) -> None:
     Returns:
         None
     """
-    # ACL = Complexity + (LOC / 20).
-    # For this function: CC=1, LOC=300. ACL = 1 + 15 = 16.0 (Red status)
+    # Formula: ACL = Cyclomatic Complexity + (Lines of Code / 20)
+    # Target function: CC=1, LOC=300. ACL = 1 + (300 / 20) = 16.0 (Red status)
     content = textwrap.dedent("""
     def hall_func():
         pass
     """)
-    # Append lines to reach 300 lines total
+    # Append lines inside the function to reach 300 lines total
     for i in range(298):
         content += f"    x = {i}\n"
 
@@ -75,7 +75,7 @@ def test_empty_directory(tmp_path: Path) -> None:
 
     results = analyzer.perform_analysis(str(empty_dir), "generic")
     assert results["file_results"] == []
-    # If README is missing (project penalty -15), final_score reflects 20% project weight.
+    # If README is missing (project penalty -15), final_score reflects the 20% project weight.
     assert results["final_score"] < 100
 
 
@@ -96,7 +96,7 @@ def test_malformed_pyproject(tmp_path: Path) -> None:
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
-    # Final score handles both file results and project penalties.
+    # Final score handles both file results and weighted project penalties.
     assert results["final_score"] == 80.0
 
 
@@ -116,5 +116,6 @@ def test_missing_dependencies_parsing(tmp_path: Path) -> None:
 
     graph = analyzer.get_import_graph(str(tmp_path))
     assert "imports.py" in graph
-    # Scanner should find imports via AST even if the packages aren't installed.
+    # RESOLUTION: Scanner finds imports via AST even if packages aren't installed.
+    # This ensures the tool is environment-agnostic.
     assert len(graph) == 1

@@ -216,9 +216,10 @@ def check_prompts(path: str, plain: bool) -> None:
             print(f"{k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
 
         if result["improvements"]:
-            print("Refactored Suggestions:")
+            # RESOLUTION: Adopted Beta branch bulleted list and newline formatting
+            print("\nRefactored Suggestions:")
             for imp in result["improvements"]:
-                print(imp)
+                print(f"- {imp}")
 
         if result["score"] >= 80:
             print("PASSED: Prompt is optimized!")
