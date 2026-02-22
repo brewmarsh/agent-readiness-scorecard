@@ -1,6 +1,69 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzer import get_function_stats
+from agent_scorecard.analyzer import get_function_stats, calculate_max_depth
+
+
+def test_calculate_max_depth() -> None:
+    """
+    Tests the calculate_max_depth function with various nesting scenarios.
+
+    This test verifies that the analyzer correctly identifies and counts
+    nested control flow blocks, including edge cases like list comprehensions
+     and inline lambdas.
+
+    Returns:
+        None
+    """
+    # Flat function
+    code1 = "def foo(): pass"
+    assert calculate_max_depth(code1) == 0
+
+    # Example from prompt
+    code2 = textwrap.dedent("""
+    def process_data(data):
+        if data:
+            for item in data:
+                if item > 0:
+                    print(item)
+    """)
+    assert calculate_max_depth(code2) == 3
+
+    # Nested Try/Except/Finally
+    code3 = textwrap.dedent("""
+    try:
+        try:
+            pass
+        except:
+            pass
+    finally:
+        pass
+    """)
+    assert calculate_max_depth(code3) == 2
+
+    # List comprehension and lambda
+    code4 = "x = [lambda y: [i for i in range(y)] for y in range(10)]"
+    # ListComp -> Lambda -> ListComp = 3
+    assert calculate_max_depth(code4) == 3
+
+    # Deep nesting with mixed types
+    code5 = textwrap.dedent("""
+    if a:
+        while b:
+            with c:
+                for d in e:
+                    if f:
+                        pass
+    """)
+    assert calculate_max_depth(code5) == 5
+
+    # Async variants
+    code6 = textwrap.dedent("""
+    async def foo():
+        async for i in range(10):
+            async with a:
+                pass
+    """)
+    assert calculate_max_depth(code6) == 2
 
 
 def test_get_function_stats(tmp_path: Path) -> None:
