@@ -3,6 +3,14 @@ from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
 
+# RESOLUTION: Maintained explicit exports from Beta branch for external tool compatibility
+__all__ = [
+    "generate_markdown_report",
+    "generate_advisor_report",
+    "generate_prompts_section",
+    "generate_recommendations_report",
+]
+
 
 def _generate_summary_section(
     final_score: float, profile: Dict[str, Any], project_issues: Optional[List[str]]
@@ -168,6 +176,7 @@ def generate_markdown_report(
 
     targets = _generate_acl_section(stats, thresholds)
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
+    # RESOLUTION: Modular prompts generation from deduplicated remediation module
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
@@ -246,4 +255,3 @@ def generate_advisor_report(
             report += "✅ Directory structure is balanced.\n"
 
     return report
-
