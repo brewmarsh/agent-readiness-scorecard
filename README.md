@@ -49,6 +49,18 @@ agent-score . --fix
 
 ```
 
+### 4. Generate a Markdown Report
+
+Generate a detailed report for your team or CI/CD logs. Control the level of detail with `--report-style`:
+
+```bash
+agent-score . --report scorecard.md --report-style actionable
+```
+
+* **`--report-style=full`**: Includes all sections and a complete breakdown of every file.
+* **`--report-style=actionable`** (Default): Focuses on issues; hides passing files and high-coverage type safety rows.
+* **`--report-style=collapsed`**: (Minimal) Only includes the Executive Summary.
+
 ## ⚙️ Configuration
 
 `agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
@@ -61,50 +73,43 @@ Settings are resolved in the following order (highest to lowest):
 2. **Configuration File** (`pyproject.toml` or `.agent-scorecard.json`)
 3. **Defaults**
 
-### pyproject.toml Example
+### Customizing Output Verbosity
 
-Add a `[tool.agent-scorecard]` section to your `pyproject.toml` to customize thresholds and output:
+You can control how much visual noise the scorecard generates by adding the `verbosity` or `report_style` keys to your `pyproject.toml`.
+
+#### Noise-Reduction Configuration
 
 ```toml
 [tool.agent-scorecard]
-agent = "jules"
+# Control CLI output (quiet, summary, detailed)
 verbosity = "summary"
+
+# Control Markdown report detail (collapsed, actionable, full)
 report_style = "actionable"
 
 [tool.agent-scorecard.thresholds]
 acl_yellow = 10
 acl_red = 15
 type_safety = 90
-
 ```
 
-### Verbosity Levels
+### Verbosity Levels (CLI Output)
 
 | Level | Description |
 | --- | --- |
 | `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. Ideal for CI/CD. |
-| `summary` | (Default) Displays Environment Health and actionable files with issues. Passing files are tucked into collapsible `<details>` blocks. |
-| `detailed` | Deep-dive mode. Provides a full breakdown of every file, with progressive disclosure for passing metrics. |
+| `summary` | (Default) Displays Environment Health and actionable files with issues. Perfect scores (100) are hidden to reduce noise. |
+| `detailed` | Deep-dive mode. Provides a full breakdown of every file, using progressive disclosure for passing metrics. |
 
-### Report Styles (`--report-style`)
+### Report Styles (Markdown Report)
 
-Used for the Markdown report generated via `--report`.
-
-| Style | Description |
-| --- | --- |
-| `collapsed` | (Minimal) Only includes the Executive Summary. |
-| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
-| `full` | Includes all sections and a complete breakdown of every file. |
-
-### Report Styles (`--report-style`)
-
-Used for the Markdown report generated via `--report`.
+Used when generating a report via the `--report` flag.
 
 | Style | Description |
 | --- | --- |
 | `collapsed` | (Minimal) Only includes the Executive Summary. |
-| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
-| `full` | Includes all sections and a complete breakdown of every file. |
+| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows from tables. |
+| `full` | Includes all sections and a complete breakdown of every file and metric. |
 
 ## 📊 The Scoring System
 
@@ -148,15 +153,24 @@ Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_s
 
 ## ⚡ CI/CD & Diff Mode
 
-Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request. This mode is faster and focuses on new changes while still validating the entire project for circular dependencies.
+Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request.
 
-### Limit Analysis to Specific Files
+### Diff-Aware CI Reporting
 
-Use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times to include multiple files. This is particularly useful in CI/CD workflows to analyze only changed files.
+The provided GitHub Action defaults to **Diff-Aware Reporting**. This means that in a Pull Request, the scorecard will automatically detect and only score the files you've modified.
+
+**Benefits:**
+- **Noise Reduction**: Developers only see scores and issues for the code they are actually touching.
+- **Speed**: Analysis is significantly faster on large repositories.
+- **Project Integrity**: While focusing on specific files for scoring, the tool still validates project-wide issues like circular dependencies and global context health.
+
+### Manual File Limitation
+
+You can also manually use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times.
 
 ```bash
 # Score only specific files
-agent-score score . --limit-to file1.py --limit-to file2.py
+agent-score score . --limit-to src/core.py --limit-to src/utils.py
 ```
 
 ## 📝 Prompt Engineering Linter

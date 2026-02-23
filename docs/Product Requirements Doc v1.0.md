@@ -57,6 +57,11 @@ Remediation must be accessible, agnostic, and highly economical regarding token 
 
 Features designed to lower the barrier to entry and shift feedback to the earliest possible moment in the SDLC.
 
+* **Noise-Reduction & Progressive Disclosure:** [COMPLETED]
+* *Feature:* Implementation of `verbosity` levels (quiet, summary, detailed) and `report_style` options (collapsed, actionable, full).
+* *Value:* Reduces cognitive load for developers by hiding irrelevant "passing" metrics while still providing deep-dive capabilities when needed. Integrates "Diff-Aware" reporting in CI to focus on PR-specific changes.
+
+
 * **Zero-Config Initiation:** An `agent-score init` command that interactively scaffolds `AGENTS.md` and default configurations.
 * **Shift-Left IDE Extension:** Real-time ACL highlighting in VS Code/JetBrains.
 * **Trend Tracking:** A `.agent-score.json` artifact to gamify improvements and track PR-over-PR agent-readiness progress.

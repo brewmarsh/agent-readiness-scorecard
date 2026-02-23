@@ -2,6 +2,7 @@ import textwrap
 from pathlib import Path
 from agent_scorecard.analyzer import get_function_stats
 
+
 def test_acl_formula_favor_flat_long_over_short_nested(tmp_path: Path) -> None:
     """
     Verifies that the new ACL formula favors flat, long files over short, deeply nested files.
@@ -49,4 +50,4 @@ def test_acl_formula_favor_flat_long_over_short_nested(tmp_path: Path) -> None:
 
     assert flat_acl < nested_acl
     assert nested_acl > 15  # Should be Red
-    assert flat_acl < 10   # Should be Green
+    assert flat_acl < 10  # Should be Green

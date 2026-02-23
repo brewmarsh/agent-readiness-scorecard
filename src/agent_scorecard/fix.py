@@ -41,9 +41,7 @@ def _clean_code(code: str) -> str:
     return code.strip()
 
 
-def fix_file_issues(
-    filepath: str, llm_config: Optional[Dict[str, Any]] = None
-) -> None:
+def fix_file_issues(filepath: str, llm_config: Optional[Dict[str, Any]] = None) -> None:
     """
     Uses CRAFT prompts and LLM to fix code quality violations.
 

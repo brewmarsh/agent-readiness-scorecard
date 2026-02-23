@@ -189,7 +189,7 @@ def generate_advisor_report(
 
     # RESOLUTION: Updated Advisor report to reflect high-fidelity ACL formula
     report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)*\n\n"
-    
+
     high_acl_files = sorted(
         [s for s in stats if s.get("acl", 0) > 15],
         key=lambda x: x.get("acl", 0),
