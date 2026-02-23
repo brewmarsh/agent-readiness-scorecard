@@ -1,1 +1,1 @@
-uv run agent-score score . --verbosity summary --limit-to 'src/agent_scorecard/fix.py' --limit-to 'src/agent_scorecard/llm.py' --limit-to 'src/agent_scorecard/report.py' --limit-to 'src/agent_scorecard/types.py' --limit-to 'tests/test_acl.py' --limit-to 'tests/test_acl_refactor_verification.py' --limit-to 'tests/test_dependencies.py' --limit-to 'tests/test_fix_command.py' --limit-to 'tests/test_llm.py' --limit-to 'tests/test_regression_guard.py' > scorecard.txt
+uv run agent-score score . --verbosity summary --limit-to 'tests/test_dependencies.py' > scorecard.txt

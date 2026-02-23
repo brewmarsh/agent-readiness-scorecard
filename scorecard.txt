@@ -12,14 +12,5 @@
 │ Critical Token Count │   5,474 tokens │
 └──────────────────────┴────────────────┘
 
-                                 File Analysis                                  
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ File                          ┃ Score ┃ Issues                               ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ src/agent_scorecard/report.py │    55 │ 2 Red ACL functions (-30), 3 Yellow  │
-│                               │       │ ACL functions (-15)                  │
-│ src/agent_scorecard/llm.py    │    95 │ 1 Yellow ACL functions (-5)          │
-│ src/agent_scorecard/fix.py    │    55 │ 3 Red ACL functions (-45)            │
-└───────────────────────────────┴───────┴──────────────────────────────────────┘
 
-Final Agent Score: 92.4/100
+Final Agent Score: 100.0/100

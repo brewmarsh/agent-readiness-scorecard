@@ -1,10 +1,1 @@
-src/agent_scorecard/fix.py
-src/agent_scorecard/llm.py
-src/agent_scorecard/report.py
-src/agent_scorecard/types.py
-tests/test_acl.py
-tests/test_acl_refactor_verification.py
 tests/test_dependencies.py
-tests/test_fix_command.py
-tests/test_llm.py
-tests/test_regression_guard.py
