@@ -9,7 +9,7 @@
 │ Linter Config        │           PASS │
 │ Lock File            │           PASS │
 │ Directory Entropy    │ 10.0 files/dir │
-│ Critical Token Count │   4,627 tokens │
+│ Critical Token Count │   4,640 tokens │
 └──────────────────────┴────────────────┘
 
                                  File Analysis                                  
@@ -21,9 +21,10 @@
 │ src/agent_scorecard/graph.py      │    90 │ 2 Yellow ACL functions (-10)     │
 │ src/agent_scorecard/remediation.… │    90 │ 2 Yellow ACL functions (-10)     │
 │ src/agent_scorecard/dependencies… │    95 │ 1 Yellow ACL functions (-5)      │
-│ src/agent_scorecard/analyzer.py   │    80 │ Bloated File: 250 lines (-5), 1  │
+│ src/agent_scorecard/analyzer.py   │    78 │ Bloated File: 275 lines (-7), 1  │
 │                                   │       │ Red ACL functions (-15)          │
-│ src/agent_scorecard/report.py     │    85 │ 1 Red ACL functions (-15)        │
+│ src/agent_scorecard/report.py     │    82 │ Bloated File: 232 lines (-3), 1  │
+│                                   │       │ Red ACL functions (-15)          │
 │ src/agent_scorecard/main.py       │    65 │ Bloated File: 353 lines (-15), 1 │
 │                                   │       │ Red ACL functions (-15), 1       │
 │                                   │       │ Yellow ACL functions (-5)        │
@@ -31,4 +32,4 @@
 │ src/agent_scorecard/fix.py        │    95 │ 1 Yellow ACL functions (-5)      │
 └───────────────────────────────────┴───────┴──────────────────────────────────┘
 
-Final Agent Score: 97.7/100
+Final Agent Score: 97.6/100
