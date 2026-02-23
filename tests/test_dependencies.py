@@ -1,4 +1,5 @@
 from agent_scorecard.dependencies import (
+    get_import_graph,
     detect_cycles,
     calculate_context_tokens,
     _collect_python_files,
