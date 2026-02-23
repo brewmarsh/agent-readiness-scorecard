@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from agent_scorecard.dependencies import (
     get_import_graph,
