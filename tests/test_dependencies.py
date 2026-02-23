@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Set, List
 from agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
