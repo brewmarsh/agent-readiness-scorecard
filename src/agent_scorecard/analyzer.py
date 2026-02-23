@@ -209,7 +209,9 @@ def get_project_issues(
     penalty = 0
     issues: List[str] = []
 
-    missing_docs = scan_project_docs(path, cast(List[str], profile.get("required_files", [])))
+    missing_docs = scan_project_docs(
+        path, cast(List[str], profile.get("required_files", []))
+    )
     if missing_docs:
         penalty += len(missing_docs) * 15
         issues.append(f"Missing Critical Agent Docs: {', '.join(missing_docs)}")
@@ -229,7 +231,9 @@ def get_project_issues(
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
     if entropy_stats:
         penalty += len(entropy_stats) * 5
-        issues.append(f"High Directory Entropy (>50 files): {', '.join(entropy_stats.keys())}")
+        issues.append(
+            f"High Directory Entropy (>50 files): {', '.join(entropy_stats.keys())}"
+        )
 
     cycles = detect_cycles(graph)
     if cycles:
@@ -252,7 +256,9 @@ def perform_analysis(
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
 
-    project_root = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    project_root = (
+        path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    )
     py_files = _collect_python_files(path)
     all_py_files = py_files[:]
 
@@ -261,7 +267,11 @@ def perform_analysis(
     cumulative_tokens_map = _calculate_cumulative_tokens(graph, individual_tokens)
 
     if limit_to_files:
-        py_files = [f for f in py_files if any(f.endswith(changed) for changed in limit_to_files)]
+        py_files = [
+            f
+            for f in py_files
+            if any(f.endswith(changed) for changed in limit_to_files)
+        ]
 
     file_results: List[FileAnalysisResult] = []
     file_scores: List[int] = []
@@ -275,18 +285,22 @@ def perform_analysis(
         )
         file_scores.append(score)
 
-        file_results.append({
-            "file": rel_path,
-            "score": score,
-            "issues": issues,
-            "loc": loc,
-            "complexity": complexity,
-            "type_coverage": type_safety,
-            "function_metrics": metrics_data,
-            "tokens": individual_tokens.get(rel_path, auditor.count_python_tokens(filepath)),
-            "cumulative_tokens": cum_tokens,
-            "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
-        })
+        file_results.append(
+            {
+                "file": rel_path,
+                "score": score,
+                "issues": issues,
+                "loc": loc,
+                "complexity": complexity,
+                "type_coverage": type_safety,
+                "function_metrics": metrics_data,
+                "tokens": individual_tokens.get(
+                    rel_path, auditor.count_python_tokens(filepath)
+                ),
+                "cumulative_tokens": cum_tokens,
+                "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
+            }
+        )
 
     penalty, project_issues = get_project_issues(project_root, all_py_files, profile)
     project_score = max(0, 100 - penalty)
@@ -296,8 +310,18 @@ def perform_analysis(
     return {
         "file_results": file_results,
         "final_score": final_score,
-        "missing_docs": scan_project_docs(project_root, cast(List[str], profile.get("required_files", []))),
+        "missing_docs": scan_project_docs(
+            project_root, cast(List[str], profile.get("required_files", []))
+        ),
         "project_issues": project_issues,
-        "dep_analysis": {"cycles": detect_cycles(graph), "god_modules": {m: c for m, c in get_inbound_imports(graph).items() if c > 50}},
-        "directory_stats": [{"path": p, "file_count": c} for p, c in auditor.get_crowded_directories(path, threshold=50).items()],
+        "dep_analysis": {
+            "cycles": detect_cycles(graph),
+            "god_modules": {
+                m: c for m, c in get_inbound_imports(graph).items() if c > 50
+            },
+        },
+        "directory_stats": [
+            {"path": p, "file_count": c}
+            for p, c in auditor.get_crowded_directories(path, threshold=50).items()
+        ],
     }
