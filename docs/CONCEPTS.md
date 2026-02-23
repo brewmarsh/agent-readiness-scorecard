@@ -14,6 +14,11 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Threshold:** sections with ACL > 15 are "Hallucination Zones."
 * **Strategy:** Ensure headers group content logically and consider breaking down large documentation chunks.
 
+### Dockerfile ACL
+* **Formula:** $ACL = (Chained Commands * 1.5) + (Lines in Instruction * 0.5)$
+* **Threshold:** instructions with ACL > 15 are "Hallucination Zones."
+* **Strategy:** Break down complex RUN instructions into smaller, logical steps or use scripts. Avoid excessively long chained commands.
+
 ## 2. Dependency Entanglement
 Agents traverse code like a graph.
 * **Circular Dependencies:** Cause infinite recursion loops in Agent planning.
