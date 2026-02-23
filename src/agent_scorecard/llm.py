@@ -19,8 +19,9 @@ class LLMClient:
                                                Expected keys: "model", "api_key" (optional).
         """
         self.config = config or {}
+        # RESOLUTION: Defaulting to gpt-4o for high-fidelity remediation
         self.model = self.config.get("model", "gpt-4o")
-        self.api_key = self.config.get("api_key")
+        self.api_key = self.config.get("api_key") or os.getenv("LLM_API_KEY")
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """
@@ -59,9 +60,6 @@ class LLMClient:
             response = litellm.completion(**kwargs)
             return response.choices[0].message.content or ""  # type: ignore
         except Exception as e:
-            # In a real scenario, we might want to log this.
-            # For now, returning empty string prevents partial writes.
-            # We print to stderr for visibility.
             import sys
             print(f"LLM Generation Error: {e}", file=sys.stderr)
             return ""
