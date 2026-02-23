@@ -25,6 +25,16 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 * *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. Implemented using the formula `(Depth * 2) + (Complexity * 1.5) + (LOC / 50)`, heavily weighting structural depth over flat LOC.
 
 
+* **Multi-Language Support (Strategy Pattern):** [COMPLETED]
+* *Feature:* Introduction of a `BaseAnalyzer` abstraction and language-specific implementations (e.g., `PythonAnalyzer`, `MarkdownAnalyzer`).
+* *Value:* Decouples the scoring engine from specific language parsing logic, enabling support for both code (Python) and documentation (Markdown) while maintaining a consistent scoring interface.
+
+
+* **Markdown Physics Analysis:** [COMPLETED]
+* *Feature:* Introduction of a `MarkdownAnalyzer` to evaluate the Agent Cognitive Load (ACL) of documentation.
+* *Value:* Documentation is part of the agent's context. Large, poorly structured markdown files increase hallucination risks. Evaluated using the formula: `ACL = (Header Depth * 1.5) + (Tokens in Section / 100)`.
+
+
 * **Dynamic Context Economics:** [COMPLETED]
 * *Feature:* Map the import graph to calculate the *cumulative* token load of a file plus its required dependencies.
 * *Value:* An agent cannot edit a file in isolation if it relies on a "God Module." The token budget must reflect the entire context window required to understand the target unit. Implemented with a 32,000 token limit.

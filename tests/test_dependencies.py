@@ -4,7 +4,7 @@ from agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
     calculate_context_tokens,
-    _collect_python_files,
+    collect_python_files,
 )
 
 
@@ -24,7 +24,7 @@ def test_collect_python_files(tmp_path: Path) -> None:
     (d / "file2.txt").write_text("not python")
     (tmp_path / "root.py").write_text("print('root')")
 
-    files = _collect_python_files(str(tmp_path))
+    files = collect_python_files(str(tmp_path))
     assert len(files) == 2
     assert any(f.endswith("file1.py") for f in files)
     assert any(f.endswith("root.py") for f in files)

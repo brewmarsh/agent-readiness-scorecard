@@ -1,6 +1,6 @@
+import warnings
 from typing import Dict, Any, Tuple, List, Optional
-from .constants import DEFAULT_THRESHOLDS
-from .metrics import get_loc, get_function_stats
+from .analyzers.python import PythonAnalyzer
 from .types import FunctionMetric
 
 
@@ -13,114 +13,15 @@ def score_file(
     """
     Calculates score based on the selected profile and Agent Readiness spec.
 
-    Priority: explicit thresholds arg > profile thresholds > hardcoded defaults.
-
-    Args:
-        filepath (str): Path to the Python file.
-        profile (Dict[str, Any]): The agent profile being used.
-        thresholds (Optional[Dict[str, Any]]): Optional overrides for scoring thresholds.
-        cumulative_tokens (int): Transitive token count of file and local imports.
-
-    Returns:
-        Tuple[int, str, int, float, float, List[FunctionMetric]]: A tuple containing:
-            - score (int): The final file score.
-            - details (str): Comma-separated list of scoring details/penalties.
-            - loc (int): Logical lines of code.
-            - avg_complexity (float): Average cyclomatic complexity.
-            - type_safety_index (float): Type hint coverage percentage.
-            - metrics (List[FunctionMetric]): List of per-function metrics.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.score_file` instead.
     """
-    # 1. Initialize Thresholds
-    # RESOLUTION: Use DEFAULT_THRESHOLDS constant for better maintainability
-    # instead of hardcoded magic numbers.
-    p_thresholds = profile.get("thresholds", {})
-
-    if thresholds is None:
-        thresholds = {
-            "acl_yellow": p_thresholds.get(
-                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
-            ),
-            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-            "type_safety": p_thresholds.get(
-                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-            ),
-            "token_limit": p_thresholds.get(
-                "token_limit", DEFAULT_THRESHOLDS["token_limit"]
-            ),
-        }
-
-    metrics = get_function_stats(filepath)
-    loc = get_loc(filepath)
-
-    score = 100
-    details = []
-
-    # 2. Bloated Files Penalty
-    # -1 pt per 10 lines > 200. High LLOC increases hallucination risk for agents.
-    if loc > 200:
-        bloat_penalty = (loc - 200) // 10
-        if bloat_penalty > 0:
-            score -= bloat_penalty
-            details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
-
-    # If no functions, return current score (potentially with bloat penalty)
-    if not metrics:
-        return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
-
-    # 3. Extract granular thresholds (Synchronized with Constants)
-    acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-    acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-    type_safety_threshold = thresholds.get(
-        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    warnings.warn(
+        "score_file is deprecated, use PythonAnalyzer().score_file() instead",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
-
-    # 4. Dynamic Token Economics
-    # If the cumulative token budget is exceeded, the agent loses architectural context.
-    if cumulative_tokens > token_limit:
-        penalty = 15
-        score -= penalty
-        details.append(
-            f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
-        )
-
-    # 5. ACL Scoring (Agent Cognitive Load)
-    # Red functions represent "hallucination zones" where agents lose tracking.
-    red_count = sum(1 for m in metrics if m["acl"] > acl_red)
-    yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
-
-    if red_count > 0:
-        penalty = red_count * 15
-        score -= penalty
-        details.append(f"{red_count} Red ACL functions (-{penalty})")
-
-    if yellow_count > 0:
-        penalty = yellow_count * 5
-        score -= penalty
-        details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
-
-    # 6. Type Safety Index
-    typed_count = sum(1 for m in metrics if m["is_typed"])
-    type_safety_index = (typed_count / len(metrics)) * 100
-
-    if type_safety_index < type_safety_threshold:
-        penalty = 20
-        score -= penalty
-        details.append(
-            f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
-        )
-
-    avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
-
-    # Ensure score doesn't dip below 0
-    return (
-        max(score, 0),
-        ", ".join(details),
-        loc,
-        avg_complexity,
-        type_safety_index,
-        metrics,
-    )
+    return PythonAnalyzer().score_file(filepath, profile, thresholds, cumulative_tokens)
 
 
 def generate_badge(score: float) -> str:
@@ -160,7 +61,7 @@ def generate_badge(score: float) -> str:
         <rect width="{total_width}" height="{height}" rx="{border_radius}" fill="#fff"/>
     </clipPath>
     <g clip-path="url(#r)">
-        <rect width="{left_width}" height="{height}" fill="#555"/>
+        <rect width="{total_width}" height="{height}" fill="#555"/>
         <rect x="{left_width}" width="{right_width}" height="{height}" fill="{color}"/>
         <rect width="{total_width}" height="{height}" fill="url(#s)"/>
     </g>

@@ -16,6 +16,9 @@ dependencies = [
     "networkx",
     "tomli; python_version < '3.11'",
     "litellm",
+    "tree-sitter>=0.21.3",
+    "tree-sitter-javascript>=0.21.4",
+    "tree-sitter-typescript>=0.21.2",
 ]
 requires-python = ">=3.8"
 

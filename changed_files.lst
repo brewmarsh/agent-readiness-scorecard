@@ -1,1 +1,2 @@
-tests/test_dependencies.py
+src/agent_scorecard/auditor.py
+src/agent_scorecard/auditor_utils.py
