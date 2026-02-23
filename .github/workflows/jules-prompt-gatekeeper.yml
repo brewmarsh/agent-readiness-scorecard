@@ -2,13 +2,17 @@ name: 'Jules: Prompt Gatekeeper'
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled] # Added opened to catch labels on creation
   pull_request:
-    types: [labeled]
+    types: [opened, labeled]
 
 jobs:
   gatekeeper:
-    if: github.event.label.name == 'prompt-check'
+    # Check if 'prompt-check' exists in the labels array or is the specific label being added
+    if: >
+      contains(github.event.issue.labels.*.name, 'prompt-check') || 
+      contains(github.event.pull_request.labels.*.name, 'prompt-check') ||
+      github.event.label.name == 'prompt-check'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -24,7 +28,9 @@ jobs:
           python-version: '3.10'
 
       - name: Install agent-scorecard
-        run: pip install .
+        run: |
+          pip install .
+          echo "$HOME/.local/bin" >> $GITHUB_PATH # Ensure binary is in path
 
       - name: Run Gatekeeper Analysis
         uses: actions/github-script@v7
@@ -33,53 +39,50 @@ jobs:
           script: |
             const fs = require('fs');
             const issueOrPR = context.payload.issue || context.payload.pull_request;
-            const issueBody = issueOrPR.body || '';
-            fs.writeFileSync('issue_prompt.txt', issueBody);
+            const body = issueOrPR.body || '';
+            const number = issueOrPR.number; // Use normalized number variable
+            
+            fs.writeFileSync('issue_prompt.txt', body);
 
             let output = '';
             const options = {
               listeners: {
-                stdout: (data) => {
-                  output += data.toString();
-                }
+                stdout: (data) => { output += data.toString(); }
               },
               ignoreReturnCode: true
             };
 
+            // Run the scorecard check
             const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
 
-            // Gracefully remove label if it exists
+            // Robust Label Removal
             try {
               await github.rest.issues.removeLabel({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: number,
                 name: 'prompt-check'
               });
-            } catch (error) {
-              if (error.status !== 404) {
-                throw error;
-              }
-              console.log('Label prompt-check not found on issue, skipping removal.');
+            } catch (e) {
+              console.log('Label removal skipped/failed: ', e.message);
             }
 
             if (exitCode !== 0) {
-              // Extract suggestions from output
               const suggestionsMatch = output.match(/Refactored Suggestions:([\s\S]*?)(\nFAILED:|$)/);
               const suggestions = suggestionsMatch ? suggestionsMatch[1].trim() : "No specific suggestions found.";
 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `🛑 Prompt Physics Check Failed\nI cannot start this task yet because the prompt instructions are ambiguous.\n\nSuggested Improvements:\n${suggestions}`
+                issue_number: number,
+                body: `🛑 **Prompt Physics Check Failed**\nI cannot start this task yet because the prompt instructions are ambiguous.\n\n### Suggested Improvements:\n${suggestions}`
               });
             } else {
-              // Pass: Add jules label
+              // Pass: Hand-off to Jules by adding label
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: number,
                 labels: ['jules']
               });
             }
