@@ -16,8 +16,11 @@ dependencies = [
     "networkx",
     "tomli; python_version < '3.11'",
     "litellm",
+    "tree-sitter>=0.22.0",
+    "tree-sitter-javascript",
+    "tree-sitter-typescript",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [project.scripts]
 agent-score = "agent_scorecard.main:cli"
