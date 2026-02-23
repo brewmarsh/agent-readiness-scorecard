@@ -1,8 +1,17 @@
 import os
-import ast
 import tiktoken
-from typing import Dict, List, Optional, cast
+from typing import Dict, cast
 from .types import DirectoryEntropy, TokenAnalysis, EnvironmentHealth
+from .auditor_utils import (
+    _collect_directory_stats,
+    _get_critical_files_content,
+    _get_project_signatures,
+    _check_agents_md,
+    _check_linter_config,
+    _check_lock_file,
+    _validate_pyproject,
+    get_python_signatures,
+)
 
 
 def check_directory_entropy(path: str) -> DirectoryEntropy:
@@ -22,24 +31,7 @@ def check_directory_entropy(path: str) -> DirectoryEntropy:
     if not os.path.isdir(path):
         return {"avg_files": 0, "warning": False, "max_files": 0, "crowded_dirs": []}
 
-    total_files = 0
-    total_folders = 0
-    max_files = 0
-    crowded_dirs = []
-
-    for root, dirs, files in os.walk(path):
-        # Filter out hidden directories and __pycache__ to avoid noise
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
-
-        total_folders += 1
-        num_files = len(files)
-        total_files += num_files
-
-        if num_files > max_files:
-            max_files = num_files
-
-        if num_files > 50:
-            crowded_dirs.append(root)
+    total_files, total_folders, max_files, crowded_dirs = _collect_directory_stats(path)
 
     avg = total_files / total_folders if total_folders > 0 else 0
 
@@ -79,83 +71,6 @@ def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, in
     return entropy_stats
 
 
-def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
-    """
-    Extracts function/class signatures from an AST node.
-
-    This provides the 'skeleton' of the code for token counting.
-
-    Args:
-        node (ast.AST): The AST node to extract the signature from.
-
-    Returns:
-        Optional[str]: The extracted signature string, or None if not applicable.
-    """
-    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        return None
-
-    if hasattr(ast, "unparse"):
-        # Python 3.9+ logic: Replace body with 'pass' to get just the signature
-        orig_body = getattr(node, "body", [])
-        setattr(node, "body", [ast.Pass()])
-        try:
-            unparsed = ast.unparse(node)
-            lines = unparsed.splitlines()
-            if lines:
-                sig = "\n".join(lines[:-1]).strip()
-                if not sig:
-                    sig = lines[0]
-                return sig
-        except Exception:
-            pass
-        finally:
-            setattr(node, "body", orig_body)
-    else:
-        # Fallback for older Python versions
-        deco_list = [
-            f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator"
-            for deco in getattr(node, "decorator_list", [])
-        ]
-
-        if isinstance(node, ast.ClassDef):
-            sig = f"class {node.name}:"
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
-            sig = f"{prefix} {node.name}(...):"
-        else:
-            return None
-
-        return "\n".join(deco_list + [sig]) if deco_list else sig
-    return None
-
-
-def get_python_signatures(filepath: str) -> str:
-    """
-    Extracts all top-level function and class signatures from a file.
-
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        str: A concatenated string of all signatures found.
-    """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            code = f.read()
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-        return ""
-
-    signatures: List[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            sig = _extract_signature_from_node(node)
-            if sig:
-                signatures.append(sig)
-
-    return "\n".join(signatures)
-
-
 def count_python_tokens(filepath: str) -> int:
     """
     Calculates the token count of a single Python file using tiktoken.
@@ -193,27 +108,11 @@ def check_critical_context_tokens(path: str) -> TokenAnalysis:
     except Exception:
         return {"token_count": 0, "alert": False}
 
-    total_content = ""
-    critical_files = ["README.md", "AGENTS.md"]
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
-
-    for cf in critical_files:
-        cf_path = os.path.join(base_dir, cf)
-        if os.path.exists(cf_path):
-            try:
-                with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
-                    total_content += f.read() + "\n"
-            except Exception:
-                pass
+    total_content = _get_critical_files_content(base_dir)
 
     if os.path.isdir(path):
-        for root, dirs, files in os.walk(path):
-            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
-            for file in files:
-                if file.endswith(".py"):
-                    total_content += (
-                        get_python_signatures(os.path.join(root, file)) + "\n"
-                    )
+        total_content += _get_project_signatures(path)
     elif os.path.isfile(path) and path.endswith(".py"):
         total_content += get_python_signatures(path)
 
@@ -245,30 +144,9 @@ def check_environment_health(path: str) -> EnvironmentHealth:
 
     root_files = os.listdir(base_dir)
 
-    # 1. AGENTS.md check
-    results["agents_md"] = any(f.lower() == "agents.md" for f in root_files)
-
-    # 2. Linter check
-    linter_files = ["ruff.toml", ".flake8", ".eslintrc", "pyproject.toml"]
-    results["linter_config"] = any(f in root_files for f in linter_files)
-
-    # 3. Lock file check
-    lock_files = ["package-lock.json", "poetry.lock", "uv.lock", "requirements.txt"]
-    results["lock_file"] = any(f in root_files for f in lock_files)
-
-    # 4. pyproject.toml validity
-    if "pyproject.toml" in root_files:
-        filepath = os.path.join(base_dir, "pyproject.toml")
-        try:
-            # Use toml_tool alias to unify tomllib and tomli
-            try:
-                import tomllib as toml_tool  # type: ignore
-            except ImportError:
-                import tomli as toml_tool  # type: ignore
-
-            with open(filepath, "rb") as f:
-                toml_tool.load(f)
-        except Exception:
-            results["pyproject_valid"] = False
+    results["agents_md"] = _check_agents_md(root_files)
+    results["linter_config"] = _check_linter_config(root_files)
+    results["lock_file"] = _check_lock_file(root_files)
+    results["pyproject_valid"] = _validate_pyproject(base_dir, root_files)
 
     return cast(EnvironmentHealth, results)
