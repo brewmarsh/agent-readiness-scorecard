@@ -164,9 +164,13 @@ class TestFixCommand:
 
             # Mock litellm to avoid ImportError in environments where it might not be loaded
             with patch("agent_scorecard.llm.litellm") as mock_litellm:
-                mock_litellm.completion.return_value.choices[0].message.content = "def foo() -> None:\n    pass\n"
+                mock_litellm.completion.return_value.choices[
+                    0
+                ].message.content = "def foo() -> None:\n    pass\n"
                 # Should default to generic and not crash
-                result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
+                result = runner.invoke(
+                    cli, ["score", ".", "--fix", "--agent", "invalid"]
+                )
                 assert result.exit_code == 0
                 assert "Unknown agent profile: invalid. using generic." in result.output
 
