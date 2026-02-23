@@ -1,3 +1,4 @@
+from pathlib import Path
 from agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
@@ -6,7 +7,16 @@ from agent_scorecard.dependencies import (
 )
 
 
-def test_collect_python_files(tmp_path):
+def test_collect_python_files(tmp_path: Path) -> None:
+    """
+    Tests the collection of Python files in a directory.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     d = tmp_path / "subdir"
     d.mkdir()
     (d / "file1.py").write_text("print('hello')")
@@ -19,7 +29,16 @@ def test_collect_python_files(tmp_path):
     assert any(f.endswith("root.py") for f in files)
 
 
-def test_import_graph_and_cycles(tmp_path):
+def test_import_graph_and_cycles(tmp_path: Path) -> None:
+    """
+    Tests import graph generation and cycle detection.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B -> C -> A (cycle)
     # D -> B
 
@@ -43,7 +62,16 @@ def test_import_graph_and_cycles(tmp_path):
     assert cycle == ["a.py", "b.py", "c.py"]
 
 
-def test_calculate_context_tokens(tmp_path):
+def test_calculate_context_tokens(tmp_path: Path) -> None:
+    """
+    Tests context token calculation for simple dependencies.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B
     # B has 10 tokens
     # A has 20 tokens
@@ -60,7 +88,16 @@ def test_calculate_context_tokens(tmp_path):
     assert context["a.py"] == 30
 
 
-def test_calculate_context_tokens_with_cycle(tmp_path):
+def test_calculate_context_tokens_with_cycle(tmp_path: Path) -> None:
+    """
+    Tests context token calculation with dependency cycles.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B -> A
     # A: 10, B: 20
     # Context(A) = 10 + 20 = 30
@@ -76,7 +113,16 @@ def test_calculate_context_tokens_with_cycle(tmp_path):
     assert context["b.py"] == 30
 
 
-def test_calculate_context_tokens_complex(tmp_path):
+def test_calculate_context_tokens_complex(tmp_path: Path) -> None:
+    """
+    Tests context token calculation with complex dependencies.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B, C
     # B -> D
     # C -> D
