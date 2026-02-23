@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 
+
 def test_score_limit_to() -> None:
     """
     Test that --limit-to correctly restricts analysis to specified files.
@@ -16,11 +17,14 @@ def test_score_limit_to() -> None:
 
         # Run only on file1.py
         # We use verbosity=detailed to see all files in output
-        result = runner.invoke(cli, ["score", ".", "--limit-to", "file1.py", "--verbosity", "detailed"])
+        result = runner.invoke(
+            cli, ["score", ".", "--limit-to", "file1.py", "--verbosity", "detailed"]
+        )
 
         assert result.exit_code == 0
         assert "file1.py" in result.output
         assert "file2.py" not in result.output
+
 
 def test_score_limit_to_multiple() -> None:
     """
@@ -38,7 +42,19 @@ def test_score_limit_to_multiple() -> None:
             f.write("# README")
 
         # Run on file1.py and file2.py
-        result = runner.invoke(cli, ["score", ".", "--limit-to", "file1.py", "--limit-to", "file2.py", "--verbosity", "detailed"])
+        result = runner.invoke(
+            cli,
+            [
+                "score",
+                ".",
+                "--limit-to",
+                "file1.py",
+                "--limit-to",
+                "file2.py",
+                "--verbosity",
+                "detailed",
+            ],
+        )
 
         assert result.exit_code == 0
         assert "file1.py" in result.output

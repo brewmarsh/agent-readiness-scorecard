@@ -1,64 +1,78 @@
-name: Scorecard Automation
+name: 'Jules: Prompt Gatekeeper'
 
 on:
-  push:
-    branches:
-      - beta  # Changed from main to beta
-  schedule:
-    - cron: '0 0 * * *'
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
 
 jobs:
-  remediate:
+  gatekeeper:
+    if: github.event.label.name == 'prompt-check'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       issues: write
       pull-requests: write
-
+      contents: read
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: beta # Ensure we check out beta to start the analysis
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install agent-scorecard
+        run: pip install .
 
-      - name: Install Dependencies
-        run: uv sync --all-extras
-
-      - name: Run Agent Scorecard
-        run: uv run agent-score score . --verbosity summary > scorecard.txt
-
-      - name: Process Scorecard Output
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: uv run python scripts/process_scorecard.py scorecard.txt
-
-      - name: Apply Type Hints (Simulation)
-        run: |
-          # ... (Logic remains same, ensures changes happen on a branch from beta)
-
-      - name: Create Pull Request for Type Hints
-        uses: peter-evans/create-pull-request@v6
+      - name: Run Gatekeeper Analysis
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GH_PAT }}
-          base: beta # CRITICAL: Sets beta as the destination for the PR
-          commit-message: "chore: Auto-apply type hints from AI Scorecard"
-          title: "chore: Auto-apply type hints from AI Scorecard"
-          body: |
-            ### 🤖 AI Scorecard Remediation
-            Targeting **beta** branch for integration.
-          branch: auto-type-hints
-          delete-branch: true
-          labels: |
-            ai-ready
-            automated-refactor
-            prompt-check
+          github-token: ${{ secrets.GH_PAT }}
+          script: |
+            const fs = require('fs');
+            const issueOrPR = context.payload.issue || context.payload.pull_request;
+            const issueBody = issueOrPR.body || '';
+            fs.writeFileSync('issue_prompt.txt', issueBody);
+
+            let output = '';
+            const options = {
+              listeners: {
+                stdout: (data) => {
+                  output += data.toString();
+                }
+              },
+              ignoreReturnCode: true
+            };
+
+            const exitCode = await exec.exec('agent-score', ['check-prompts', 'issue_prompt.txt', '--plain'], options);
+
+            // Always remove prompt-check
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              name: 'prompt-check'
+            });
+
+            if (exitCode !== 0) {
+              // Extract suggestions from output
+              const suggestionsMatch = output.match(/Refactored Suggestions:([\s\S]*?)(\nFAILED:|$)/);
+              const suggestions = suggestionsMatch ? suggestionsMatch[1].trim() : "No specific suggestions found.";
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `🛑 Prompt Physics Check Failed\nI cannot start this task yet because the prompt instructions are ambiguous.\n\nSuggested Improvements:\n${suggestions}`
+              });
+            } else {
+              // Pass: Add jules label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['jules']
+              });
+            }

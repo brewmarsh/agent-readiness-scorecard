@@ -2,6 +2,7 @@ import os
 import ast
 from typing import List, Dict, Set, Tuple
 
+
 def _collect_python_files(path: str) -> List[str]:
     """
     Collects all Python files in the given path, ignoring hidden directories.
