@@ -11,10 +11,11 @@ All notable changes to this project will be documented in this file.
 - **llm:** Implement Provider-Agnostic Engine using `litellm` (cfd2efa).
 - **fix:** Refactor `fix` command to use CRAFT prompts for higher quality LLM-driven remediation (866daf2).
 - **economics:** Implement Dynamic Context Economics metric to track token budget across the dependency graph (bd47e60).
-- **metrics:** Integrate AST-based nesting depth analyzer into scoring (b2de9f1).
+- **metrics:** Refactor Agent Cognitive Load (ACL) scoring formula and integrate AST-based nesting depth analyzer (f3abbab, b2de9f1).
 
 ### Bug Fixes
 - **ci:** Resolve `create-pull-request` error in detached HEAD states (35de045).
+- **ci:** Remove obsolete prompt linting from audit workflow (b5d4acd).
 - **windows:** Fix `UnicodeDecodeError` in reports when running on Windows (06d307f).
 - **tests:** Mock `litellm` in CLI tests to ensure environment-independent verification (06d307f).
 - **tests:** Fix `ImportError` in `test_dependencies.py` after module refactoring (805a332).
