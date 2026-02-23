@@ -19,7 +19,7 @@ def test_pyproject_config_report_style() -> None:
         runner.invoke(cli, ["score", ".", "--report", "report.md"])
         assert os.path.exists("report.md")
 
-        with open("report.md", "r") as f:
+        with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
             assert "Overall Score" in content
             assert "File Analysis" not in content
