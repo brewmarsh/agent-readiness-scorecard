@@ -5,6 +5,7 @@ from .analyzers.base import BaseAnalyzer
 from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
 from .analyzers.docker import DockerAnalyzer
+from .analyzers.javascript import JavascriptAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -43,6 +44,9 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
     filename = os.path.basename(filepath)
     if filename == "Dockerfile" or filename.startswith("Dockerfile."):
         return DockerAnalyzer()
+
+    if filepath.endswith(".js") or filepath.endswith(".jsx") or filepath.endswith(".ts") or filepath.endswith(".tsx"):
+        return JavascriptAnalyzer()
 
     raise ValueError(f"Unsupported file type: {filepath}")
 

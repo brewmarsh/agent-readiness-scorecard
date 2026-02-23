@@ -23,6 +23,10 @@ def _scan_directory(path: str) -> List[str]:
             if (
                 file.endswith(".py")
                 or file.endswith(".md")
+                or file.endswith(".js")
+                or file.endswith(".jsx")
+                or file.endswith(".ts")
+                or file.endswith(".tsx")
                 or file == "Dockerfile"
                 or file.startswith("Dockerfile.")
             ):
@@ -44,6 +48,10 @@ def collect_python_files(path: str) -> List[str]:
     if os.path.isfile(path) and (
         path.endswith(".py")
         or path.endswith(".md")
+        or path.endswith(".js")
+        or path.endswith(".jsx")
+        or path.endswith(".ts")
+        or path.endswith(".tsx")
         or os.path.basename(path) == "Dockerfile"
         or os.path.basename(path).startswith("Dockerfile.")
     ):
