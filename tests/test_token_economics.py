@@ -3,7 +3,7 @@ import tempfile
 from agent_scorecard.analyzer import perform_analysis
 
 
-def test_cumulative_token_budget_exceeded():
+def test_cumulative_token_budget_exceeded() -> None:
     """
     Tests that a small file importing a massive module triggers a token budget alert.
     """
@@ -42,7 +42,7 @@ def test_cumulative_token_budget_exceeded():
         assert main_result["score"] < 100
 
 
-def test_cumulative_token_budget_within_limit():
+def test_cumulative_token_budget_within_limit() -> None:
     """
     Tests that a small file with small imports does not trigger the alert.
     """
