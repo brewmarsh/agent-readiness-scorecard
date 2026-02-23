@@ -267,7 +267,7 @@ def perform_analysis(
     graph, individual_tokens = get_import_graph(path)
     cumulative_tokens_map = _calculate_cumulative_tokens(graph, individual_tokens)
 
-    if limit_to_files:
+    if limit_to_files is not None:
         py_files = [
             f
             for f in py_files
