@@ -1,7 +1,8 @@
 import os
 from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
-from .scoring import score_file
+from .analyzers.base import BaseAnalyzer
+from .analyzers.python import PythonAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -20,6 +21,21 @@ from .metrics import (  # noqa: F401
 
 
 # --- METRICS & GRAPH ANALYSIS ---
+
+
+def get_analyzer(filepath: str) -> BaseAnalyzer:
+    """
+    Returns the appropriate analyzer based on file extension.
+
+    Args:
+        filepath (str): Path to the file.
+
+    Returns:
+        BaseAnalyzer: An instance of a language-specific analyzer.
+    """
+    if filepath.endswith(".py"):
+        return PythonAnalyzer()
+    raise ValueError(f"Unsupported file type: {filepath}")
 
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
@@ -147,7 +163,8 @@ def perform_analysis(
         rel_path = os.path.relpath(filepath, start=project_root)
         cum_tokens = cumulative_tokens_map.get(rel_path, 0)
 
-        score, issues, loc, complexity, type_safety, metrics_data = score_file(
+        analyzer = get_analyzer(filepath)
+        score, issues, loc, complexity, type_safety, metrics_data = analyzer.score_file(
             filepath, profile, thresholds=thresholds, cumulative_tokens=cum_tokens
         )
         file_scores.append(score)
