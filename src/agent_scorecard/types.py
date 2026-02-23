@@ -84,4 +84,3 @@ class AnalysisResult(TypedDict):
     dep_analysis: DepAnalysis
     directory_stats: List[DirectoryStat]
     report_style: Optional[str]
-

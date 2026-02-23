@@ -47,7 +47,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
         None
     """
 
-    # RESOLUTION: Combined the deep nesting from the refactor branch with 
+    # RESOLUTION: Combined the deep nesting from the refactor branch with
     # the volume testing from beta to thoroughly stress-test the new ACL formula.
     content = textwrap.dedent(
         """
@@ -58,8 +58,9 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
                     if True:
                         if True:
                             x = 0
-    """)
-    
+    """
+    )
+
     # Add 320 lines of assignment inside the function to force a high ACL/LOC penalty
     for i in range(320):
         content += f"            x = {i}\n"

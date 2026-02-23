@@ -41,9 +41,9 @@ def test_acl_strictness(tmp_path: Path) -> None:
         None
     """
     # RESOLUTION: Adopted New Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
-    # Target function: Depth=3, CC=4, LOC=200. 
+    # Target function: Depth=3, CC=4, LOC=200.
     # Math: (3*2) + (4*1.5) + (200/50) = 6 + 6 + 4 = 16.0 (Red status)
-    
+
     content = textwrap.dedent("""
     def hall_func():
         if True:
