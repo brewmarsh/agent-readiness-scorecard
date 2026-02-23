@@ -41,10 +41,12 @@ def test_acl_strictness(tmp_path: Path) -> None:
     """
     # Formula: ACL = Cyclomatic Complexity + (Lines of Code / 20)
     # Target function: CC=1, LOC=300. ACL = 1 + (300 / 20) = 16.0 (Red status)
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def hall_func():
         pass
-    """)
+    """
+    )
     # Append lines inside the function to reach 300 lines total
     for i in range(298):
         content += f"    x = {i}\n"

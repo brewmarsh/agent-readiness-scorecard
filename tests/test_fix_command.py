@@ -32,18 +32,22 @@ class TestFixCommand:
             os.makedirs("src")
             with open("src/test.py", "w") as f:
                 f.write(
-                    textwrap.dedent("""
+                    textwrap.dedent(
+                        """
                     def foo():
                         pass
-                    """)
+                    """
+                    )
                 )
 
             # RESOLUTION: Mock LLM.generate to simulate CRAFT refactoring
-            fixed_code = textwrap.dedent("""
+            fixed_code = textwrap.dedent(
+                """
                 def foo() -> None:
                     \"\"\"A docstring.\"\"\"
                     pass
-            """).strip()
+            """
+            ).strip()
 
             with patch(
                 "agent_scorecard.fix.LLM.generate", return_value=fixed_code
@@ -84,17 +88,21 @@ class TestFixCommand:
             os.makedirs("subdir")
             with open("subdir/test.py", "w") as f:
                 f.write(
-                    textwrap.dedent("""
+                    textwrap.dedent(
+                        """
                     def bar(x):
                         return x
-                    """)
+                    """
+                    )
                 )
 
-            fixed_code = textwrap.dedent("""
+            fixed_code = textwrap.dedent(
+                """
                 def bar(x: int) -> int:
                     \"\"\"Returns x.\"\"\"
                     return x
-            """).strip()
+            """
+            ).strip()
 
             with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
                 # Run fix command on subdir with jules agent (requires agents.md)

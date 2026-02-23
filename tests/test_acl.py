@@ -46,10 +46,12 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
 
     # RESOLUTION: We use the Advisor-Mode setup (Large Function) because
     # the new logic ignores global scope for ACL calculations to focus on unit depth.
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def big_function():
         x = 0
-    """)
+    """
+    )
     # Add 320 lines of assignment inside the function to force a high ACL
     for i in range(320):
         content += f"    x = {i}\n"

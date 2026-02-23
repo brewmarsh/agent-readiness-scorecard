@@ -304,9 +304,20 @@ def fix(path: str, agent: str) -> None:
     type=click.Choice(["quiet", "summary", "detailed"]),
     help="Override verbosity.",
 )
+@click.option(
+    "--report-style",
+    type=click.Choice(["full", "actionable", "collapsed"]),
+    help="Set the report verbosity style.",
+)
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 def score(
-    path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool
+    path: str,
+    agent: str,
+    fix: bool,
+    report_path: str,
+    verbosity: str,
+    report_style: Optional[str],
+    badge: bool,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -317,6 +328,7 @@ def score(
         fix (bool): Whether to automatically fix issues.
         report_path (str): Optional path to save a Markdown report.
         verbosity (str): Optional verbosity override.
+        report_style (Optional[str]): Optional report style override.
         badge (bool): Whether to generate an SVG badge.
 
     Returns:
@@ -330,6 +342,7 @@ def score(
 
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
+    final_report_style = report_style or cfg.get("report_style", "actionable")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if final_verbosity != "quiet":
@@ -347,7 +360,9 @@ def score(
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
         apply_fixes(path, profile)
 
-    results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
+    results = analyzer.perform_analysis(
+        path, agent, thresholds=thresholds, report_style=final_report_style
+    )
 
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
@@ -374,7 +389,9 @@ def score(
             results["final_score"],
             path,
             PROFILES[agent],
+            project_issues=cast(List[str], results.get("project_issues", [])),
             thresholds=thresholds,
+            report_style=final_report_style,
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)

@@ -125,7 +125,8 @@ def test_cli_check_prompts() -> None:
     with runner.isolated_filesystem():
         # Create a compliant prompt file
         with open("prompt.txt", "w") as f:
-            f.write("""
+            f.write(
+                """
 You are a helpful assistant.
 Think step by step.
 <input>
@@ -134,7 +135,8 @@ user input
 Example:
 Input: A
 Output: B
-            """)
+            """
+            )
 
         result = runner.invoke(cli, ["check-prompts", "prompt.txt"])
         assert result.exit_code == 0
