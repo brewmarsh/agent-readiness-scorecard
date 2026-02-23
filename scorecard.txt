@@ -1,11 +1,7 @@
 # Agent Scorecard Report
 
 **Target Agent Profile:** Standard Agent Readiness checks (ACL & Type Safety)
-<<<<<<< refactor-dependencies-acl-5369018314050164157
-**Overall Score: 52.0/100** - FAIL
-=======
-**Overall Score: 92.9/100** - PASS
->>>>>>> beta
+**Overall Score: 64.0/100** - FAIL
 
 ❌ **Status: FAILED** - This codebase needs improvement for AI Agents.
 
@@ -15,24 +11,14 @@ ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= 10.
 
 | Function | File | ACL | Status |
 |----------|------|-----|--------|
-<<<<<<< refactor-dependencies-acl-5369018314050164157
-| `_dfs_visit_cycle` | `src/agent_scorecard/dependencies.py` | 19.1 | 🔴 Red |
-| `_extract_imports_from_ast` | `src/agent_scorecard/dependencies.py` | 17.4 | 🔴 Red |
-| `_scan_directory` | `src/agent_scorecard/dependencies.py` | 13.9 | 🟡 Yellow |
-| `_get_transitive_dependencies` | `src/agent_scorecard/dependencies.py` | 12.6 | 🟡 Yellow |
-| `get_inbound_imports` | `src/agent_scorecard/dependencies.py` | 12.4 | 🟡 Yellow |
-| `_canonicalize_cycles` | `src/agent_scorecard/dependencies.py` | 10.4 | 🟡 Yellow |
-| `_find_imported_files` | `src/agent_scorecard/dependencies.py` | 10.3 | 🟡 Yellow |
-=======
-| `score_file` | `src/agent_scorecard/analyzers/python.py` | 19.3 | 🔴 Red |
-| `get_function_stats` | `src/agent_scorecard/analyzers/python.py` | 14.4 | 🟡 Yellow |
-| `perform_analysis` | `src/agent_scorecard/analyzer.py` | 13.8 | 🟡 Yellow |
-| `check_type_hints` | `src/agent_scorecard/analyzers/python.py` | 13.5 | 🟡 Yellow |
-| `generate_badge` | `src/agent_scorecard/scoring.py` | 13.0 | 🟡 Yellow |
-| `get_project_issues` | `src/agent_scorecard/analyzer.py` | 11.8 | 🟡 Yellow |
-| `_get_loc` | `src/agent_scorecard/analyzers/python.py` | 10.7 | 🟡 Yellow |
-| `get_complexity_score` | `src/agent_scorecard/analyzers/python.py` | 10.4 | 🟡 Yellow |
->>>>>>> beta
+| `_extract_signature_from_node` | `src/agent_scorecard/auditor_utils.py` | 22.5 | 🔴 Red |
+| `_get_critical_files_content` | `src/agent_scorecard/auditor_utils.py` | 15.9 | 🔴 Red |
+| `get_crowded_directories` | `src/agent_scorecard/auditor.py` | 15.5 | 🔴 Red |
+| `_validate_pyproject` | `src/agent_scorecard/auditor_utils.py` | 15.5 | 🔴 Red |
+| `get_python_signatures` | `src/agent_scorecard/auditor_utils.py` | 15.5 | 🔴 Red |
+| `_get_project_signatures` | `src/agent_scorecard/auditor_utils.py` | 12.4 | 🟡 Yellow |
+| `check_critical_context_tokens` | `src/agent_scorecard/auditor.py` | 12.1 | 🟡 Yellow |
+| `_collect_directory_stats` | `src/agent_scorecard/auditor_utils.py` | 10.7 | 🟡 Yellow |
 
 ## 🛡️ Type Safety Index
 
@@ -42,19 +28,21 @@ Target: >90% of functions must have explicit type signatures.
 
 ## 🤖 Agent Prompts for Remediation (CRAFT Format)
 
-<<<<<<< refactor-dependencies-acl-5369018314050164157
-### File: `src/agent_scorecard/dependencies.py` - High Cognitive Load
+### File: `src/agent_scorecard/auditor.py` - High Cognitive Load
 > **Context**: You are a Senior Python Engineer focused on code maintainability.
-> **Request**: Refactor functions in `src/agent_scorecard/dependencies.py` with Red ACL scores.
+> **Request**: Refactor functions in `src/agent_scorecard/auditor.py` with Red ACL scores.
 > **Actions**:
-> - Target functions: `_extract_imports_from_ast`, `_dfs_visit_cycle`.
-=======
-### File: `src/agent_scorecard/analyzers/python.py` - High Cognitive Load
+> - Target functions: `get_crowded_directories`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/auditor_utils.py` - High Cognitive Load
 > **Context**: You are a Senior Python Engineer focused on code maintainability.
-> **Request**: Refactor functions in `src/agent_scorecard/analyzers/python.py` with Red ACL scores.
+> **Request**: Refactor functions in `src/agent_scorecard/auditor_utils.py` with Red ACL scores.
 > **Actions**:
-> - Target functions: `score_file`.
->>>>>>> beta
+> - Target functions: `_validate_pyproject`, `_extract_signature_from_node`, `get_python_signatures`, `_get_critical_files_content`.
 > - Extract nested logic into smaller helper functions.
 > - Ensure all units result in an ACL score < 10.
 > **Frame**: Keep functions under 50 lines. Ensure all tests pass.
@@ -65,11 +53,7 @@ Target: >90% of functions must have explicit type signatures.
 
 | File | Score | Issues |
 | :--- | :---: | :--- |
-<<<<<<< refactor-dependencies-acl-5369018314050164157
-| src/agent_scorecard/dependencies.py | 40 ❌ | Bloated File: 257 lines (-5), 2 Red ACL functions (-30), 5 Yellow ACL functions (-25) |
-=======
-| src/agent_scorecard/analyzers/python.py | 62 ❌ | Bloated File: 237 lines (-3), 1 Red ACL functions (-15), 4 Yellow ACL functions (-20) |
->>>>>>> beta
+| src/agent_scorecard/auditor_utils.py | 30 ❌ | 4 Red ACL functions (-60), 2 Yellow ACL functions (-10) |
 
 ---
 *Generated by Agent-Scorecard*
