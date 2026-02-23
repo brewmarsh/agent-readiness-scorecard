@@ -28,3 +28,20 @@ Agents traverse code like a graph.
 Context is currency.
 * **Token Budget:** >32k tokens in a critical path risks "forgetting" instructions.
 * **Directory Entropy:** Too many files in one folder confuses retrieval tools.
+
+## 4. Multi-Language Support
+`agent-scorecard` uses the Strategy Pattern to apply language-specific "Physics" to different file types.
+
+### Language-Specific Configuration
+You can customize thresholds for each language in `pyproject.toml`. This allows for different complexity tolerances across your stack.
+
+```toml
+[tool.agent-scorecard.python.thresholds]
+acl_yellow = 10
+
+[tool.agent-scorecard.javascript.thresholds]
+acl_yellow = 12
+acl_red = 18
+```
+
+The tool will automatically detect the language (Python, JavaScript, Markdown, Docker) and apply the appropriate overrides, falling back to global thresholds if none are specified.

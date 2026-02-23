@@ -139,6 +139,7 @@ def perform_analysis(
     profile: Optional[Dict[str, Any]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
     report_style: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None,
 ) -> AnalysisResult:
     """
     Orchestrates the full project analysis pipeline with Context Economics and Custom Reporting.
@@ -174,14 +175,27 @@ def perform_analysis(
         cum_tokens = cumulative_tokens_map.get(rel_path, 0)
 
         analyzer = get_analyzer(filepath)
+        lang = analyzer.language
+
+        # Merge global thresholds with language-specific overrides if available
+        active_thresholds = (thresholds or {}).copy()
+        if config:
+            lang_cfg = config.get(lang.lower(), {})
+            lang_thresholds = lang_cfg.get("thresholds", {})
+            active_thresholds.update(lang_thresholds)
+
         score, issues, loc, complexity, type_safety, metrics_data = analyzer.score_file(
-            filepath, profile, thresholds=thresholds, cumulative_tokens=cum_tokens
+            filepath,
+            profile,
+            thresholds=active_thresholds,
+            cumulative_tokens=cum_tokens,
         )
         file_scores.append(score)
 
         file_results.append(
             {
                 "file": rel_path,
+                "language": lang,
                 "score": score,
                 "issues": issues,
                 "loc": loc,

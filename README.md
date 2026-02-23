@@ -91,6 +91,14 @@ report_style = "actionable"
 acl_yellow = 10
 acl_red = 15
 type_safety = 90
+
+# Language-specific overrides
+[tool.agent-scorecard.javascript.thresholds]
+acl_yellow = 12
+acl_red = 18
+
+[tool.agent-scorecard.markdown.thresholds]
+token_limit = 64000
 ```
 
 ### Verbosity Levels (CLI Output)

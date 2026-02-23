@@ -24,13 +24,18 @@ class Thresholds(TypedDict, total=False):
     acl_red: int
     complexity: int
     type_safety: int
+    token_limit: int
 
 
-class Config(TypedDict):
+class Config(TypedDict, total=False):
     verbosity: str
     report_style: str
     thresholds: Thresholds
     llm: Dict[str, Any]
+    python: Dict[str, Any]
+    javascript: Dict[str, Any]
+    markdown: Dict[str, Any]
+    docker: Dict[str, Any]
 
 
 # Unified defaults representing core Agent Physics
