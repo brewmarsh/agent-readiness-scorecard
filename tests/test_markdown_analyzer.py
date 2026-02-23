@@ -2,6 +2,7 @@ from pathlib import Path
 from agent_scorecard.analyzers.markdown import MarkdownAnalyzer
 from agent_scorecard.constants import PROFILES
 
+
 def test_markdown_analyzer_get_stats(tmp_path: Path) -> None:
     """
     Test that MarkdownAnalyzer correctly parses headers and calculates ACL.
@@ -43,14 +44,15 @@ Short section.
     # ACL = (depth * 1.5) + (tokens / 100)
     # We don't know exact tokens without tiktoken encoding, but we can verify it's a float
     assert isinstance(stats[0]["acl"], float)
-    assert stats[0]["acl"] > 1.5 # 1 * 1.5 + tokens/100
+    assert stats[0]["acl"] > 1.5  # 1 * 1.5 + tokens/100
+
 
 def test_markdown_analyzer_score_file(tmp_path: Path) -> None:
     """
     Test that MarkdownAnalyzer correctly scores a file and identifies issues.
     """
     # Create a markdown file with a very long section to trigger high ACL
-    long_content = "Word " * 2000 # ~2000 tokens
+    long_content = "Word " * 2000  # ~2000 tokens
     md_content = f"""# Huge Section
 {long_content}
 """
@@ -65,6 +67,7 @@ def test_markdown_analyzer_score_file(tmp_path: Path) -> None:
     assert score < 100
     assert "Red ACL sections detected" in issues
     assert type_safety == 100.0
+
 
 def test_markdown_analyzer_bloat_penalty(tmp_path: Path) -> None:
     """

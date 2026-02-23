@@ -146,15 +146,18 @@ class MarkdownAnalyzer(BaseAnalyzer):
             # ACL = (Header Depth * 1.5) + (Tokens in Section / 100)
             acl = self.calculate_acl(float(tokens), loc, nesting_depth)
 
-            stats.append({
-                "name": header,
-                "lineno": lineno,
-                "complexity": tokens / 100.0, # Use token density as complexity for reporting
-                "loc": loc,
-                "acl": acl,
-                "is_typed": True,
-                "nesting_depth": nesting_depth,
-            })
+            stats.append(
+                {
+                    "name": header,
+                    "lineno": lineno,
+                    "complexity": tokens
+                    / 100.0,  # Use token density as complexity for reporting
+                    "loc": loc,
+                    "acl": acl,
+                    "is_typed": True,
+                    "nesting_depth": nesting_depth,
+                }
+            )
 
         return stats
 

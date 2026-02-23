@@ -223,9 +223,7 @@ def _find_raw_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
 
     for node in nodes:
         if node not in visited_global:
-            _dfs_visit_cycle(
-                node, graph, visited_global, path_set, [], cycles
-            )
+            _dfs_visit_cycle(node, graph, visited_global, path_set, [], cycles)
 
     return cycles
 
