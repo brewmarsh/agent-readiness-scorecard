@@ -4,6 +4,7 @@ from .constants import PROFILES
 from .analyzers.base import BaseAnalyzer
 from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
+from .analyzers.docker import DockerAnalyzer
 from .analyzers.javascript import JavascriptAnalyzer
 from . import auditor
 from . import dependencies
@@ -39,8 +40,19 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
         return PythonAnalyzer()
     if filepath.endswith(".md"):
         return MarkdownAnalyzer()
-    if filepath.endswith((".js", ".jsx", ".ts", ".tsx")):
+
+    filename = os.path.basename(filepath)
+    if filename == "Dockerfile" or filename.startswith("Dockerfile."):
+        return DockerAnalyzer()
+
+    if (
+        filepath.endswith(".js")
+        or filepath.endswith(".jsx")
+        or filepath.endswith(".ts")
+        or filepath.endswith(".tsx")
+    ):
         return JavascriptAnalyzer()
+
     raise ValueError(f"Unsupported file type: {filepath}")
 
 
@@ -136,6 +148,7 @@ def perform_analysis(
     profile: Optional[Dict[str, Any]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
     report_style: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None,
 ) -> AnalysisResult:
     """
     Orchestrates the full project analysis pipeline with Context Economics and Custom Reporting.
@@ -171,14 +184,27 @@ def perform_analysis(
         cum_tokens = cumulative_tokens_map.get(rel_path, 0)
 
         analyzer = get_analyzer(filepath)
+        lang = analyzer.language
+
+        # Merge global thresholds with language-specific overrides if available
+        active_thresholds = (thresholds or {}).copy()
+        if config:
+            lang_cfg = config.get(lang.lower(), {})
+            lang_thresholds = lang_cfg.get("thresholds", {})
+            active_thresholds.update(lang_thresholds)
+
         score, issues, loc, complexity, type_safety, metrics_data = analyzer.score_file(
-            filepath, profile, thresholds=thresholds, cumulative_tokens=cum_tokens
+            filepath,
+            profile,
+            thresholds=active_thresholds,
+            cumulative_tokens=cum_tokens,
         )
         file_scores.append(score)
 
         file_results.append(
             {
                 "file": rel_path,
+                "language": lang,
                 "score": score,
                 "issues": issues,
                 "loc": loc,

@@ -64,6 +64,10 @@ class PythonAnalyzer(BaseAnalyzer):
     Python-specific implementation of the BaseAnalyzer.
     """
 
+    @property
+    def language(self) -> str:
+        return "Python"
+
     def score_file(
         self,
         filepath: str,

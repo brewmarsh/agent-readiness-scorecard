@@ -1,7 +1,7 @@
 # Agent Scorecard Report
 
 **Target Agent Profile:** Standard Agent Readiness checks (ACL & Type Safety)
-**Overall Score: 64.0/100** - FAIL
+**Overall Score: 64.4/100** - FAIL
 
 ❌ **Status: FAILED** - This codebase needs improvement for AI Agents.
 
@@ -11,38 +11,52 @@ ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= 10.
 
 | Function | File | ACL | Status |
 |----------|------|-----|--------|
-| `_extract_signature_from_node` | `src/agent_scorecard/auditor_utils.py` | 22.5 | 🔴 Red |
-| `_get_critical_files_content` | `src/agent_scorecard/auditor_utils.py` | 15.9 | 🔴 Red |
-| `get_crowded_directories` | `src/agent_scorecard/auditor.py` | 15.5 | 🔴 Red |
-| `_validate_pyproject` | `src/agent_scorecard/auditor_utils.py` | 15.5 | 🔴 Red |
-| `get_python_signatures` | `src/agent_scorecard/auditor_utils.py` | 15.5 | 🔴 Red |
-| `_get_project_signatures` | `src/agent_scorecard/auditor_utils.py` | 12.4 | 🟡 Yellow |
-| `check_critical_context_tokens` | `src/agent_scorecard/auditor.py` | 12.1 | 🟡 Yellow |
-| `_collect_directory_stats` | `src/agent_scorecard/auditor_utils.py` | 10.7 | 🟡 Yellow |
+| `score_file` | `src/agent_scorecard/analyzers/javascript.py` | 20.9 | 🔴 Red |
+| `_calculate_complexity` | `src/agent_scorecard/analyzers/javascript.py` | 20.4 | 🔴 Red |
+| `_dfs_visit_cycle` | `src/agent_scorecard/dependencies.py` | 19.1 | 🔴 Red |
+| `_extract_imports_from_ast` | `src/agent_scorecard/dependencies.py` | 17.4 | 🔴 Red |
+| `_calculate_nesting_depth` | `src/agent_scorecard/analyzers/javascript.py` | 16.9 | 🔴 Red |
+| `get_function_stats` | `src/agent_scorecard/analyzers/javascript.py` | 15.2 | 🔴 Red |
+| `_analyze_function` | `src/agent_scorecard/analyzers/javascript.py` | 14.1 | 🟡 Yellow |
+| `_scan_directory` | `src/agent_scorecard/dependencies.py` | 14.1 | 🟡 Yellow |
+| `_check_is_typed` | `src/agent_scorecard/analyzers/javascript.py` | 13.9 | 🟡 Yellow |
+| `perform_analysis` | `src/agent_scorecard/analyzer.py` | 13.8 | 🟡 Yellow |
 
 ## 🛡️ Type Safety Index
 
 Target: >90% of functions must have explicit type signatures.
 
-✅ All files meet type safety requirements.
+| File | Type Safety Index | Status |
+| :--- | :---------------: | :----- |
+| tests/test_javascript_analyzer.py | 0% | ❌ |
 
 ## 🤖 Agent Prompts for Remediation (CRAFT Format)
 
-### File: `src/agent_scorecard/auditor.py` - High Cognitive Load
-> **Context**: You are a Senior Python Engineer focused on code maintainability.
-> **Request**: Refactor functions in `src/agent_scorecard/auditor.py` with Red ACL scores.
+### File: `tests/test_javascript_analyzer.py` - Low Type Safety
+> **Context**: You are a Python Developer focused on static analysis.
+> **Request**: Add PEP 484 type hints to `tests/test_javascript_analyzer.py`.
 > **Actions**:
-> - Target functions: `get_crowded_directories`.
+> - Analyze functions missing explicit type signatures.
+> - Add comprehensive type hints to arguments and return values.
+> - Use the `typing` module for complex structures.
+> **Frame**: Target 90% type coverage. Do not change runtime logic.
+> **Template**: The full updated content of the Python file.
+
+### File: `src/agent_scorecard/dependencies.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/dependencies.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `_extract_imports_from_ast`, `_dfs_visit_cycle`.
 > - Extract nested logic into smaller helper functions.
 > - Ensure all units result in an ACL score < 10.
 > **Frame**: Keep functions under 50 lines. Ensure all tests pass.
 > **Template**: Markdown code blocks for the refactored code.
 
-### File: `src/agent_scorecard/auditor_utils.py` - High Cognitive Load
+### File: `src/agent_scorecard/analyzers/javascript.py` - High Cognitive Load
 > **Context**: You are a Senior Python Engineer focused on code maintainability.
-> **Request**: Refactor functions in `src/agent_scorecard/auditor_utils.py` with Red ACL scores.
+> **Request**: Refactor functions in `src/agent_scorecard/analyzers/javascript.py` with Red ACL scores.
 > **Actions**:
-> - Target functions: `_validate_pyproject`, `_extract_signature_from_node`, `get_python_signatures`, `_get_critical_files_content`.
+> - Target functions: `score_file`, `get_function_stats`, `_calculate_complexity`, `_calculate_nesting_depth`.
 > - Extract nested logic into smaller helper functions.
 > - Ensure all units result in an ACL score < 10.
 > **Frame**: Keep functions under 50 lines. Ensure all tests pass.
@@ -53,7 +67,8 @@ Target: >90% of functions must have explicit type signatures.
 
 | File | Score | Issues |
 | :--- | :---: | :--- |
-| src/agent_scorecard/auditor_utils.py | 30 ❌ | 4 Red ACL functions (-60), 2 Yellow ACL functions (-10) |
+| src/agent_scorecard/dependencies.py | 38 ❌ | Bloated File: 275 lines (-7), 2 Red ACL functions (-30), 5 Yellow ACL functions (-25) |
+| src/agent_scorecard/analyzers/javascript.py | 14 ❌ | Bloated File: 264 lines (-6), 4 Red ACL functions (-60), 4 Yellow ACL functions (-20) |
 
 ---
 *Generated by Agent-Scorecard*

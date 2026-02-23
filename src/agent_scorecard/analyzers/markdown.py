@@ -11,6 +11,10 @@ class MarkdownAnalyzer(BaseAnalyzer):
     Evaluates Agent Cognitive Load (ACL) based on header depth and token density.
     """
 
+    @property
+    def language(self) -> str:
+        return "Markdown"
+
     def score_file(
         self,
         filepath: str,

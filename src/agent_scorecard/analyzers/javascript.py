@@ -1,31 +1,28 @@
-import tree_sitter_javascript as tsjs
-import tree_sitter_typescript as tsts
-from tree_sitter import Language, Parser, Node
 from typing import Dict, Any, List, Tuple, Optional
+from tree_sitter import Language, Parser, Node
+import tree_sitter_javascript
+import tree_sitter_typescript
+
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-JS_LANGUAGE = Language(tsjs.language())
-TS_LANGUAGE = Language(tsts.language_typescript())
-TSX_LANGUAGE = Language(tsts.language_tsx())
+JS_LANGUAGE = Language(tree_sitter_javascript.language())
+TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
     """
-    JavaScript and TypeScript specific implementation of the BaseAnalyzer using tree-sitter.
+    Analyzes JavaScript and TypeScript files using tree-sitter.
+    Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
-    def __init__(self) -> None:
-        """Initialize the analyzer with tree-sitter parser."""
-        self.parser: Optional[Parser] = None
-
     def _get_language(self, filepath: str) -> Language:
-        """Return the appropriate tree-sitter language for the given file extension."""
-        if filepath.endswith((".ts", ".tsx")):
-            if filepath.endswith(".tsx"):
-                return TSX_LANGUAGE
+        if filepath.endswith(".tsx"):
+            return TSX_LANGUAGE
+        if filepath.endswith(".ts"):
             return TS_LANGUAGE
         return JS_LANGUAGE
 
@@ -98,16 +95,23 @@ class JavascriptAnalyzer(BaseAnalyzer):
             details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
         typed_count = sum(1 for m in metrics if m["is_typed"])
-        type_safety_index = (typed_count / len(metrics)) * 100
 
-        if type_safety_index < type_safety_threshold:
-            penalty = 20
-            score -= penalty
-            details.append(
-                f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
-            )
+        is_ts = filepath.endswith(".ts") or filepath.endswith(".tsx")
 
-        avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
+        if is_ts:
+            type_safety_index = (typed_count / len(metrics)) * 100 if metrics else 100.0
+            if type_safety_index < type_safety_threshold:
+                penalty = 20
+                score -= penalty
+                details.append(
+                    f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+                )
+        else:
+            type_safety_index = 100.0
+
+        avg_complexity = (
+            sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
+        )
 
         return (
             max(score, 0),
@@ -120,195 +124,190 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
     def get_function_stats(self, filepath: str) -> List[FunctionMetric]:
         """
-        Returns statistics for each function in the file including ACL and Type coverage.
+        Returns statistics for each function in the file using tree-sitter.
         """
         try:
             with open(filepath, "rb") as f:
-                content = f.read()
-
-            language = self._get_language(filepath)
-            self.parser = Parser(language)
-            tree = self.parser.parse(content)
-        except Exception:
+                source_bytes = f.read()
+        except FileNotFoundError:
             return []
 
+        language = self._get_language(filepath)
+        parser = Parser(language)
+        tree = parser.parse(source_bytes)
+
         stats: List[FunctionMetric] = []
+        visited = set()
 
-        function_nodes = [
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        ]
+        def visit(node: Node):
+            if node.id in visited:
+                return
+            visited.add(node.id)
 
-        def traverse(node: Node) -> None:
-            if node.type in function_nodes:
-                name = "anonymous"
-                if node.type in ["function_declaration", "method_definition"]:
-                    name_node = node.child_by_field_name("name")
-                    if name_node:
-                        name = content[
-                            name_node.start_byte : name_node.end_byte
-                        ].decode("utf8")
-                elif node.type in ["function_expression", "arrow_function"]:
-                    # Try to find name from variable declaration
-                    parent = node.parent
-                    if parent and parent.type == "variable_declarator":
-                        name_node = parent.child_by_field_name("name")
-                        if name_node:
-                            name = content[
-                                name_node.start_byte : name_node.end_byte
-                            ].decode("utf8")
-
-                start_line = node.start_point[0] + 1
-                end_line = node.end_point[0] + 1
-                f_loc = end_line - start_line + 1
-
-                complexity = self._calculate_complexity(node)
-                nesting_depth = self._calculate_nesting_depth(node)
-                acl = self.calculate_acl(float(complexity), f_loc, nesting_depth)
-                is_typed = self._check_is_typed(node, filepath)
-
-                stats.append(
-                    {
-                        "name": name,
-                        "lineno": start_line,
-                        "complexity": float(complexity),
-                        "loc": f_loc,
-                        "acl": acl,
-                        "is_typed": is_typed,
-                        "nesting_depth": nesting_depth,
-                    }
-                )
+            if node.type in (
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            ):
+                self._analyze_function(node, stats, filepath)
 
             for child in node.children:
-                traverse(child)
+                visit(child)
 
-        traverse(tree.root_node)
+        visit(tree.root_node)
+
         return stats
 
-    def _calculate_complexity(self, node: Node) -> int:
-        """Calculates cyclomatic complexity for a function node."""
-        complexity = 1
-        branching_nodes = [
-            "if_statement",
-            "for_statement",
-            "for_in_statement",
-            "for_of_statement",
-            "while_statement",
-            "do_statement",
-            "switch_case",
-            "catch_clause",
-            "ternary_expression",
-        ]
+    def _analyze_function(self, node: Node, stats: List[FunctionMetric], filepath: str):
+        start_line = node.start_point[0] + 1
+        end_line = node.end_point[0] + 1
+        loc = end_line - start_line + 1
 
-        function_nodes = [
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        ]
+        # Name
+        name = "anonymous"
+        if node.type == "function_declaration":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
+        elif node.type == "method_definition":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
 
-        def count_branches(n: Node) -> None:
+        complexity = self._calculate_complexity(node)
+        depth = self._calculate_nesting_depth(node)
+        acl = self.calculate_acl(complexity, loc, depth)
+
+        is_typed = self._check_is_typed(node)
+
+        stats.append(
+            {
+                "name": name,
+                "lineno": start_line,
+                "complexity": complexity,
+                "loc": loc,
+                "acl": acl,
+                "is_typed": is_typed,
+                "nesting_depth": depth,
+            }
+        )
+
+    def _calculate_complexity(self, node: Node) -> float:
+        """
+        Calculates cyclomatic complexity.
+        Branching nodes: if, for, while, do, switch_case, catch, ternary (conditional_expression).
+        Logical operators: &&, ||.
+        """
+        complexity = 1.0
+
+        def visit(n: Node):
             nonlocal complexity
-            if n.type in branching_nodes:
-                complexity += 1
+            if n.type in (
+                "if_statement",
+                "for_statement",
+                "for_in_statement",
+                "while_statement",
+                "do_statement",
+                "switch_case",
+                "catch_clause",
+                "conditional_expression",
+            ):
+                complexity += 1.0
+            elif n.type == "binary_expression":
+                operator = n.child_by_field_name("operator")
+                if not operator and n.child_count >= 2:
+                    operator = n.child(1)  # fallback
 
-            # Handle logical expressions with && or ||
-            if n.type == "binary_expression":
-                # Find operator child
-                for child in n.children:
-                    if child.type in ["&&", "||"]:
-                        complexity += 1
-                        break
+                if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                    complexity += 1.0
 
             for child in n.children:
-                # Don't recurse into nested functions
-                if child.type not in function_nodes:
-                    count_branches(child)
+                # Don't descend into nested functions for complexity of THIS function
+                if child.type not in (
+                    "function_declaration",
+                    "function_expression",
+                    "arrow_function",
+                    "method_definition",
+                ):
+                    visit(child)
 
-        # Start counting from body or children
-        body = node.child_by_field_name("body")
-        if body:
-            count_branches(body)
-        else:
-            for child in node.children:
-                if child.type not in ["parameters", "type_annotation"]:
-                    count_branches(child)
+        # Start visiting children of the function node
+        for child in node.children:
+            visit(child)
 
         return complexity
 
     def _calculate_nesting_depth(self, node: Node) -> int:
-        """Calculates maximum nesting depth for a function node."""
-        nesting_nodes = [
-            "if_statement",
-            "for_statement",
-            "for_in_statement",
-            "for_of_statement",
-            "while_statement",
-            "do_statement",
-            "switch_statement",
-            "catch_clause",
-            "try_statement",
-        ]
+        """
+        Calculates maximum nesting depth.
+        """
+        max_depth = 0
 
-        function_nodes = [
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        ]
+        def visit(n: Node, current_depth: int):
+            nonlocal max_depth
+            if current_depth > max_depth:
+                max_depth = current_depth
 
-        def get_max_depth(n: Node, current_depth: int) -> int:
-            max_d = current_depth
+            # Control flow structures increase depth
+            if n.type in (
+                "if_statement",
+                "for_statement",
+                "for_in_statement",
+                "while_statement",
+                "do_statement",
+                "try_statement",
+                "catch_clause",
+                "switch_statement",
+            ):
+                next_depth = current_depth + 1
+            else:
+                next_depth = current_depth
 
             for child in n.children:
-                # Don't recurse into nested functions
-                if child.type in function_nodes:
-                    continue
+                if child.type not in (
+                    "function_declaration",
+                    "function_expression",
+                    "arrow_function",
+                    "method_definition",
+                ):
+                    visit(child, next_depth)
 
-                new_depth = current_depth
-                if child.type in nesting_nodes:
-                    new_depth += 1
-
-                max_d = max(max_d, get_max_depth(child, new_depth))
-
-            return max_d
-
+        # Initial depth is 0 relative to function body
         body = node.child_by_field_name("body")
         if body:
-            return get_max_depth(body, 0)
+            visit(body, 0)
+        else:
+            for child in node.children:
+                visit(child, 0)
 
-        return 0
+        return max_depth
 
-    def _check_is_typed(self, node: Node, filepath: str) -> bool:
-        """Checks if a function has type hints (TypeScript only)."""
-        if not filepath.endswith((".ts", ".tsx")):
-            return False
-
-        # Check return type annotation
-        if any(c.type == "type_annotation" for c in node.children):
+    def _check_is_typed(self, node: Node) -> bool:
+        """
+        Checks if the function has type annotations.
+        """
+        # Return type
+        return_type = node.child_by_field_name("return_type")
+        if return_type:
             return True
 
-        # Check parameter type annotations
+        # Parameters
         params = node.child_by_field_name("parameters")
-        if not params:
-            # Maybe it's formal_parameters (different TS versions/parsers)
-            for child in node.children:
-                if child.type == "formal_parameters":
-                    params = child
-                    break
-
         if params:
-            for param in params.children:
-                if param.type in [
-                    "required_parameter",
-                    "optional_parameter",
-                    "parameter",
-                ]:
-                    if any(c.type == "type_annotation" for c in param.children):
-                        return True
+            for i in range(params.child_count):
+                param = params.child(i)
+                if self._has_type_annotation(param):
+                    return True
 
+        return False
+
+    def _has_type_annotation(self, node: Node) -> bool:
+        if node.type == "type_annotation":
+            return True
+        for child in node.children:
+            if self._has_type_annotation(child):
+                return True
         return False
 
     def calculate_acl(self, complexity: float, loc: int, depth: int) -> float:
@@ -323,14 +322,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                count = 0
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if line.startswith(("//", "/*", "*")):
-                        continue
-                    count += 1
-                return count
-        except (UnicodeDecodeError, FileNotFoundError):
+                return sum(1 for line in f if line.strip())
+        except FileNotFoundError:
             return 0

@@ -8,6 +8,14 @@ class BaseAnalyzer(ABC):
     Abstract base class for language-specific analyzers.
     """
 
+    @property
+    @abstractmethod
+    def language(self) -> str:
+        """
+        Returns the name of the language this analyzer handles.
+        """
+        pass
+
     @abstractmethod
     def score_file(
         self,

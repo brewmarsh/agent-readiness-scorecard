@@ -14,13 +14,10 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Threshold:** sections with ACL > 15 are "Hallucination Zones."
 * **Strategy:** Ensure headers group content logically and consider breaking down large documentation chunks.
 
-### JavaScript / TypeScript ACL
-* **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
-* **Threshold:** functions with ACL > 15 are "Hallucination Zones."
-* **AST Mapping:**
-    * **Complexity:** Incremented by `if`, `for`, `while`, `do`, `switch case`, `catch`, `ternary`, and logical `&&`/`||`.
-    * **Nesting Depth:** Maximum depth of `if`, `for`, `while`, `do`, `switch`, `catch`, and `try` blocks.
-    * **Functions:** Analyzes function declarations, expressions, arrow functions, and class methods.
+### Dockerfile ACL
+* **Formula:** $ACL = (Chained Commands * 1.5) + (Lines in Instruction * 0.5)$
+* **Threshold:** instructions with ACL > 15 are "Hallucination Zones."
+* **Strategy:** Break down complex RUN instructions into smaller, logical steps or use scripts. Avoid excessively long chained commands.
 
 ## 2. Dependency Entanglement
 Agents traverse code like a graph.
@@ -31,3 +28,20 @@ Agents traverse code like a graph.
 Context is currency.
 * **Token Budget:** >32k tokens in a critical path risks "forgetting" instructions.
 * **Directory Entropy:** Too many files in one folder confuses retrieval tools.
+
+## 4. Multi-Language Support
+`agent-scorecard` uses the Strategy Pattern to apply language-specific "Physics" to different file types.
+
+### Language-Specific Configuration
+You can customize thresholds for each language in `pyproject.toml`. This allows for different complexity tolerances across your stack.
+
+```toml
+[tool.agent-scorecard.python.thresholds]
+acl_yellow = 10
+
+[tool.agent-scorecard.javascript.thresholds]
+acl_yellow = 12
+acl_red = 18
+```
+
+The tool will automatically detect the language (Python, JavaScript, Markdown, Docker) and apply the appropriate overrides, falling back to global thresholds if none are specified.
