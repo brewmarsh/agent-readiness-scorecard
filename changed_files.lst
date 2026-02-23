@@ -1,4 +1,4 @@
 src/agent_scorecard/analyzer.py
-src/agent_scorecard/analyzers/javascript.py
+src/agent_scorecard/analyzers/docker.py
 src/agent_scorecard/dependencies.py
-tests/test_javascript_analyzer.py
+tests/test_docker_analyzer.py

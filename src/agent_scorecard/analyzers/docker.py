@@ -71,7 +71,9 @@ class DockerAnalyzer(BaseAnalyzer):
         if yellow_count > 0:
             penalty = yellow_count * 5
             score -= penalty
-            details.append(f"{yellow_count} Yellow ACL instructions detected (-{penalty})")
+            details.append(
+                f"{yellow_count} Yellow ACL instructions detected (-{penalty})"
+            )
 
         # "Type Safety" acts as "Best Practices Compliance"
         typed_count = sum(1 for m in metrics if m["is_typed"])
