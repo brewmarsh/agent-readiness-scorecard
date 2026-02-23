@@ -1,8 +1,4 @@
-import os
-from pathlib import Path
-
-import pytest
-from src.agent_scorecard.dependencies import (
+from agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
     calculate_context_tokens,
@@ -10,8 +6,7 @@ from src.agent_scorecard.dependencies import (
 )
 
 
-def test_collect_python_files(tmp_path: Path) -> None:
-    """Verifies that python files are correctly collected from a directory."""
+def test_collect_python_files(tmp_path):
     d = tmp_path / "subdir"
     d.mkdir()
     (d / "file1.py").write_text("print('hello')")
@@ -24,9 +19,7 @@ def test_collect_python_files(tmp_path: Path) -> None:
     assert any(f.endswith("root.py") for f in files)
 
 
-def test_import_graph_and_cycles(tmp_path: Path) -> None:
-    """Verifies import graph construction and cycle detection."""
-    # Topology:
+def test_import_graph_and_cycles(tmp_path):
     # A -> B -> C -> A (cycle)
     # D -> B
 
@@ -46,17 +39,19 @@ def test_import_graph_and_cycles(tmp_path: Path) -> None:
     cycles = detect_cycles(graph)
     assert len(cycles) == 1
     cycle = cycles[0]
-    # Canonical cycle should start with min element to ensure deterministic test results
+    # Canonical cycle should start with min element
     assert cycle == ["a.py", "b.py", "c.py"]
 
 
-def test_calculate_context_tokens(tmp_path: Path) -> None:
-    """Verifies context token calculation for simple dependencies."""
-    # Flow: A -> B
-    # B: 10 tokens, A: 20 tokens
-    # Expected: Context(B) = 10, Context(A) = 20 + 10 = 30
+def test_calculate_context_tokens(tmp_path):
+    # A -> B
+    # B has 10 tokens
+    # A has 20 tokens
+    # Context(B) = 10
+    # Context(A) = 20 + 10 = 30
 
     graph = {"a.py": {"b.py"}, "b.py": set()}
+
     file_tokens = {"a.py": 20, "b.py": 10}
 
     context = calculate_context_tokens(graph, file_tokens)
@@ -65,13 +60,14 @@ def test_calculate_context_tokens(tmp_path: Path) -> None:
     assert context["a.py"] == 30
 
 
-def test_calculate_context_tokens_with_cycle(tmp_path: Path) -> None:
-    """Verifies context token calculation with circular dependencies."""
-    # Flow: A -> B -> A
-    # A: 10 tokens, B: 20 tokens
-    # Expected: Both should reflect the sum of the cycle (30)
+def test_calculate_context_tokens_with_cycle(tmp_path):
+    # A -> B -> A
+    # A: 10, B: 20
+    # Context(A) = 10 + 20 = 30
+    # Context(B) = 20 + 10 = 30
 
     graph = {"a.py": {"b.py"}, "b.py": {"a.py"}}
+
     file_tokens = {"a.py": 10, "b.py": 20}
 
     context = calculate_context_tokens(graph, file_tokens)
@@ -80,16 +76,15 @@ def test_calculate_context_tokens_with_cycle(tmp_path: Path) -> None:
     assert context["b.py"] == 30
 
 
-def test_calculate_context_tokens_complex(tmp_path: Path) -> None:
-    """Verifies context token calculation for complex graphs with multiple transitive paths."""
-    # Topology:
+def test_calculate_context_tokens_complex(tmp_path):
     # A -> B, C
     # B -> D
     # C -> D
     # D -> E
     # E -> D (cycle)
 
-    # All files set to 10 tokens for mathematical clarity
+    # Tokens: All 10
+
     graph = {
         "a.py": {"b.py", "c.py"},
         "b.py": {"d.py"},
@@ -102,13 +97,17 @@ def test_calculate_context_tokens_complex(tmp_path: Path) -> None:
 
     context = calculate_context_tokens(graph, file_tokens)
 
-    # E -> D cycle: Total 20 tokens
+    # E -> D -> E. Deps: D, E. Total 20.
     assert context["e.py"] == 20
     assert context["d.py"] == 20
 
-    # B and C both transitively depend on the D-E cycle: 10 (self) + 20 (cycle) = 30
+    # B -> D -> E -> D. Deps: B, D, E. Total 30.
     assert context["b.py"] == 30
+
+    # C -> D -> E -> D. Deps: C, D, E. Total 30.
     assert context["c.py"] == 30
 
-    # A depends on B, C, D, and E: 10 (self) + 40 (transitive pool) = 50
+    # A -> B, C. And B->D,E. C->D,E.
+    # Transitive deps of A: B, C, D, E.
+    # Total: A, B, C, D, E = 50.
     assert context["a.py"] == 50

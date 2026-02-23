@@ -288,7 +288,7 @@ def fix(path: str, agent: str) -> None:
             expand=False,
         )
     )
-    apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
+    apply_fixes(path, profile)
     console.print("[bold green]Fixes applied![/bold green]")
 
 
@@ -310,9 +310,6 @@ def fix(path: str, agent: str) -> None:
     help="Set the report verbosity style.",
 )
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
-@click.option(
-    "--limit-to", "limit_to", multiple=True, help="Limit analysis to these files."
-)
 def score(
     path: str,
     agent: str,
@@ -321,7 +318,6 @@ def score(
     verbosity: str,
     report_style: Optional[str],
     badge: bool,
-    limit_to: tuple,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -362,14 +358,10 @@ def score(
             )
         )
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
-        apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
+        apply_fixes(path, profile)
 
     results = analyzer.perform_analysis(
-        path,
-        agent,
-        limit_to_files=list(limit_to) if limit_to else None,
-        thresholds=thresholds,
-        report_style=final_report_style,
+        path, agent, thresholds=thresholds, report_style=final_report_style
     )
 
     _print_environment_health(path, results, final_verbosity)

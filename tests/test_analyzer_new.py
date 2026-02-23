@@ -19,17 +19,20 @@ def test_calculate_max_depth() -> None:
     assert calculate_max_depth(code1) == 0
 
     # Example from prompt
-    code2 = textwrap.dedent("""
+    code2 = textwrap.dedent(
+        """
     def process_data(data):
         if data:
             for item in data:
                 if item > 0:
                     print(item)
-    """)
+    """
+    )
     assert calculate_max_depth(code2) == 3
 
     # Nested Try/Except/Finally
-    code3 = textwrap.dedent("""
+    code3 = textwrap.dedent(
+        """
     try:
         try:
             pass
@@ -37,7 +40,8 @@ def test_calculate_max_depth() -> None:
             pass
     finally:
         pass
-    """)
+    """
+    )
     assert calculate_max_depth(code3) == 2
 
     # List comprehension and lambda
@@ -46,23 +50,27 @@ def test_calculate_max_depth() -> None:
     assert calculate_max_depth(code4) == 3
 
     # Deep nesting with mixed types
-    code5 = textwrap.dedent("""
+    code5 = textwrap.dedent(
+        """
     if a:
         while b:
             with c:
                 for d in e:
                     if f:
                         pass
-    """)
+    """
+    )
     assert calculate_max_depth(code5) == 5
 
     # Async variants
-    code6 = textwrap.dedent("""
+    code6 = textwrap.dedent(
+        """
     async def foo():
         async for i in range(10):
             async with a:
                 pass
-    """)
+    """
+    )
     assert calculate_max_depth(code6) == 2
 
 
@@ -80,7 +88,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
     Returns:
         None
     """
-    code = textwrap.dedent("""
+    code = textwrap.dedent(
+        """
     def simple():
         return 1
 
@@ -114,7 +123,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
             if True:
                 if True:
                     pass
-    """)
+    """
+    )
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
 

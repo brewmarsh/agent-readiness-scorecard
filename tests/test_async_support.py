@@ -17,10 +17,12 @@ def test_async_function_support_checks(tmp_path: Path) -> None:
         None
     """
     p = tmp_path / "async_test.py"
-    p.write_text("""
+    p.write_text(
+        """
 async def fetch_data(url):
     return url
-""")
+"""
+    )
 
     # Should find 1 function, 0 typed -> 0% coverage.
     cov = check_type_hints(str(p))
@@ -38,19 +40,23 @@ def test_fix_async_function(tmp_path: Path) -> None:
         None
     """
     p = tmp_path / "async_fix.py"
-    p.write_text("""
+    p.write_text(
+        """
 async def process_data(data):
     pass
-""")
+"""
+    )
 
     runner = CliRunner()
 
     # RESOLUTION: Use mocking to simulate the LLM refactoring the code
-    fixed_code = textwrap.dedent("""
+    fixed_code = textwrap.dedent(
+        """
         async def process_data(data: dict) -> None:
             \"\"\"Processes data async.\"\"\"
             pass
-    """).strip()
+    """
+    ).strip()
 
     # Mocking the LLM ensures tests run locally without network access
     with patch("agent_scorecard.llm.LLMClient.generate", return_value=fixed_code):
@@ -74,10 +80,12 @@ def test_score_async_function(tmp_path: Path) -> None:
         None
     """
     p = tmp_path / "async_score.py"
-    p.write_text("""
+    p.write_text(
+        """
 async def process_data(data):
     pass
-""")
+"""
+    )
     # RESOLUTION: Ensure README.md exists to prevent project-level failures
     # during the file scoring integration test.
     (tmp_path / "README.md").write_text("# Project")

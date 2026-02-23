@@ -144,13 +144,15 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     Returns:
         None
     """
-    code = textwrap.dedent("""
+    code = textwrap.dedent(
+        """
         def complex_function():
             if True:
                 print("yes")
             else:
                 print("no")
-    """)
+    """
+    )
     # Pad with comments to trigger the LOC density metric
     for _ in range(20):
         code += "    # padding\n"

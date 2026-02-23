@@ -4,6 +4,7 @@ import os
 
 
 def test_pyproject_config_report_style() -> None:
+    """Test that the report_style from pyproject.toml works correctly."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file

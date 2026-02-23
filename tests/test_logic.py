@@ -40,7 +40,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
     Returns:
         None
     """
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def simple_func(a: int):
         return a + 1
 
@@ -49,7 +50,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
             if b > 0:
                 return a + b
         return 0
-    """)
+    """
+    )
     py_file = tmp_path / "func_test.py"
     py_file.write_text(content, encoding="utf-8")
 
@@ -114,10 +116,12 @@ def test_score_file_logic(tmp_path: Path) -> None:
     Returns:
         None
     """
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def untyped_but_simple(a):
         return a
-    """)
+    """
+    )
     py_file = tmp_path / "score_test.py"
     py_file.write_text(content, encoding="utf-8")
 

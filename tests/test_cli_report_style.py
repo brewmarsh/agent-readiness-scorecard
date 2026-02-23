@@ -4,6 +4,7 @@ import os
 
 
 def test_cli_report_style_option() -> None:
+    """Test that the --report-style CLI option works correctly."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
