@@ -53,7 +53,7 @@ async def process_data(data):
     """).strip()
 
     # Mocking the LLM ensures tests run locally without network access
-    with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+    with patch("agent_scorecard.llm.LLMClient.generate", return_value=fixed_code):
         # We invoke the standalone 'fix' command established in the Beta branch
         result = runner.invoke(cli, ["fix", str(p)])
         assert result.exit_code == 0

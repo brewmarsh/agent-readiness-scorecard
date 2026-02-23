@@ -46,7 +46,7 @@ class TestFixCommand:
             """).strip()
 
             with patch(
-                "agent_scorecard.fix.LLM.generate", return_value=fixed_code
+                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
             ) as mock_gen:
                 # Invoke dedicated 'fix' command
                 result = runner.invoke(cli, ["fix", "."])
@@ -96,7 +96,9 @@ class TestFixCommand:
                     return x
             """).strip()
 
-            with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+            with patch(
+                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+            ):
                 # Run fix command on subdir with jules agent (requires agents.md)
                 result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
 
@@ -130,7 +132,9 @@ class TestFixCommand:
 
             fixed_code = 'def foo() -> None:\n    """Doc."""\n    pass'
 
-            with patch("agent_scorecard.fix.LLM.generate", return_value=fixed_code):
+            with patch(
+                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+            ):
                 # Using the old --fix flag style
                 result = runner.invoke(cli, ["score", ".", "--fix"])
                 assert result.exit_code == 0
@@ -154,3 +158,44 @@ class TestFixCommand:
             result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
             assert result.exit_code == 0
             assert "Unknown agent profile: invalid. using generic." in result.output
+
+    def test_fix_command_with_markdown(self, runner: CliRunner) -> None:
+        """Test that markdown code fences are stripped."""
+        with runner.isolated_filesystem():
+            with open("test.py", "w") as f:
+                f.write("def foo():\n    pass")
+
+            # Mock LLM returning markdown
+            fixed_code = "```python\ndef foo() -> None:\n    pass\n```"
+
+            with patch(
+                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+            ):
+                result = runner.invoke(cli, ["fix", "."])
+                assert result.exit_code == 0
+
+            with open("test.py", "r") as f:
+                content = f.read()
+            assert "```" not in content
+            assert "def foo() -> None:" in content
+
+    def test_fix_command_invalid_syntax(self, runner: CliRunner) -> None:
+        """Test that invalid syntax is rejected."""
+        with runner.isolated_filesystem():
+            with open("test.py", "w") as f:
+                f.write("def foo():\n    pass")
+
+            # Mock LLM returning invalid code
+            fixed_code = "def foo() -> None:\n    pass\n    UNFINISHED..."
+
+            with patch(
+                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+            ):
+                result = runner.invoke(cli, ["fix", "."])
+                assert result.exit_code == 0
+                assert "LLM returned invalid syntax" in result.output
+
+            # File should not be modified
+            with open("test.py", "r") as f:
+                content = f.read()
+            assert "def foo():\n    pass" in content

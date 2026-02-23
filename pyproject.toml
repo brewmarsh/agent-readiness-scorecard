@@ -15,6 +15,7 @@ dependencies = [
     "tiktoken",
     "networkx",
     "tomli; python_version < '3.11'",
+    "litellm",
 ]
 requires-python = ">=3.8"
 
