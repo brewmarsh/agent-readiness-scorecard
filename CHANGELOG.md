@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Features
+- **llm:** Implement Provider-Agnostic Engine using `litellm`.
+- **fix:** Enable real LLM-based code fixing with syntax validation and markdown cleaning.
+- **config:** Add `llm` configuration support in `pyproject.toml`.
+
 ## [v0.3.0] - 2026-02-21
 
 ### Features

@@ -1,8 +1,11 @@
 import os
-from typing import Dict, Any, List
+import ast
+import re
+from typing import Dict, Any, List, Optional
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
 from .metrics import get_function_stats
+from .llm import LLMClient
 
 console = Console()
 
@@ -18,35 +21,33 @@ CRAFT_PROMPTS = {
 }
 
 
-class LLM:
-    """Standard interface for LLM interaction."""
+def _clean_code(code: str) -> str:
+    """
+    Cleans up the LLM response by removing Markdown code fences.
 
-    def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """
-        Generates fixed code using an LLM.
+    Args:
+        code (str): The raw LLM response.
 
-        Note: This is a placeholder for real LLM integration.
-
-        Args:
-            system_prompt (str): The system prompt for the LLM.
-            user_prompt (str): The user prompt for the LLM.
-
-        Returns:
-            str: The generated code or text.
-        """
-        # In a real implementation, this would call OpenAI/Anthropic etc.
-        # For now, we return the original code (simulating no changes).
-        if "Source Code:\n" in user_prompt:
-            return user_prompt.split("Source Code:\n")[-1]
-        return ""
+    Returns:
+        str: The cleaned Python code.
+    """
+    # Remove ```python ... ``` or ``` ... ```
+    pattern = r"```(?:python)?\s*(.*?)\s*```"
+    match = re.search(pattern, code, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return code.strip()
 
 
-def fix_file_issues(filepath: str) -> None:
+def fix_file_issues(
+    filepath: str, llm_config: Optional[Dict[str, Any]] = None
+) -> None:
     """
     Uses CRAFT prompts and LLM to fix code quality violations.
 
     Args:
         filepath (str): Path to the Python file to fix.
+        llm_config (Dict[str, Any], optional): Configuration for the LLM client.
 
     Returns:
         None
@@ -72,15 +73,24 @@ def fix_file_issues(filepath: str) -> None:
     action_str = "\n".join([f"- {step}" for step in CRAFT_PROMPTS["action_steps"]])
     user_prompt = f"Action Steps:\n{action_str}\n\nSource Code:\n{content}"
 
-    llm = LLM()
-    fixed_code = llm.generate(system_prompt, user_prompt)
+    llm = LLMClient(config=llm_config)
+    raw_code = llm.generate(system_prompt, user_prompt)
+    fixed_code = _clean_code(raw_code)
 
-    if fixed_code and fixed_code.strip() != content.strip():
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(fixed_code)
+    if not fixed_code or fixed_code == content.strip():
+        return
+
+    try:
+        ast.parse(fixed_code)
+    except SyntaxError:
         console.print(
-            f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}"
+            f"[bold red]LLM returned invalid syntax for {filepath}. Skipping.[/bold red]"
         )
+        return
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(fixed_code)
+    console.print(f"[bold green][Fixed][/bold green] Applied LLM fixes to {filepath}")
 
 
 def _ensure_project_files(path: str, profile: Dict[str, Any]) -> None:
@@ -137,13 +147,16 @@ def _collect_target_files(path: str) -> List[str]:
     return py_files
 
 
-def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
+def apply_fixes(
+    path: str, profile: Dict[str, Any], llm_config: Optional[Dict[str, Any]] = None
+) -> None:
     """
     Applies fixes to project files and structure.
 
     Args:
         path (str): The path to the project or file.
         profile (Dict[str, Any]): The agent profile being used.
+        llm_config (Dict[str, Any], optional): Configuration for the LLM client.
 
     Returns:
         None
@@ -155,4 +168,4 @@ def apply_fixes(path: str, profile: Dict[str, Any]) -> None:
     py_files = _collect_target_files(path)
 
     for py_file in py_files:
-        fix_file_issues(py_file)
+        fix_file_issues(py_file, llm_config=llm_config)

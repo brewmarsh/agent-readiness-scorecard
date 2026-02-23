@@ -29,6 +29,7 @@ class Thresholds(TypedDict, total=False):
 class Config(TypedDict):
     verbosity: str
     thresholds: Thresholds
+    llm: Dict[str, Any]
 
 
 # Unified defaults representing core Agent Physics
@@ -37,6 +38,7 @@ class Config(TypedDict):
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
     "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
+    "llm": {"model": "gpt-4o"},
 }
 
 

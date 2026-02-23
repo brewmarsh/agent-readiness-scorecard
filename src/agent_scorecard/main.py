@@ -288,7 +288,7 @@ def fix(path: str, agent: str) -> None:
             expand=False,
         )
     )
-    apply_fixes(path, profile)
+    apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
     console.print("[bold green]Fixes applied![/bold green]")
 
 
@@ -345,7 +345,7 @@ def score(
             )
         )
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
-        apply_fixes(path, profile)
+        apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
 
     results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
 
