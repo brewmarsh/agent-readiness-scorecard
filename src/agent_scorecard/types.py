@@ -83,4 +83,5 @@ class AnalysisResult(TypedDict):
     project_issues: List[str]
     dep_analysis: DepAnalysis
     directory_stats: List[DirectoryStat]
+    # RESOLUTION: Added report_style to allow persistence of UX noise-reduction preferences
     report_style: Optional[str]

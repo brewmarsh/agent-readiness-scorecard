@@ -11,14 +11,6 @@ def _generate_summary_section(
 ) -> str:
     """
     Creates the executive summary section of the report.
-
-    Args:
-        final_score (float): The overall project score.
-        profile (Dict[str, Any]): The agent profile used.
-        project_issues (Optional[List[str]]): List of project-level issues.
-
-    Returns:
-        str: Markdown string for the summary section.
     """
     summary = "# Agent Scorecard Report\n\n"
     summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
@@ -27,9 +19,7 @@ def _generate_summary_section(
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        summary += (
-            "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
-        )
+        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
 
     if project_issues:
         summary += "### ⚠️ Project Issues\n"
@@ -45,21 +35,12 @@ def _generate_acl_section(
 ) -> str:
     """
     Analyzes and reports on units with high Agent Cognitive Load.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        thresholds (Dict[str, Any]): Scoring thresholds.
-
-    Returns:
-        str: Markdown string for the ACL section.
     """
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    targets += (
-        f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
-    )
+    targets += f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
     for f_res in stats:
@@ -76,9 +57,7 @@ def _generate_acl_section(
             acl_val = cast(float, fn.get("acl", 0))
             if acl_val > acl_yellow:
                 status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-                targets += (
-                    f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
-                )
+                targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
         targets += "\n"
     else:
         targets += "✅ No functions with high cognitive load found.\n\n"
@@ -91,40 +70,41 @@ def _generate_type_safety_section(
     verbosity: str = "detailed",
 ) -> str:
     """
-    Summarizes type hint coverage across the project.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        thresholds (Dict[str, Any]): Scoring thresholds.
-        verbosity (str): Output verbosity level (default: "detailed").
-
-    Returns:
-        str: Markdown string for the type safety section.
+    Summarizes type hint coverage using progressive disclosure to reduce noise.
     """
-    type_safety_threshold = thresholds.get(
-        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-    )
+    type_safety_threshold = thresholds.get("type_safety", DEFAULT_THRESHOLDS["type_safety"])
 
-    types_section = "## 🛡️ Type Safety Index\n\n"
-    types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
+    failing = [s for s in stats if s.get("type_coverage", 0) < type_safety_threshold]
+    passing = [s for s in stats if s.get("type_coverage", 0) >= type_safety_threshold]
 
-    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
-    table_rows = []
-    for res in sorted_types:
-        coverage = res.get("type_coverage", 0)
-        if verbosity == "summary" and coverage >= type_safety_threshold:
-            continue
-        status = "✅" if coverage >= type_safety_threshold else "❌"
-        table_rows.append(f"| {res['file']} | {coverage:.0f}% | {status} |")
+    types_section = "### 🛡️ Type Safety Index (Action Required)\n\n"
+    types_section += f"Target: >{type_safety_threshold}% coverage. \n\n"
 
-    if not table_rows:
-        return types_section + "✅ All files meet type safety requirements.\n\n"
+    # Actionable Section: Files failing the threshold
+    if failing:
+        types_section += "| File | Type Safety Index | Status |\n"
+        types_section += "| :--- | :---------------: | :----- |\n"
+        for res in sorted(failing, key=lambda x: x.get("type_coverage", 0)):
+            coverage = res.get("type_coverage", 0)
+            types_section += f"| `{res['file']}` | {coverage:.0f}% | ❌ |\n"
+        types_section += "\n"
+    else:
+        types_section += "✅ All files meet type safety requirements.\n\n"
 
-    types_section += "| File | Type Safety Index | Status |\n"
-    types_section += "| :--- | :---------------: | :----- |\n"
-    types_section += "\n".join(table_rows)
+    # Collapsible Section: Hidden in 'summary' verbosity, shown in 'detailed'
+    if passing and verbosity == "detailed":
+        types_section += f"✅ View {len(passing)} passing files\n\n"
+        types_section += "<details>\n<summary>Details</summary>\n\n"
+        types_section += "| File | Type Safety Index | Status |\n"
+        types_section += "| :--- | :---------------: | :----- |\n"
+        for res in sorted(passing, key=lambda x: x.get("type_coverage", 0), reverse=True):
+            coverage = res.get("type_coverage", 0)
+            types_section += f"| {res['file']} | {coverage:.0f}% | ✅ |\n"
+        types_section += "\n</details>\n"
+    elif passing and verbosity == "summary":
+        types_section += f"*Note: {len(passing)} passing files hidden to reduce noise.*\n"
 
-    return types_section + "\n\n"
+    return types_section + "\n"
 
 
 def _generate_file_table_section(
@@ -132,28 +112,34 @@ def _generate_file_table_section(
     verbosity: str = "detailed",
 ) -> str:
     """
-    Creates a breakdown of analysis for every file.
+    Creates a breakdown of analysis for every file with collapsible passing files.
     """
-    if verbosity == "summary":
-        table = "### 📂 Failing File Analysis\n\n"
+    failing = [s for s in stats if s.get("score", 0) < 70]
+    passing = [s for s in stats if s.get("score", 0) >= 70]
+
+    section = "### 📂 File Analysis\n\n"
+
+    if failing:
+        section += "| File | Score | Issues |\n"
+        section += "| :--- | :---: | :--- |\n"
+        for res in sorted(failing, key=lambda x: x.get("score", 0)):
+            score = res.get("score", 0)
+            section += f"| `{res['file']}` | {score} ❌ | {res.get('issues', '')} |\n"
+        section += "\n"
     else:
-        table = "### 📂 Full File Analysis\n\n"
+        section += "✅ All files passed analysis!\n\n"
 
-    table += "| File | Score | Issues |\n"
-    table += "| :--- | :---: | :--- |\n"
-    has_rows = False
-    for res in stats:
-        score = res.get("score", 0)
-        if verbosity == "summary" and score >= 70:
-            continue
-        status = "✅" if score >= 70 else "❌"
-        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
-        has_rows = True
+    if passing and verbosity == "detailed":
+        section += f"✅ View {len(passing)} passing files\n\n"
+        section += "<details>\n<summary>Details</summary>\n\n"
+        section += "| File | Score | Issues |\n"
+        section += "| :--- | :---: | :--- |\n"
+        for res in sorted(passing, key=lambda x: x.get("score", 0), reverse=True):
+            score = res.get("score", 0)
+            section += f"| {res['file']} | {score} ✅ | {res.get('issues', '')} |\n"
+        section += "\n</details>\n"
 
-    if not has_rows and verbosity == "summary":
-        return "### 📂 File Analysis\n\n✅ All files passed!\n"
-
-    return table
+    return section
 
 
 def generate_markdown_report(
@@ -166,25 +152,12 @@ def generate_markdown_report(
     report_style: str = "actionable",
 ) -> str:
     """
-    Orchestrates the Markdown report generation using customizable styles.
-
-    Args:
-        stats: File analysis statistics.
-        final_score: The overall project score.
-        path: The project path.
-        profile: The agent profile used.
-        project_issues: Optional list of project-level issues.
-        thresholds: Optional scoring thresholds.
-        report_style: The visual style ("full", "actionable", "collapsed").
-
-    Returns:
-        str: The full Markdown report.
+    Orchestrates report generation by mapping style to internal verbosity.
     """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
-    # Map report_style to internal verbosity logic
-    # full -> detailed, actionable -> summary, collapsed -> quiet
+    # RESOLUTION: Map report_style to internal verbosity logic
     style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
     verbosity = style_map.get(report_style, "summary")
 
@@ -220,9 +193,8 @@ def generate_advisor_report(
     """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    report += (
-        "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
-    )
+    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
+    
     high_acl_files = sorted(
         [s for s in stats if s.get("acl", 0) > 15],
         key=lambda x: x.get("acl", 0),

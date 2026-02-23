@@ -165,7 +165,7 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
-    # Canonicalize
+    # Canonicalize unique circular paths
     unique_cycles = []
     seen = set()
     for cycle in cycles:
@@ -252,7 +252,7 @@ def perform_analysis(
     report_style: Optional[str] = None,
 ) -> AnalysisResult:
     """
-    Orchestrates the full project analysis pipeline with Context Economics.
+    Orchestrates the full project analysis pipeline with Context Economics and Custom Reporting.
     """
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
