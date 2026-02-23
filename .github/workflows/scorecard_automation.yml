@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+      - beta
   schedule:
     - cron: '0 0 * * *'  # Daily at midnight
 
@@ -18,6 +22,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,17 +38,48 @@ jobs:
       - name: Install Dependencies
         run: uv sync --all-extras
 
+      - name: Fetch Changed Files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin beta --depth=1 || true
+          git diff --name-only origin/beta...HEAD | grep '\.py$' > changed_files.lst || true
+          if [ -s changed_files.lst ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Agent Scorecard
-        # Using the CLI directly ensures cleaner stdout for the process script
-        run: uv run agent-score score . --verbosity summary > scorecard.txt
+        id: run-scorecard
+        # Skip ONLY on PR if no Python changes; full run on push/schedule
+        if: github.event_name != 'pull_request' || steps.changed-files.outputs.has_changes == 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -f changed_files.lst ]; then
+            # Build command dynamically to handle filenames with spaces safely
+            printf "uv run agent-score score . --verbosity summary" > run_scorecard.sh
+            while IFS= read -r f; do
+              if [ -n "$f" ]; then
+                printf " --limit-to '%s'" "$f" >> run_scorecard.sh
+              fi
+            done < changed_files.lst
+            printf " > scorecard.txt\n" >> run_scorecard.sh
+            sh run_scorecard.sh
+          else
+            # Full run for non-PR events
+            uv run agent-score score . --verbosity summary > scorecard.txt
+          fi
+          echo "ran=true" >> $GITHUB_OUTPUT
 
       - name: Process Scorecard Output
+        if: steps.run-scorecard.outputs.ran == 'true'
         env:
           # Upgrade to PAT to allow downstream workflow triggers
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: uv run python scripts/process_scorecard.py scorecard.txt
 
       - name: Apply Type Hints (LLM Placeholder)
+        if: steps.run-scorecard.outputs.ran == 'true'
         run: |
           if [ -f typing_tasks.json ]; then
             echo "Processing typing tasks from typing_tasks.json..."
@@ -66,6 +103,7 @@ jobs:
           fi
 
       - name: Create Pull Request for Type Hints
+        if: steps.run-scorecard.outputs.ran == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           # Use GH_PAT here so that CI tests and Jules are triggered on this PR

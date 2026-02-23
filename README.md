@@ -129,10 +129,13 @@ Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_s
 
 Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request. This mode is faster and focuses on new changes while still validating the entire project for circular dependencies.
 
-```bash
-# Score only changes vs the main branch
-agent-score score --diff origin/main
+### Limit Analysis to Specific Files
 
+Use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times to include multiple files. This is particularly useful in CI/CD workflows to analyze only changed files.
+
+```bash
+# Score only specific files
+agent-score score . --limit-to file1.py --limit-to file2.py
 ```
 
 ## 📝 Prompt Engineering Linter

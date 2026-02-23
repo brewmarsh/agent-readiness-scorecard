@@ -305,8 +305,17 @@ def fix(path: str, agent: str) -> None:
     help="Override verbosity.",
 )
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
+@click.option(
+    "--limit-to", "limit_to", multiple=True, help="Limit analysis to these files."
+)
 def score(
-    path: str, agent: str, fix: bool, report_path: str, verbosity: str, badge: bool
+    path: str,
+    agent: str,
+    fix: bool,
+    report_path: str,
+    verbosity: str,
+    badge: bool,
+    limit_to: tuple,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -347,7 +356,12 @@ def score(
         profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
         apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
 
-    results = analyzer.perform_analysis(path, agent, thresholds=thresholds)
+    results = analyzer.perform_analysis(
+        path,
+        agent,
+        limit_to_files=list(limit_to) if limit_to else None,
+        thresholds=thresholds,
+    )
 
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
