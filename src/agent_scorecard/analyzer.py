@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .analyzers.base import BaseAnalyzer
 from .analyzers.python import PythonAnalyzer
+from .analyzers.markdown import MarkdownAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -35,6 +36,8 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
     """
     if filepath.endswith(".py"):
         return PythonAnalyzer()
+    if filepath.endswith(".md"):
+        return MarkdownAnalyzer()
     raise ValueError(f"Unsupported file type: {filepath}")
 
 
@@ -140,8 +143,9 @@ def perform_analysis(
     project_root = (
         path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
     )
-    py_files = dependencies.collect_python_files(path)
-    all_py_files = py_files[:]
+    # Collect all analyzable files (Python and Markdown)
+    analyzable_files = dependencies.collect_python_files(path)
+    all_files = analyzable_files[:]
 
     # Build graph and calculate cumulative tokens (Context Economics)
     graph, individual_tokens = get_import_graph(path)
@@ -150,16 +154,16 @@ def perform_analysis(
     )
 
     if limit_to_files is not None:
-        py_files = [
+        analyzable_files = [
             f
-            for f in py_files
+            for f in analyzable_files
             if any(f.endswith(changed) for changed in limit_to_files)
         ]
 
     file_results: List[FileAnalysisResult] = []
     file_scores: List[int] = []
 
-    for filepath in py_files:
+    for filepath in analyzable_files:
         rel_path = os.path.relpath(filepath, start=project_root)
         cum_tokens = cumulative_tokens_map.get(rel_path, 0)
 
@@ -186,7 +190,7 @@ def perform_analysis(
             }
         )
 
-    penalty, project_issues = get_project_issues(project_root, all_py_files, profile)
+    penalty, project_issues = get_project_issues(project_root, all_files, profile)
     project_score = max(0, 100 - penalty)
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
