@@ -304,6 +304,11 @@ def fix(path: str, agent: str) -> None:
     type=click.Choice(["quiet", "summary", "detailed"]),
     help="Override verbosity.",
 )
+@click.option(
+    "--report-style",
+    type=click.Choice(["full", "actionable", "collapsed"]),
+    help="Set the report verbosity style.",
+)
 @click.option("--badge", is_flag=True, help="Generate SVG badge.")
 @click.option(
     "--limit-to", "limit_to", multiple=True, help="Limit analysis to these files."
@@ -314,6 +319,7 @@ def score(
     fix: bool,
     report_path: str,
     verbosity: str,
+    report_style: Optional[str],
     badge: bool,
     limit_to: tuple,
 ) -> None:
@@ -326,6 +332,7 @@ def score(
         fix (bool): Whether to automatically fix issues.
         report_path (str): Optional path to save a Markdown report.
         verbosity (str): Optional verbosity override.
+        report_style (Optional[str]): Optional report style override.
         badge (bool): Whether to generate an SVG badge.
 
     Returns:
@@ -339,6 +346,7 @@ def score(
 
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
+    final_report_style = report_style or cfg.get("report_style", "actionable")
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if final_verbosity != "quiet":
@@ -361,6 +369,7 @@ def score(
         agent,
         limit_to_files=list(limit_to) if limit_to else None,
         thresholds=thresholds,
+        report_style=final_report_style,
     )
 
     _print_environment_health(path, results, final_verbosity)
@@ -388,7 +397,9 @@ def score(
             results["final_score"],
             path,
             PROFILES[agent],
+            project_issues=cast(List[str], results.get("project_issues", [])),
             thresholds=thresholds,
+            report_style=final_report_style,
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)

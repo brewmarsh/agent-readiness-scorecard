@@ -69,6 +69,7 @@ Add a `[tool.agent-scorecard]` section to your `pyproject.toml` to customize thr
 [tool.agent-scorecard]
 agent = "jules"
 verbosity = "summary"
+report_style = "actionable"
 
 [tool.agent-scorecard.thresholds]
 acl_yellow = 10
@@ -82,8 +83,18 @@ type_safety = 90
 | Level | Description |
 | --- | --- |
 | `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. Ideal for CI/CD. |
-| `summary` | (Default) Displays Environment Health table and rows for files with issues. |
-| `detailed` | Deep-dive mode. Provides a full breakdown of every file, including ACL calculations. |
+| `summary` | (Default) Displays Environment Health and actionable files with issues. Passing files are tucked into collapsible `<details>` blocks. |
+| `detailed` | Deep-dive mode. Provides a full breakdown of every file, with progressive disclosure for passing metrics. |
+
+### Report Styles (`--report-style`)
+
+Used for the Markdown report generated via `--report`.
+
+| Style | Description |
+| --- | --- |
+| `collapsed` | (Minimal) Only includes the Executive Summary. |
+| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
+| `full` | Includes all sections and a complete breakdown of every file. |
 
 ## 📊 The Scoring System
 

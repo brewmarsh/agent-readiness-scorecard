@@ -20,6 +20,7 @@
 - Keep files small (<150 LOC)
 - Bash scripts must use standard POSIX syntax (e.g., `else` instead of `else:`)
 - Codebase must be strictly formatted and linted with Ruff
+- Reporting follows progressive disclosure: use `<details>` and `<summary>` for passing metrics to reduce visual noise
 - Automated PRs bypass prompt physics checks to prevent logic loops
 - Documentation files must follow the uppercase naming convention (e.g., `AGENTS.md`)
 
