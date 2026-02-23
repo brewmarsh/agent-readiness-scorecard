@@ -40,24 +40,35 @@ jobs:
 
       - name: Fetch Changed Files
         id: changed-files
+        if: github.event_name == 'pull_request'
         run: |
           git fetch origin beta --depth=1 || true
-          CHANGED_FILES=$(git diff --name-only origin/beta...HEAD | grep '\.py$' || true | tr '\n' ' ')
-          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          git diff --name-only origin/beta...HEAD | grep '\.py$' > changed_files.lst || true
+          if [ -s changed_files.lst ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run Agent Scorecard
         id: run-scorecard
-        # Skip if PR has no Python changes; full run on push/schedule
-        if: github.event_name != 'pull_request' || steps.changed-files.outputs.files != ''
+        # Skip ONLY on PR if no Python changes; full run on push/schedule
+        if: github.event_name != 'pull_request' || steps.changed-files.outputs.has_changes == 'true'
         run: |
-          FILES_ARGS=""
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            for f in ${{ steps.changed-files.outputs.files }}; do
-              FILES_ARGS="$FILES_ARGS --limit-to $f"
-            done
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -f changed_files.lst ]; then
+            # Build command dynamically to handle filenames with spaces safely
+            printf "uv run agent-score score . --verbosity summary" > run_scorecard.sh
+            while IFS= read -r f; do
+              if [ -n "$f" ]; then
+                printf " --limit-to '%s'" "$f" >> run_scorecard.sh
+              fi
+            done < changed_files.lst
+            printf " > scorecard.txt\n" >> run_scorecard.sh
+            sh run_scorecard.sh
+          else
+            # Full run for non-PR events
+            uv run agent-score score . --verbosity summary > scorecard.txt
           fi
-          # Using the CLI directly ensures cleaner stdout for the process script
-          uv run agent-score score . --verbosity summary $FILES_ARGS > scorecard.txt
           echo "ran=true" >> $GITHUB_OUTPUT
 
       - name: Process Scorecard Output

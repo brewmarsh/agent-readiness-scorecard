@@ -1,6 +1,6 @@
 import os
 import ast
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple
 
 def _collect_python_files(path: str) -> List[str]:
     """

@@ -1,4 +1,3 @@
-import os
 from click.testing import CliRunner
 from agent_scorecard.main import cli
 

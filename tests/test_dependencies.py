@@ -1,5 +1,3 @@
-import os
-import pytest
 from src.agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
