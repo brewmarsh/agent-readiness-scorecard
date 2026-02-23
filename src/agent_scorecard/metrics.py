@@ -1,268 +1,109 @@
-import ast
-import mccabe
+import warnings
 from typing import List
+from .analyzers.python import PythonAnalyzer, NestingDepthVisitor
 from .types import FunctionMetric
-
-
-class NestingDepthVisitor(ast.NodeVisitor):
-    """
-    AST visitor that calculates the maximum nesting depth of control flow blocks.
-
-    This visitor tracks If, For, AsyncFor, While, Try, With, AsyncWith,
-    ListComp, SetComp, DictComp, GeneratorExp, and Lambda nodes.
-    """
-
-    def __init__(self) -> None:
-        """Initializes the visitor with depth counters."""
-        self.current_depth: int = 0
-        self.max_depth: int = 0
-
-    def _visit_control_block(self, node: ast.AST) -> None:
-        """
-        Increments depth, tracks max, visits children, then decrements.
-
-        Args:
-            node (ast.AST): The control block node to visit.
-        """
-        self.current_depth += 1
-        if self.current_depth > self.max_depth:
-            self.max_depth = self.current_depth
-        self.generic_visit(node)
-        self.current_depth -= 1
-
-    def visit_If(self, node: ast.If) -> None:
-        """Visits an If node."""
-        self._visit_control_block(node)
-
-    def visit_For(self, node: ast.For) -> None:
-        """Visits a For node."""
-        self._visit_control_block(node)
-
-    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
-        """Visits an AsyncFor node."""
-        self._visit_control_block(node)
-
-    def visit_While(self, node: ast.While) -> None:
-        """Visits a While node."""
-        self._visit_control_block(node)
-
-    def visit_Try(self, node: ast.Try) -> None:
-        """Visits a Try node."""
-        self._visit_control_block(node)
-
-    def visit_With(self, node: ast.With) -> None:
-        """Visits a With node."""
-        self._visit_control_block(node)
-
-    def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
-        """Visits an AsyncWith node."""
-        self._visit_control_block(node)
-
-    def visit_ListComp(self, node: ast.ListComp) -> None:
-        """Visits a ListComp node."""
-        self._visit_control_block(node)
-
-    def visit_SetComp(self, node: ast.SetComp) -> None:
-        """Visits a SetComp node."""
-        self._visit_control_block(node)
-
-    def visit_DictComp(self, node: ast.DictComp) -> None:
-        """Visits a DictComp node."""
-        self._visit_control_block(node)
-
-    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
-        """Visits a GeneratorExp node."""
-        self._visit_control_block(node)
-
-    def visit_Lambda(self, node: ast.Lambda) -> None:
-        """Visits a Lambda node."""
-        self._visit_control_block(node)
 
 
 def calculate_max_depth(source_code: str) -> int:
     """
     Calculates the maximum nesting depth of control flow blocks in the given source code.
 
-    Args:
-        source_code (str): The Python source code to analyze.
-
-    Returns:
-        int: The maximum nesting depth detected.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.calculate_max_depth` instead.
     """
-    try:
-        tree = ast.parse(source_code)
-    except (SyntaxError, ValueError):
-        return 0
-
-    visitor = NestingDepthVisitor()
-    visitor.visit(tree)
-    return visitor.max_depth
+    warnings.warn(
+        "calculate_max_depth is deprecated, use PythonAnalyzer().calculate_max_depth() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().calculate_max_depth(source_code)
 
 
 def get_loc(filepath: str) -> int:
     """
     Returns lines of code excluding whitespace/comments roughly.
 
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        int: Logical lines of code.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer._get_loc` instead.
     """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return sum(
-                1 for line in f if line.strip() and not line.strip().startswith("#")
-            )
-    except (UnicodeDecodeError, FileNotFoundError):
-        return 0
+    warnings.warn(
+        "get_loc is deprecated, use PythonAnalyzer()._get_loc() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer()._get_loc(filepath)
 
 
 def get_complexity_score(filepath: str) -> float:
     """
     Returns average cyclomatic complexity for all functions in a file.
 
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        float: Average cyclomatic complexity.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.get_complexity_score` instead.
     """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            code = f.read()
-        tree = ast.parse(code, filepath)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-        return 0.0
-
-    visitor = mccabe.PathGraphingAstVisitor()
-    visitor.preorder(tree, visitor)
-
-    complexities = [graph.complexity() for graph in visitor.graphs.values()]
-    if not complexities:
-        return 0.0
-
-    return sum(complexities) / len(complexities)
+    warnings.warn(
+        "get_complexity_score is deprecated, use PythonAnalyzer().get_complexity_score() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().get_complexity_score(filepath)
 
 
 def check_type_hints(filepath: str) -> float:
     """
     Returns type hint coverage percentage for functions and async functions.
 
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        float: Type hint coverage percentage (0-100).
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.check_type_hints` instead.
     """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            code = f.read()
-        tree = ast.parse(code)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-        return 0.0
-
-    functions = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    ]
-    if not functions:
-        return 100.0
-
-    typed_functions = 0
-    for func in functions:
-        has_return = func.returns is not None
-        has_args = any(arg.annotation is not None for arg in func.args.args)
-        if has_return or has_args:
-            typed_functions += 1
-
-    return (typed_functions / len(functions)) * 100.0
+    warnings.warn(
+        "check_type_hints is deprecated, use PythonAnalyzer().check_type_hints() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().check_type_hints(filepath)
 
 
 def calculate_acl(complexity: float, loc: int, depth: int) -> float:
     """
     Calculates Agent Cognitive Load (ACL).
 
-    Formula: ACL = (Nesting Depth * 2) + (Complexity * 1.5) + (LOC / 50)
-
-    Args:
-        complexity (float): Cyclomatic complexity of the code unit.
-        loc (int): Logical lines of code of the code unit.
-        depth (int): Maximum nesting depth of the code unit.
-
-    Returns:
-        float: Calculated ACL value.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.calculate_acl` instead.
     """
-    return (depth * 2.0) + (complexity * 1.5) + (loc / 50.0)
+    warnings.warn(
+        "calculate_acl is deprecated, use PythonAnalyzer().calculate_acl() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().calculate_acl(complexity, loc, depth)
 
 
 def count_tokens(filepath: str) -> int:
     """
     Estimates the number of tokens in a file (approx 4 chars/token).
 
-    Args:
-        filepath (str): Path to the file.
-
-    Returns:
-        int: Estimated token count.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.count_tokens` instead.
     """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            return len(content) // 4
-    except (UnicodeDecodeError, FileNotFoundError):
-        return 0
+    warnings.warn(
+        "count_tokens is deprecated, use PythonAnalyzer().count_tokens() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().count_tokens(filepath)
 
 
 def get_function_stats(filepath: str) -> List[FunctionMetric]:
     """
     Returns statistics for each function in the file including ACL and Type coverage.
 
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        List[FunctionMetric]: A list of metrics for each function found.
+    .. deprecated:: 1.0
+        Use :meth:`PythonAnalyzer.get_function_stats` instead.
     """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            code = f.read()
-        tree = ast.parse(code, filepath)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-        return []
-
-    visitor = mccabe.PathGraphingAstVisitor()
-    visitor.preorder(tree, visitor)
-    complexity_map = {
-        graph.lineno: graph.complexity() for graph in visitor.graphs.values()
-    }
-
-    stats: List[FunctionMetric] = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            start_line = node.lineno
-            end_line = getattr(node, "end_lineno", start_line)
-            loc = end_line - start_line + 1
-            complexity = float(complexity_map.get(start_line, 1))
-
-            # Calculate Nesting Depth
-            depth_visitor = NestingDepthVisitor()
-            depth_visitor.visit(node)
-            nesting_depth = depth_visitor.max_depth
-
-            acl = calculate_acl(complexity, loc, nesting_depth)
-
-            stats.append(
-                {
-                    "name": node.name,
-                    "lineno": start_line,
-                    "complexity": complexity,
-                    "loc": loc,
-                    "acl": acl,
-                    "is_typed": (node.returns is not None)
-                    or any(arg.annotation is not None for arg in node.args.args),
-                    "nesting_depth": nesting_depth,
-                }
-            )
-    return stats
+    warnings.warn(
+        "get_function_stats is deprecated, use PythonAnalyzer().get_function_stats() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PythonAnalyzer().get_function_stats(filepath)
