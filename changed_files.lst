@@ -1,6 +1,2 @@
-src/agent_scorecard/analyzer.py
-src/agent_scorecard/analyzers/__init__.py
-src/agent_scorecard/analyzers/base.py
-src/agent_scorecard/analyzers/python.py
-src/agent_scorecard/metrics.py
-src/agent_scorecard/scoring.py
+src/agent_scorecard/auditor.py
+src/agent_scorecard/auditor_utils.py
