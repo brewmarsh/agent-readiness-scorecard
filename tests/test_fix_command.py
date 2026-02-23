@@ -32,18 +32,22 @@ class TestFixCommand:
             os.makedirs("src")
             with open("src/test.py", "w") as f:
                 f.write(
-                    textwrap.dedent("""
+                    textwrap.dedent(
+                        """
                     def foo():
                         pass
-                    """)
+                    """
+                    )
                 )
 
             # RESOLUTION: Mock LLM.generate to simulate CRAFT refactoring
-            fixed_code = textwrap.dedent("""
+            fixed_code = textwrap.dedent(
+                """
                 def foo() -> None:
                     \"\"\"A docstring.\"\"\"
                     pass
-            """).strip()
+            """
+            ).strip()
 
             with patch(
                 "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
@@ -84,17 +88,21 @@ class TestFixCommand:
             os.makedirs("subdir")
             with open("subdir/test.py", "w") as f:
                 f.write(
-                    textwrap.dedent("""
+                    textwrap.dedent(
+                        """
                     def bar(x):
                         return x
-                    """)
+                    """
+                    )
                 )
 
-            fixed_code = textwrap.dedent("""
+            fixed_code = textwrap.dedent(
+                """
                 def bar(x: int) -> int:
                     \"\"\"Returns x.\"\"\"
                     return x
-            """).strip()
+            """
+            ).strip()
 
             with patch(
                 "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
@@ -154,10 +162,13 @@ class TestFixCommand:
             with open("test.py", "w") as f:
                 f.write("def foo():\n    pass\n")
 
-            # Should default to generic and not crash
-            result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
-            assert result.exit_code == 0
-            assert "Unknown agent profile: invalid. using generic." in result.output
+            # Mock litellm to avoid ImportError in environments where it might not be loaded
+            with patch("agent_scorecard.llm.litellm") as mock_litellm:
+                mock_litellm.completion.return_value.choices[0].message.content = "def foo() -> None:\n    pass\n"
+                # Should default to generic and not crash
+                result = runner.invoke(cli, ["score", ".", "--fix", "--agent", "invalid"])
+                assert result.exit_code == 0
+                assert "Unknown agent profile: invalid. using generic." in result.output
 
     def test_fix_command_with_markdown(self, runner: CliRunner) -> None:
         """Test that markdown code fences are stripped."""

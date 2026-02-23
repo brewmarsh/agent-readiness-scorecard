@@ -4,6 +4,7 @@ import os
 
 
 def test_cli_report_style_option() -> None:
+    """Test that the --report-style CLI option works correctly."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -18,7 +19,7 @@ def test_cli_report_style_option() -> None:
         # It might exit with 1 if score < 70, which is expected here since no docs
         assert os.path.exists("report.md")
 
-        with open("report.md", "r") as f:
+        with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
             assert "Overall Score" in content
             assert "File Analysis" not in content

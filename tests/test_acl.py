@@ -47,9 +47,10 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
         None
     """
 
-    # RESOLUTION: We use the Advisor-Mode setup (Large Function) because
-    # the new logic ignores global scope for ACL calculations to focus on unit depth.
-    content = textwrap.dedent("""
+    # RESOLUTION: Combined the deep nesting from the refactor branch with 
+    # the volume testing from beta to thoroughly stress-test the new ACL formula.
+    content = textwrap.dedent(
+        """
     def big_function():
         if True:
             if True:
@@ -58,7 +59,8 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
                         if True:
                             x = 0
     """)
-    # Add 320 lines of assignment inside the function to force a high ACL
+    
+    # Add 320 lines of assignment inside the function to force a high ACL/LOC penalty
     for i in range(320):
         content += f"            x = {i}\n"
 
@@ -72,7 +74,8 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
 
     # RESOLUTION: Verify the specific output format from scoring.py
     # Math: Depth=5, CC=6, LOC=328.
-    # ACL = (5 * 2) + (6 * 1.5) + (328 / 50) = 10 + 9 + 6.56 = 25.56 -> Red ACL status (>15)
+    # ACL = (5 * 2) + (6 * 1.5) + (328 / 50) = 10 + 9 + 6.56 = 25.56
+    # This triggers the "Red ACL status" (>15) which applies a -15 point penalty.
     assert "Red ACL functions" in details
     assert "(-15)" in details
 

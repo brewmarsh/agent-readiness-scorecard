@@ -4,6 +4,7 @@ import os
 
 
 def test_pyproject_config_report_style() -> None:
+    """Test that the report_style from pyproject.toml works correctly."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create a dummy python file
@@ -18,7 +19,7 @@ def test_pyproject_config_report_style() -> None:
         runner.invoke(cli, ["score", ".", "--report", "report.md"])
         assert os.path.exists("report.md")
 
-        with open("report.md", "r") as f:
+        with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
             assert "Overall Score" in content
             assert "File Analysis" not in content

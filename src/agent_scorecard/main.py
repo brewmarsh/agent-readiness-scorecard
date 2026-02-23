@@ -334,6 +334,7 @@ def score(
         verbosity (str): Optional verbosity override.
         report_style (Optional[str]): Optional report style override.
         badge (bool): Whether to generate an SVG badge.
+        limit_to (tuple): Optional list of files to limit analysis to.
 
     Returns:
         None

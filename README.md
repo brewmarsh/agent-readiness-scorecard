@@ -96,6 +96,16 @@ Used for the Markdown report generated via `--report`.
 | `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
 | `full` | Includes all sections and a complete breakdown of every file. |
 
+### Report Styles (`--report-style`)
+
+Used for the Markdown report generated via `--report`.
+
+| Style | Description |
+| --- | --- |
+| `collapsed` | (Minimal) Only includes the Executive Summary. |
+| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
+| `full` | Includes all sections and a complete breakdown of every file. |
+
 ## 📊 The Scoring System
 
 Your codebase starts at **100 points**. Penalties are applied for:
