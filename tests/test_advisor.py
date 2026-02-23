@@ -17,13 +17,15 @@ from agent_scorecard.report import generate_advisor_report
 def test_calculate_acl() -> None:
     """
     Tests the Agent Cognitive Load (ACL) calculation formula.
-    Formula: ACL = Cyclomatic Complexity + (Lines of Code / 20)
+    Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
 
     Returns:
         None
     """
-    assert calculate_acl(10, 100) == 10 + (100 / 20)  # 15.0
-    assert calculate_acl(0, 0) == 0
+    # Depth=3, CC=10, LOC=100
+    # (3 * 2) + (10 * 1.5) + (100 / 50) = 6 + 15 + 2 = 23.0
+    assert calculate_acl(10, 100, 3) == 23.0
+    assert calculate_acl(0, 0, 0) == 0
 
 
 def test_get_directory_entropy(tmp_path: Path) -> None:
@@ -144,13 +146,15 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     Returns:
         None
     """
-    code = textwrap.dedent("""
+    code = textwrap.dedent(
+        """
         def complex_function():
             if True:
                 print("yes")
             else:
                 print("no")
-    """)
+    """
+    )
     # Pad with comments to trigger the LOC density metric
     for _ in range(20):
         code += "    # padding\n"
@@ -165,6 +169,8 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     assert func["name"] == "complex_function"
     assert func["complexity"] >= 2
     assert func["loc"] >= 20
+    # CC=2, Depth=1, LOC=~26
+    # (1*2) + (2*1.5) + (26/50) = 2 + 3 + 0.52 = 5.52
     assert func["acl"] > 2
 
 
@@ -180,8 +186,18 @@ def test_unified_score_report_content(tmp_path: Path) -> None:
     """
     # Setup a file that specifically triggers high ACL warnings
     code = "def hallucinate():\n"
-    for _ in range(10):
-        code += "    if True: pass\n"
+    # depth 11
+    code += "    if True:\n"
+    code += "        if True:\n"
+    code += "            if True:\n"
+    code += "                if True:\n"
+    code += "                    if True:\n"
+    code += "                        if True:\n"
+    code += "                            if True:\n"
+    code += "                                if True:\n"
+    code += "                                    if True:\n"
+    code += "                                        if True:\n"
+    code += "                                            if True: pass\n"
     for i in range(120):
         code += f"    x={i}\n"
 

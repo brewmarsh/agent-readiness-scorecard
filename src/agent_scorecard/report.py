@@ -21,8 +21,10 @@ def _generate_summary_section(
         str: Markdown string for the summary section.
     """
     summary = "# Agent Scorecard Report\n\n"
-    summary += f"**Target Agent Profile:** {profile.get('description', 'Generic').split('.')[0]}\n"
-    summary += f"**Overall Score: {final_score:.1f}/100** - {'PASS' if final_score >= 70 else 'FAIL'}\n\n"
+    profile_desc = profile.get("description", "Generic").split(".")[0]
+    summary += f"**Target Agent Profile:** {profile_desc}\n"
+    status_str = "PASS" if final_score >= 70 else "FAIL"
+    summary += f"**Overall Score: {final_score:.1f}/100** - {status_str}\n\n"
 
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
@@ -105,35 +107,29 @@ def _generate_type_safety_section(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
 
-    failing = [s for s in stats if s.get("type_coverage", 0) < type_safety_threshold]
-    passing = [s for s in stats if s.get("type_coverage", 0) >= type_safety_threshold]
+    types_section = "## 🛡️ Type Safety Index\n\n"
+    types_section += (
+        f"Target: >{type_safety_threshold}% of functions "
+        "must have explicit type signatures.\n\n"
+    )
 
-    types_section = "### 🛡️ Type Safety Index (Action Required)\n\n"
-    types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
+    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
+    table_rows = []
+    for res in sorted_types:
+        coverage = res.get("type_coverage", 0)
+        if verbosity == "summary" and coverage >= type_safety_threshold:
+            continue
+        status = "✅" if coverage >= type_safety_threshold else "❌"
+        table_rows.append(f"| {res['file']} | {coverage:.0f}% | {status} |")
 
-    if failing:
-        types_section += "| File | Type Safety Index | Status |\n"
-        types_section += "| :--- | :---------------: | :----- |\n"
-        for res in sorted(failing, key=lambda x: x.get("type_coverage", 0)):
-            coverage = res.get("type_coverage", 0)
-            types_section += f"| `{res['file']}` | {coverage:.0f}% | ❌ |\n"
-        types_section += "\n"
-    else:
-        types_section += "✅ All files meet type safety requirements.\n\n"
+    if not table_rows:
+        return types_section + "✅ All files meet type safety requirements.\n\n"
 
-    if passing:
-        types_section += f"✅ View {len(passing)} passing files\n\n"
-        types_section += "<details>\n<summary>Details</summary>\n\n"
-        types_section += "| File | Type Safety Index | Status |\n"
-        types_section += "| :--- | :---------------: | :----- |\n"
-        for res in sorted(
-            passing, key=lambda x: x.get("type_coverage", 0), reverse=True
-        ):
-            coverage = res.get("type_coverage", 0)
-            types_section += f"| {res['file']} | {coverage:.0f}% | ✅ |\n"
-        types_section += "\n</details>\n"
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
+    types_section += "\n".join(table_rows)
 
-    return types_section + "\n"
+    return types_section + "\n\n"
 
 
 def _generate_file_table_section(
@@ -143,35 +139,26 @@ def _generate_file_table_section(
     """
     Creates a breakdown of analysis for every file.
     """
-    failing = [s for s in stats if s.get("score", 0) < 70]
-    passing = [s for s in stats if s.get("score", 0) >= 70]
-
     if verbosity == "summary":
-        section = "### 📂 Failing File Analysis\n\n"
+        table = "### 📂 Failing File Analysis\n\n"
     else:
-        section = "### 📂 Full File Analysis\n\n"
+        table = "### 📂 Full File Analysis\n\n"
 
-    if failing:
-        section += "| File | Score | Issues |\n"
-        section += "| :--- | :---: | :--- |\n"
-        for res in sorted(failing, key=lambda x: x.get("score", 0)):
-            score = res.get("score", 0)
-            section += f"| `{res['file']}` | {score} ❌ | {res.get('issues', '')} |\n"
-        section += "\n"
-    else:
-        section += "✅ All files passed analysis!\n\n"
+    table += "| File | Score | Issues |\n"
+    table += "| :--- | :---: | :--- |\n"
+    has_rows = False
+    for res in stats:
+        score = res.get("score", 0)
+        if verbosity == "summary" and score >= 70:
+            continue
+        status = "✅" if score >= 70 else "❌"
+        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
+        has_rows = True
 
-    if passing:
-        section += f"✅ View {len(passing)} passing files\n\n"
-        section += "<details>\n<summary>Details</summary>\n\n"
-        section += "| File | Score | Issues |\n"
-        section += "| :--- | :---: | :--- |\n"
-        for res in sorted(passing, key=lambda x: x.get("score", 0), reverse=True):
-            score = res.get("score", 0)
-            section += f"| {res['file']} | {score} ✅ | {res.get('issues', '')} |\n"
-        section += "\n</details>\n"
+    if not has_rows and verbosity == "summary":
+        return "### 📂 File Analysis\n\n✅ All files passed!\n"
 
-    return section
+    return table
 
 
 def generate_markdown_report(
@@ -181,13 +168,30 @@ def generate_markdown_report(
     profile: Dict[str, Any],
     project_issues: Optional[List[str]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
-    verbosity: str = "detailed",
+    report_style: str = "actionable",
 ) -> str:
     """
-    Orchestrates the Markdown report generation.
+    Orchestrates the Markdown report generation using customizable styles.
+
+    Args:
+        stats: File analysis statistics.
+        final_score: The overall project score.
+        path: The project path.
+        profile: The agent profile used.
+        project_issues: Optional list of project-level issues.
+        thresholds: Optional scoring thresholds.
+        report_style: The visual style ("full", "actionable", "collapsed").
+
+    Returns:
+        str: The full Markdown report.
     """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
+
+    # Map report_style to internal verbosity logic
+    # full -> detailed, actionable -> summary, collapsed -> quiet
+    style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
+    verbosity = style_map.get(report_style, "summary")
 
     summary = _generate_summary_section(final_score, profile, project_issues)
 

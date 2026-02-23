@@ -18,9 +18,7 @@ class TestLLMClient:
     def test_generate_success(self) -> None:
         with patch("agent_scorecard.llm.litellm") as mock_litellm:
             mock_response = MagicMock()
-            mock_response.choices = [
-                MagicMock(message=MagicMock(content="Fixed code"))
-            ]
+            mock_response.choices = [MagicMock(message=MagicMock(content="Fixed code"))]
             mock_litellm.completion.return_value = mock_response
 
             client = LLMClient()

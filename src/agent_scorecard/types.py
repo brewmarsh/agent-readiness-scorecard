@@ -1,4 +1,4 @@
-from typing import List, Dict, TypedDict
+from typing import List, Dict, TypedDict, Optional
 
 
 class FunctionMetric(TypedDict):
@@ -83,3 +83,4 @@ class AnalysisResult(TypedDict):
     project_issues: List[str]
     dep_analysis: DepAnalysis
     directory_stats: List[DirectoryStat]
+    report_style: Optional[str]

@@ -1,7 +1,7 @@
 import ast
 import os
 from typing import Dict, List, Set, Any
-import networkx as nx  # type: ignore
+import networkx as nx
 
 
 def get_imports(filepath: str) -> List[Dict[str, Any]]:

@@ -62,5 +62,6 @@ class LLMClient:
             # For now, returning empty string prevents partial writes.
             # We print to stderr for visibility.
             import sys
+
             print(f"LLM Generation Error: {e}", file=sys.stderr)
             return ""

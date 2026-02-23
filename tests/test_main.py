@@ -23,7 +23,8 @@ def sample_file(tmp_path: Path) -> Path:
     d = tmp_path / "subdir"
     d.mkdir()
     p = d / "hello.py"
-    p.write_text("""
+    p.write_text(
+        """
 def hello():
     print("Hello")
 
@@ -33,7 +34,8 @@ def complex_func(n):
             if n > 3:
                 return 3
     return 1
-""")
+"""
+    )
     return p
 
 
@@ -49,10 +51,12 @@ def typed_file(tmp_path: Path) -> Path:
         Path: Path to the created typed file.
     """
     p = tmp_path / "typed.py"
-    p.write_text("""
+    p.write_text(
+        """
 def add(a: int, b: int) -> int:
     return a + b
-""")
+"""
+    )
     return p
 
 

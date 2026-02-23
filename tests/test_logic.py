@@ -40,7 +40,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
     Returns:
         None
     """
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def simple_func(a: int):
         return a + 1
 
@@ -49,7 +50,8 @@ def test_get_function_stats(tmp_path: Path) -> None:
             if b > 0:
                 return a + b
         return 0
-    """)
+    """
+    )
     py_file = tmp_path / "func_test.py"
     py_file.write_text(content, encoding="utf-8")
 
@@ -60,15 +62,15 @@ def test_get_function_stats(tmp_path: Path) -> None:
     simple = next(m for m in metrics if m["name"] == "simple_func")
     complex_fn = next(m for m in metrics if m["name"] == "complex_func")
 
-    # simple_func verification: CC=1, LOC=2. ACL = 1 + 2/20 = 1.1
+    # simple_func verification: CC=1, LOC=2, Depth=0. ACL = (0*2) + (1*1.5) + (2/50) = 1.54
     assert simple["complexity"] == 1
     assert simple["loc"] == 2
-    assert simple["acl"] == 1.1
+    assert simple["acl"] == 1.54
 
-    # complex_func verification: CC=3, LOC=5. ACL = 3 + 5/20 = 3.25
+    # complex_func verification: CC=3, LOC=5, Depth=2. ACL = (2*2) + (3*1.5) + (5/50) = 8.6
     assert complex_fn["complexity"] == 3
     assert complex_fn["loc"] == 5
-    assert complex_fn["acl"] == 3.25
+    assert complex_fn["acl"] == 8.6
 
 
 def test_check_type_hints(tmp_path: Path) -> None:
@@ -114,10 +116,12 @@ def test_score_file_logic(tmp_path: Path) -> None:
     Returns:
         None
     """
-    content = textwrap.dedent("""
+    content = textwrap.dedent(
+        """
     def untyped_but_simple(a):
         return a
-    """)
+    """
+    )
     py_file = tmp_path / "score_test.py"
     py_file.write_text(content, encoding="utf-8")
 

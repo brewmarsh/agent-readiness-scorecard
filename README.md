@@ -69,6 +69,7 @@ Add a `[tool.agent-scorecard]` section to your `pyproject.toml` to customize thr
 [tool.agent-scorecard]
 agent = "jules"
 verbosity = "summary"
+report_style = "actionable"
 
 [tool.agent-scorecard.thresholds]
 acl_yellow = 10
@@ -85,6 +86,26 @@ type_safety = 90
 | `summary` | (Default) Displays Environment Health and actionable files with issues. Passing files are tucked into collapsible `<details>` blocks. |
 | `detailed` | Deep-dive mode. Provides a full breakdown of every file, with progressive disclosure for passing metrics. |
 
+### Report Styles (`--report-style`)
+
+Used for the Markdown report generated via `--report`.
+
+| Style | Description |
+| --- | --- |
+| `collapsed` | (Minimal) Only includes the Executive Summary. |
+| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
+| `full` | Includes all sections and a complete breakdown of every file. |
+
+### Report Styles (`--report-style`)
+
+Used for the Markdown report generated via `--report`.
+
+| Style | Description |
+| --- | --- |
+| `collapsed` | (Minimal) Only includes the Executive Summary. |
+| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows. |
+| `full` | Includes all sections and a complete breakdown of every file. |
+
 ## 📊 The Scoring System
 
 Your codebase starts at **100 points**. Penalties are applied for:
@@ -92,7 +113,7 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: . Target <= 10. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target <= 10. |
 | **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
 | **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
@@ -129,10 +150,13 @@ Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_s
 
 Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request. This mode is faster and focuses on new changes while still validating the entire project for circular dependencies.
 
-```bash
-# Score only changes vs the main branch
-agent-score score --diff origin/main
+### Limit Analysis to Specific Files
 
+Use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times to include multiple files. This is particularly useful in CI/CD workflows to analyze only changed files.
+
+```bash
+# Score only specific files
+agent-score score . --limit-to file1.py --limit-to file2.py
 ```
 
 ## 📝 Prompt Engineering Linter

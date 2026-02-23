@@ -10,14 +10,16 @@ from .llm import LLMClient
 console = Console()
 
 CRAFT_PROMPTS = {
-    "persona": "You are an Elite DevOps Engineer specializing in Python code quality.",
-    "action_steps": [
-        "Read the source code provided.",
-        "Identify the specific violation (ACL > 15 or Missing Types).",
-        "Apply the fix strictly to the violations.",
-        "Verify that the code is syntactically correct.",
-    ],
-    "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code.",
+    "refactor": {
+        "persona": "You are an Elite DevOps Engineer specializing in Python code quality.",
+        "actions": [
+            "Read the source code provided.",
+            "Identify the specific violation (ACL > 15 or Missing Types).",
+            "Apply the fix strictly to the violations.",
+            "Verify that the code is syntactically correct.",
+        ],
+        "frame": "Maintain strictly the same functionality. Do not add new features. Do not explain your reasoning; just output code.",
+    }
 }
 
 
@@ -39,9 +41,7 @@ def _clean_code(code: str) -> str:
     return code.strip()
 
 
-def fix_file_issues(
-    filepath: str, llm_config: Optional[Dict[str, Any]] = None
-) -> None:
+def fix_file_issues(filepath: str, llm_config: Optional[Dict[str, Any]] = None) -> None:
     """
     Uses CRAFT prompts and LLM to fix code quality violations.
 
@@ -69,8 +69,9 @@ def fix_file_issues(
     except Exception:
         return
 
-    system_prompt = f"{CRAFT_PROMPTS['persona']}\n\n{CRAFT_PROMPTS['frame']}"
-    action_str = "\n".join([f"- {step}" for step in CRAFT_PROMPTS["action_steps"]])
+    config = CRAFT_PROMPTS["refactor"]
+    system_prompt = f"{config['persona']}\n\n{config['frame']}"
+    action_str = "\n".join([f"- {step}" for step in config["actions"]])
     user_prompt = f"Action Steps:\n{action_str}\n\nSource Code:\n{content}"
 
     llm = LLMClient(config=llm_config)
