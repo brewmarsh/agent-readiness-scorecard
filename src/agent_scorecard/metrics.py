@@ -4,6 +4,101 @@ from typing import List
 from .types import FunctionMetric
 
 
+class NestingDepthVisitor(ast.NodeVisitor):
+    """
+    AST visitor that calculates the maximum nesting depth of control flow blocks.
+
+    This visitor tracks If, For, AsyncFor, While, Try, With, AsyncWith,
+    ListComp, SetComp, DictComp, GeneratorExp, and Lambda nodes.
+    """
+
+    def __init__(self) -> None:
+        """Initializes the visitor with depth counters."""
+        self.current_depth: int = 0
+        self.max_depth: int = 0
+
+    def _visit_control_block(self, node: ast.AST) -> None:
+        """
+        Increments depth, tracks max, visits children, then decrements.
+
+        Args:
+            node (ast.AST): The control block node to visit.
+        """
+        self.current_depth += 1
+        if self.current_depth > self.max_depth:
+            self.max_depth = self.current_depth
+        self.generic_visit(node)
+        self.current_depth -= 1
+
+    def visit_If(self, node: ast.If) -> None:
+        """Visits an If node."""
+        self._visit_control_block(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        """Visits a For node."""
+        self._visit_control_block(node)
+
+    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
+        """Visits an AsyncFor node."""
+        self._visit_control_block(node)
+
+    def visit_While(self, node: ast.While) -> None:
+        """Visits a While node."""
+        self._visit_control_block(node)
+
+    def visit_Try(self, node: ast.Try) -> None:
+        """Visits a Try node."""
+        self._visit_control_block(node)
+
+    def visit_With(self, node: ast.With) -> None:
+        """Visits a With node."""
+        self._visit_control_block(node)
+
+    def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
+        """Visits an AsyncWith node."""
+        self._visit_control_block(node)
+
+    def visit_ListComp(self, node: ast.ListComp) -> None:
+        """Visits a ListComp node."""
+        self._visit_control_block(node)
+
+    def visit_SetComp(self, node: ast.SetComp) -> None:
+        """Visits a SetComp node."""
+        self._visit_control_block(node)
+
+    def visit_DictComp(self, node: ast.DictComp) -> None:
+        """Visits a DictComp node."""
+        self._visit_control_block(node)
+
+    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
+        """Visits a GeneratorExp node."""
+        self._visit_control_block(node)
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        """Visits a Lambda node."""
+        self._visit_control_block(node)
+
+
+def calculate_max_depth(source_code: str) -> int:
+    """
+    Calculates the maximum nesting depth of control flow blocks in the given source code.
+
+    Args:
+        source_code (str): The Python source code to analyze.
+
+    Returns:
+        int: The maximum nesting depth detected.
+    """
+    try:
+        tree = ast.parse(source_code)
+    except (SyntaxError, ValueError):
+        return 0
+
+    visitor = NestingDepthVisitor()
+    visitor.visit(tree)
+    return visitor.max_depth
+
+
 def get_loc(filepath: str) -> int:
     """
     Returns lines of code excluding whitespace/comments roughly.
@@ -151,6 +246,11 @@ def get_function_stats(filepath: str) -> List[FunctionMetric]:
             complexity = float(complexity_map.get(start_line, 1))
             acl = calculate_acl(complexity, loc)
 
+            # Calculate Nesting Depth
+            depth_visitor = NestingDepthVisitor()
+            depth_visitor.visit(node)
+            nesting_depth = depth_visitor.max_depth
+
             stats.append(
                 {
                     "name": node.name,
@@ -160,6 +260,7 @@ def get_function_stats(filepath: str) -> List[FunctionMetric]:
                     "acl": acl,
                     "is_typed": (node.returns is not None)
                     or any(arg.annotation is not None for arg in node.args.args),
+                    "nesting_depth": nesting_depth,
                 }
             )
     return stats

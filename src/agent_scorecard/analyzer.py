@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
-from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
+from .types import FileAnalysisResult, AnalysisResult
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -14,7 +14,10 @@ from .metrics import (  # noqa: F401
     get_function_stats,
     check_type_hints,
     count_tokens,
+    NestingDepthVisitor,
+    calculate_max_depth,
 )
+
 
 # --- METRICS & GRAPH ANALYSIS ---
 
@@ -44,12 +47,6 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
 def _collect_python_files(path: str) -> List[str]:
     """
     Collects all Python files in the given path, ignoring hidden directories.
-
-    Args:
-        path (str): The path to scan.
-
-    Returns:
-        List[str]: A list of absolute paths to Python files.
     """
     py_files = []
     if os.path.isfile(path) and path.endswith(".py"):
@@ -68,12 +65,6 @@ def _collect_python_files(path: str) -> List[str]:
 def _parse_imports(filepath: str) -> Set[str]:
     """
     Parses a Python file and returns a set of imported module names.
-
-    Args:
-        filepath (str): Path to the Python file.
-
-    Returns:
-        Set[str]: A set of unique module names imported in the file.
     """
     imported_names: Set[str] = set()
     try:
@@ -93,15 +84,9 @@ def _parse_imports(filepath: str) -> Set[str]:
     return imported_names
 
 
-def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
+def get_import_graph(root_path: str) -> Tuple[Dict[str, Set[str]], Dict[str, int]]:
     """
-    Builds a dependency graph of the project.
-
-    Args:
-        root_path (str): The root path to analyze.
-
-    Returns:
-        Dict[str, Set[str]]: A mapping of file relative paths to their dependencies.
+    Builds a dependency graph and calculates individual token counts.
     """
     if os.path.isfile(root_path) and root_path.endswith(".py"):
         all_py_files = [os.path.basename(root_path)]
@@ -111,9 +96,11 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
+    token_counts: Dict[str, int] = {}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
+        token_counts[rel_path] = auditor.count_python_tokens(full_path)
         imported_names = _parse_imports(full_path)
 
         for name in imported_names:
@@ -129,38 +116,24 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
                         or candidate_no_ext[-(match_len + 1)] == os.sep
                     ):
                         graph[rel_path].add(candidate)
-    return graph
+    return graph, token_counts
 
 
 def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
     """
     Returns {file: count} of inbound imports to identify 'God Modules'.
-
-    Args:
-        graph (Dict[str, Set[str]]): The project's dependency graph.
-
-    Returns:
-        Dict[str, int]: A mapping of file paths to their inbound import counts.
     """
     inbound: Dict[str, int] = {node: 0 for node in graph}
     for source, targets in graph.items():
         for target in targets:
             if target in inbound:
                 inbound[target] += 1
-            else:
-                inbound[target] = 1
     return inbound
 
 
 def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     """
-    Returns list of unique cycles using DFS and canonicalization.
-
-    Args:
-        graph (Dict[str, Set[str]]): The project's dependency graph.
-
-    Returns:
-        List[List[str]]: A list of unique circular dependency paths.
+    Returns list of unique cycles using DFS.
     """
     cycles: List[List[str]] = []
     visited_global: Set[str] = set()
@@ -168,7 +141,6 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     nodes = sorted(graph.keys())
 
     def visit(node: str, current_path: List[str]) -> None:
-        """Recursively visits nodes to find import cycles."""
         visited_global.add(node)
         path_set.add(node)
         current_path.append(node)
@@ -193,19 +165,39 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         if node not in visited_global:
             visit(node, [])
 
-    # Canonicalize cycles to remove duplicates (e.g., A-B-A and B-A-B)
-    unique_cycles: List[List[str]] = []
-    seen_cycle_sets: Set[Tuple[str, ...]] = set()
+    # Canonicalize
+    unique_cycles = []
+    seen = set()
     for cycle in cycles:
         if len(cycle) < 2:
             continue
         min_node = min(cycle)
-        min_idx = cycle.index(min_node)
-        canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
-        if canonical not in seen_cycle_sets:
-            seen_cycle_sets.add(canonical)
+        idx = cycle.index(min_node)
+        canonical = tuple(cycle[idx:] + cycle[:idx])
+        if canonical not in seen:
+            seen.add(canonical)
             unique_cycles.append(list(canonical))
     return unique_cycles
+
+
+def _calculate_cumulative_tokens(
+    graph: Dict[str, Set[str]], file_tokens: Dict[str, int]
+) -> Dict[str, int]:
+    """
+    Calculates the cumulative token budget including all unique reachable local dependencies.
+    """
+    cumulative_map: Dict[str, int] = {}
+    for start_node in graph:
+        reachable: Set[str] = set()
+        stack = [start_node]
+        while stack:
+            current = stack.pop()
+            if current not in reachable:
+                reachable.add(current)
+                for neighbor in graph.get(current, set()):
+                    stack.append(neighbor)
+        cumulative_map[start_node] = sum(file_tokens.get(f, 0) for f in reachable)
+    return cumulative_map
 
 
 def get_project_issues(
@@ -213,58 +205,40 @@ def get_project_issues(
 ) -> Tuple[int, List[str]]:
     """
     Analyzes global project health: docs, environment, god modules, and entropy.
-
-    Args:
-        path (str): Project root path.
-        py_files (List[str]): List of Python files in the project.
-        profile (Dict[str, Any]): The agent profile being used.
-
-    Returns:
-        Tuple[int, List[str]]: A tuple of (total penalty, list of issue descriptions).
     """
     penalty = 0
     issues: List[str] = []
 
-    # 1. Documentation Check
     missing_docs = scan_project_docs(
         path, cast(List[str], profile.get("required_files", []))
     )
     if missing_docs:
-        msg = f"Missing Critical Agent Docs: {', '.join(missing_docs)}"
         penalty += len(missing_docs) * 15
-        issues.append(msg)
+        issues.append(f"Missing Critical Agent Docs: {', '.join(missing_docs)}")
 
-    # 1a. Environment Health (malformed config logic)
     health = auditor.check_environment_health(path)
     if not health.get("pyproject_valid", True):
-        msg = "Malformed pyproject.toml detected"
         penalty += 20
-        issues.append(msg)
+        issues.append("Malformed pyproject.toml detected")
 
-    # 2. Dependency Analysis
-    graph = get_import_graph(path)
+    graph, _ = get_import_graph(path)
     inbound = get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
     if god_modules:
-        msg = f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}"
         penalty += len(god_modules) * 10
-        issues.append(msg)
+        issues.append(f"God Modules Detected (Inbound > 50): {', '.join(god_modules)}")
 
-    # 3. Directory Entropy
     entropy_stats = auditor.get_crowded_directories(path, threshold=50)
-    crowded_dirs = list(entropy_stats.keys())
-    if crowded_dirs:
-        msg = f"High Directory Entropy (>50 files): {', '.join(crowded_dirs)}"
-        penalty += len(crowded_dirs) * 5
-        issues.append(msg)
+    if entropy_stats:
+        penalty += len(entropy_stats) * 5
+        issues.append(
+            f"High Directory Entropy (>50 files): {', '.join(entropy_stats.keys())}"
+        )
 
-    # 4. Circular Dependencies
     cycles = detect_cycles(graph)
     if cycles:
-        cycle_strs = ["->".join(c) for c in cycles]
-        msg = f"Circular Dependencies Detected: {', '.join(cycle_strs)}"
         penalty += len(cycles) * 5
-        issues.append(msg)
+        issues.append(f"Circular Dependencies Detected: {len(cycles)}")
 
     return penalty, issues
 
@@ -277,23 +251,20 @@ def perform_analysis(
     thresholds: Optional[Dict[str, Any]] = None,
 ) -> AnalysisResult:
     """
-    Orchestrates the full project analysis pipeline.
-
-    Args:
-        path (str): The project path to analyze.
-        agent (str): The agent profile name (default: "generic").
-        limit_to_files (Optional[List[str]]): Optional list of files to limit analysis to.
-        profile (Optional[Dict[str, Any]]): Optional override for agent profile.
-        thresholds (Optional[Dict[str, Any]]): Optional override for scoring thresholds.
-
-    Returns:
-        AnalysisResult: The comprehensive analysis result.
+    Orchestrates the full project analysis pipeline with Context Economics.
     """
     if profile is None:
         profile = PROFILES.get(agent, PROFILES["generic"])
 
+    project_root = (
+        path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    )
     py_files = _collect_python_files(path)
     all_py_files = py_files[:]
+
+    # Build graph and calculate cumulative tokens (Context Economics)
+    graph, individual_tokens = get_import_graph(path)
+    cumulative_tokens_map = _calculate_cumulative_tokens(graph, individual_tokens)
 
     if limit_to_files:
         py_files = [
@@ -306,15 +277,14 @@ def perform_analysis(
     file_scores: List[int] = []
 
     for filepath in py_files:
-        # Pass thresholds to allow pyproject.toml overrides per file
+        rel_path = os.path.relpath(filepath, start=project_root)
+        cum_tokens = cumulative_tokens_map.get(rel_path, 0)
+
         score, issues, loc, complexity, type_safety, metrics_data = score_file(
-            filepath, profile, thresholds=thresholds
+            filepath, profile, thresholds=thresholds, cumulative_tokens=cum_tokens
         )
         file_scores.append(score)
 
-        rel_path = os.path.relpath(
-            filepath, start=path if os.path.isdir(path) else os.path.dirname(path)
-        )
         file_results.append(
             {
                 "file": rel_path,
@@ -324,34 +294,18 @@ def perform_analysis(
                 "complexity": complexity,
                 "type_coverage": type_safety,
                 "function_metrics": metrics_data,
-                "tokens": count_tokens(filepath),
+                "tokens": individual_tokens.get(
+                    rel_path, auditor.count_python_tokens(filepath)
+                ),
+                "cumulative_tokens": cum_tokens,
                 "acl": max([m["acl"] for m in metrics_data]) if metrics_data else 0.0,
             }
         )
 
-    # Use project root for environment checks to ensure accurate context analysis
-    project_root = (
-        path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
-    )
     penalty, project_issues = get_project_issues(project_root, all_py_files, profile)
     project_score = max(0, 100 - penalty)
-
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
-
-    graph = get_import_graph(path)
-    inbound = get_inbound_imports(graph)
-    cycles = detect_cycles(graph)
-    god_modules = {mod: count for mod, count in inbound.items() if count > 50}
-
-    dep_analysis_val: DepAnalysis = {"cycles": cycles, "god_modules": god_modules}
-
-    directory_stats: List[DirectoryStat] = []
-    entropy = auditor.get_crowded_directories(
-        path if os.path.isdir(path) else os.path.dirname(path), threshold=50
-    )
-    for p, count in entropy.items():
-        directory_stats.append({"path": p, "file_count": count})
 
     return {
         "file_results": file_results,
@@ -360,6 +314,14 @@ def perform_analysis(
             project_root, cast(List[str], profile.get("required_files", []))
         ),
         "project_issues": project_issues,
-        "dep_analysis": dep_analysis_val,
-        "directory_stats": directory_stats,
+        "dep_analysis": {
+            "cycles": detect_cycles(graph),
+            "god_modules": {
+                m: c for m, c in get_inbound_imports(graph).items() if c > 50
+            },
+        },
+        "directory_stats": [
+            {"path": p, "file_count": c}
+            for p, c in auditor.get_crowded_directories(path, threshold=50).items()
+        ],
     }

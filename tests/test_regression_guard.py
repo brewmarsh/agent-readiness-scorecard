@@ -114,7 +114,7 @@ def test_missing_dependencies_parsing(tmp_path: Path) -> None:
     py_file = tmp_path / "imports.py"
     py_file.write_text(content, encoding="utf-8")
 
-    graph = analyzer.get_import_graph(str(tmp_path))
+    graph, _ = analyzer.get_import_graph(str(tmp_path))
     assert "imports.py" in graph
     # RESOLUTION: Scanner finds imports via AST even if packages aren't installed.
     # This ensures the tool is environment-agnostic.

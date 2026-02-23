@@ -32,6 +32,7 @@ DEFAULT_THRESHOLDS = {
     "acl_red": 15,  # Critical failure threshold
     "complexity": 10,  # McCabe complexity limit
     "type_safety": 90,  # Minimum type hint coverage %
+    "token_limit": 32000,  # Max cumulative token budget
 }
 
 # --- AGENT PROFILES ---

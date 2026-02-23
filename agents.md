@@ -7,6 +7,11 @@
 - **Entry Point:** `src/agent_scorecard/main.py` (CLI)
 - **Key Modules:**
     - `agent_scorecard.main`: Core logic for scoring, fixing, and reporting.
+    - `agent_scorecard.analyzer`: Contains the `NestingDepthVisitor` for calculating maximum nesting depth of control flow blocks.
+
+## Metrics
+- **AST Nesting Depth:** Measures the maximum depth of nested control flow blocks (`if`, `for`, `while`, `try`, `with`, `list comprehensions`, `lambdas`). This provides a more accurate measure of structural complexity than flat LOC.
+- **Dynamic Token Context Economics:** Calculates the cumulative token load of a file and its local module dependencies. Files exceeding a 32,000 token transitive budget are flagged for refactoring to prevent agent context loss.
 
 ## Developer Constraints
 - Use Python 3.10+
@@ -15,4 +20,5 @@
 - Keep files small (<150 LOC)
 - Bash scripts must use standard POSIX syntax (e.g., `else` instead of `else:`)
 - Codebase must be strictly formatted and linted with Ruff
+- Reporting follows progressive disclosure: use `<details>` and `<summary>` for passing metrics to reduce visual noise
 - Automated PRs bypass prompt physics checks to prevent logic loops
