@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.50.0] - 2026-02-23
+
+### Features
+- **multilang:** Refactor scoring logic to Strategy Pattern to support multiple languages (ca75f3c, a4d5aa2).
+- **javascript:** Add support for JavaScript/TypeScript Agent Cognitive Load (ACL) analysis using tree-sitter (555ad49, a952736).
+- **docker:** Add support for Dockerfile ACL analysis (bbaf69d).
+- **markdown:** Add support for Markdown file analysis (b8415ab).
+- **incremental:** Implement Git-Diff aware incremental analysis for faster local feedback (529986a).
+- **config:** Add language-specific thresholds and grouped reporting support (6288721).
+
+### Bug Fixes
+- **ci:** Fix branch conflict and integrate mandatory linting in scorecard automation (c67f417, c5f02b1).
+- **ci:** Update scorecard automation workflow to handle non-zero exit codes correctly (631354c).
+
+### Refactoring
+- **core:** Modularize analyzers into `src/agent_scorecard/analyzers/` (Python, JavaScript, Docker, Markdown).
+- **core:** Move helper functions to `auditor_utils.py` to reduce `auditor.py` complexity (d680acd).
+- **core:** Refactor `analyzer.py` and `dependencies.py` to improve cohesion and reduce ACL (d9d95d1, 080fefe).
+
 ## [v0.40.0] - 2026-02-23
 
 ### Features
