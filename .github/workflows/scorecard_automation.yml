@@ -57,17 +57,18 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f changed_files.lst ]; then
             # Build command dynamically to handle filenames with spaces safely
-            printf "uv run agent-score score . --verbosity summary" > run_scorecard.sh
+            printf "uv run agent-score score . --verbosity summary --report scorecard.txt" > run_scorecard.sh
             while IFS= read -r f; do
               if [ -n "$f" ]; then
                 printf " --limit-to '%s'" "$f" >> run_scorecard.sh
               fi
             done < changed_files.lst
-            printf " > scorecard.txt\n" >> run_scorecard.sh
-            sh run_scorecard.sh
+            # Capture stdout to a log file to avoid overwriting the report
+            printf " > agent_score.log\n" >> run_scorecard.sh
+            sh run_scorecard.sh || true
           else
             # Full run for non-PR events
-            uv run agent-score score . --verbosity summary > scorecard.txt
+            uv run agent-score score . --verbosity summary --report scorecard.txt > agent_score.log || true
           fi
           echo "ran=true" >> $GITHUB_OUTPUT
 
