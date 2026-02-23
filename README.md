@@ -103,7 +103,7 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: . Target <= 10. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: `(Depth*2) + (Complexity*1.5) + (LOC/50)`. Target <= 10. |
 | **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
 | **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |

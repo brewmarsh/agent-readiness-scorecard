@@ -40,7 +40,7 @@ def _generate_acl_section(
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    targets += f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
+    targets += f"ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
     for f_res in stats:
@@ -193,7 +193,7 @@ def generate_advisor_report(
     """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
+    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)*\n\n"
     
     high_acl_files = sorted(
         [s for s in stats if s.get("acl", 0) > 15],

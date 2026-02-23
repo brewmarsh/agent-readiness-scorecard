@@ -17,13 +17,14 @@ from agent_scorecard.report import generate_advisor_report
 def test_calculate_acl() -> None:
     """
     Tests the Agent Cognitive Load (ACL) calculation formula.
-    Formula: ACL = Cyclomatic Complexity + (Lines of Code / 20)
+    Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
 
     Returns:
         None
     """
-    assert calculate_acl(10, 100) == 10 + (100 / 20)  # 15.0
-    assert calculate_acl(0, 0) == 0
+    # cc=10, loc=100, depth=5 -> (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
+    assert calculate_acl(10, 100, 5) == 27.0
+    assert calculate_acl(0, 0, 0) == 0
 
 
 def test_get_directory_entropy(tmp_path: Path) -> None:

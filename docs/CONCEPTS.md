@@ -4,7 +4,7 @@ Traditional code quality metrics (Clean Code) focus on human readability. **Agen
 
 ## 1. Agent Cognitive Load (ACL)
 Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving fewer tokens for task execution.
-* **Formula:** $ACL = CC + (LLOC / 20)$
+* **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
 * **Threshold:** functions with ACL > 15 are "Hallucination Zones."
 
 ## 2. Dependency Entanglement

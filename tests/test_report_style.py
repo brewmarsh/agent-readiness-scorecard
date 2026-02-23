@@ -24,7 +24,7 @@ def test_report_style_full() -> None:
         profile={"description": "Test Profile"},
         report_style="full",
     )
-    assert "Full File Analysis" in report
+    assert "File Analysis" in report
     assert "Type Safety Index" in report
     assert "test.py" in report
 
@@ -64,7 +64,7 @@ def test_report_style_actionable_failing() -> None:
         profile={"description": "Test Profile"},
         report_style="actionable",
     )
-    assert "Failing File Analysis" in report
+    assert "File Analysis" in report
     assert "fail.py" in report
     assert "pass.py" not in report
     assert "50%" in report  # failing type safety

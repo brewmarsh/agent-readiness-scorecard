@@ -19,21 +19,28 @@ def test_score_file_acl_penalty(tmp_path: Path) -> None:
         None
     """
     # Create a file with a high ACL function
-    # Formula: ACL = CC + LOC/20
+    # New Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
     code = "def high_acl():\n"
-    code += "    x = 0\n"
+    code += "    if True:\n"
+    code += "        if True:\n"
+    code += "            if True:\n"
+    code += "                if True:\n"
+    code += "                    if True:\n"
+    code += "                        x = 0\n"
     # 320 lines of assignment to force high LOC
     for i in range(320):
-        code += f"    x += {i}\n"
-    code += "    return x\n"
+        code += f"                        x += {i}\n"
+    code += "                        return x\n"
 
     p = tmp_path / "high_acl.py"
     p.write_text(code, encoding="utf-8")
 
     # Math Breakdown:
-    # 1. ACL: CC=1, LOC=323. ACL = 1 + 16.15 = 17.15. Red ACL (>15) Penalty: -15.
+    # 1. ACL: Depth=5, CC=6, LOC=328.
+    #    ACL = (5 * 2) + (6 * 1.5) + (328 / 50) = 10 + 9 + 6.56 = 25.56.
+    #    Red ACL (>15) Penalty: -15.
     # 2. Type Safety: 0/1 functions typed = 0%. Penalty: -20.
-    # 3. Bloated File: 323 LOC - 200 threshold = 123. Penalty (1 per 10 lines): -12.
+    # 3. Bloated File: 328 LOC - 200 threshold = 128. Penalty (1 per 10 lines): -12.
     # Total Score: 100 - 15 - 20 - 12 = 53.
 
     score, details, loc, avg_comp, type_cov, metrics = score_file(

@@ -60,15 +60,15 @@ def test_get_function_stats(tmp_path: Path) -> None:
     simple = next(m for m in metrics if m["name"] == "simple_func")
     complex_fn = next(m for m in metrics if m["name"] == "complex_func")
 
-    # simple_func verification: CC=1, LOC=2. ACL = 1 + 2/20 = 1.1
+    # simple_func verification: CC=1, LOC=2, Depth=0. ACL = (0*2) + (1*1.5) + (2/50) = 1.54
     assert simple["complexity"] == 1
     assert simple["loc"] == 2
-    assert simple["acl"] == 1.1
+    assert simple["acl"] == 1.54
 
-    # complex_func verification: CC=3, LOC=5. ACL = 3 + 5/20 = 3.25
+    # complex_func verification: CC=3, LOC=5, Depth=2. ACL = (2*2) + (3*1.5) + (5/50) = 8.6
     assert complex_fn["complexity"] == 3
     assert complex_fn["loc"] == 5
-    assert complex_fn["acl"] == 3.25
+    assert complex_fn["acl"] == 8.6
 
 
 def test_check_type_hints(tmp_path: Path) -> None:

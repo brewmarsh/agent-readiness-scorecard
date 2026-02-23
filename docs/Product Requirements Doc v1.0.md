@@ -20,8 +20,9 @@ The Agent Scorecard measures the "Physics of Agent-Code Interaction." Version 1.
 
 Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Version 1.0 will calculate the actual architectural pressure an AI agent faces.
 
-* **AST-Driven Nesting Analysis:** * *Feature:* Parse the Abstract Syntax Tree to measure maximum nesting depth (e.g., loops inside conditionals inside `try/catch` blocks).
-* *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. This replaces raw LOC as the heaviest weight in the Agent Cognitive Load (ACL) calculation.
+* **AST-Driven Nesting Analysis:** [COMPLETED]
+* *Feature:* Parse the Abstract Syntax Tree to measure maximum nesting depth (e.g., loops inside conditionals inside `try/catch` blocks).
+* *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. Implemented using the formula `(Depth * 2) + (Complexity * 1.5) + (LOC / 50)`, heavily weighting structural depth over flat LOC.
 
 
 * **Dynamic Context Economics:** [COMPLETED]
