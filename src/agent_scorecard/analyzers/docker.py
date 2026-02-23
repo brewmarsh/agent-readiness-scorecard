@@ -10,6 +10,10 @@ class DockerAnalyzer(BaseAnalyzer):
     Evaluates Agent Cognitive Load (ACL) based on instruction complexity.
     """
 
+    @property
+    def language(self) -> str:
+        return "Docker"
+
     def score_file(
         self,
         filepath: str,

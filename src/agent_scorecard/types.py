@@ -17,6 +17,7 @@ class FileAnalysisResult(TypedDict):
     """The result of analyzing a single source file."""
 
     file: str
+    language: str
     score: int
     issues: str
     loc: int

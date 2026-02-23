@@ -113,28 +113,59 @@ def _generate_file_table_section(
     verbosity: str = "detailed",
 ) -> str:
     """
-    Creates a breakdown of analysis for every file.
+    Creates a breakdown of analysis for every file grouped by language.
     """
     if verbosity == "summary":
-        table = "### 📂 Failing File Analysis\n\n"
+        title = "### 📂 Failing File Analysis"
     else:
-        table = "### 📂 Full File Analysis\n\n"
+        title = "### 📂 Full File Analysis"
 
-    table += "| File | Score | Issues |\n"
-    table += "| :--- | :---: | :--- |\n"
-    has_rows = False
+    # Group files by language
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
     for res in stats:
-        score = res.get("score", 0)
-        if verbosity == "summary" and score >= 70:
-            continue
-        status = "✅" if score >= 70 else "❌"
-        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
-        has_rows = True
+        lang = res.get("language", "Unknown")
+        if lang not in grouped:
+            grouped[lang] = []
+        grouped[lang].append(res)
 
-    if not has_rows and verbosity == "summary":
+    sections = []
+    for lang in sorted(grouped.keys()):
+        lang_files = grouped[lang]
+        failing = [f for f in lang_files if f.get("score", 0) < 70]
+        passing = [f for f in lang_files if f.get("score", 0) >= 70]
+
+        if not failing and verbosity == "summary":
+            continue
+
+        lang_section = [f"#### {lang}"]
+
+        if failing:
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
+            for res in failing:
+                lang_section.append(
+                    f"| {res['file']} | {res['score']} ❌ | {res.get('issues', '')} |"
+                )
+
+        if passing and verbosity == "detailed":
+            lang_section.append("\n<details>")
+            lang_section.append(
+                f"<summary>View {len(passing)} Passing {lang} Files</summary>\n"
+            )
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
+            for res in passing:
+                lang_section.append(f"| {res['file']} | {res['score']} ✅ | |")
+            lang_section.append("\n</details>\n")
+        elif passing and failing and verbosity == "summary":
+            lang_section.append(f"\n*Plus {len(passing)} passing files hidden.*\n")
+
+        sections.append("\n".join(lang_section))
+
+    if not sections and verbosity == "summary":
         return "### 📂 File Analysis\n\n✅ All files passed!\n"
 
-    return table
+    return title + "\n\n" + "\n\n".join(sections)
 
 
 def generate_markdown_report(
