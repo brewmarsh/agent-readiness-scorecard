@@ -1,34 +1,48 @@
 ╭─────────────────────────╮
 │ Running Agent Scorecard │
 ╰─────────────────────────╯
-           Environment Health
+           Environment Health            
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 ┃ Check                ┃         Status ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
 │ AGENTS.md            │           PASS │
 │ Linter Config        │           PASS │
 │ Lock File            │           PASS │
-│ Directory Entropy    │ 10.0 files/dir │
-│ Critical Token Count │   4,627 tokens │
+│ Directory Entropy    │ 10.7 files/dir │
+│ Critical Token Count │   5,494 tokens │
 └──────────────────────┴────────────────┘
 
-                                 File Analysis
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ File                              ┃ Score ┃ Issues                           ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ scripts/process_scorecard.py      │    95 │ 1 Yellow ACL functions (-5)      │
-│ src/agent_scorecard/auditor.py    │    90 │ 2 Yellow ACL functions (-10)     │
-│ src/agent_scorecard/graph.py      │    90 │ 2 Yellow ACL functions (-10)     │
-│ src/agent_scorecard/remediation.… │    90 │ 2 Yellow ACL functions (-10)     │
-│ src/agent_scorecard/dependencies… │    95 │ 1 Yellow ACL functions (-5)      │
-│ src/agent_scorecard/analyzer.py   │    80 │ Bloated File: 250 lines (-5), 1  │
-│                                   │       │ Red ACL functions (-15)          │
-│ src/agent_scorecard/report.py     │    85 │ 1 Red ACL functions (-15)        │
-│ src/agent_scorecard/main.py       │    65 │ Bloated File: 353 lines (-15), 1 │
-│                                   │       │ Red ACL functions (-15), 1       │
-│                                   │       │ Yellow ACL functions (-5)        │
-│ src/agent_scorecard/scoring.py    │    95 │ 1 Yellow ACL functions (-5)      │
-│ src/agent_scorecard/fix.py        │    95 │ 1 Yellow ACL functions (-5)      │
-└───────────────────────────────────┴───────┴──────────────────────────────────┘
+                                 File Analysis                                  
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ File                             ┃ Score ┃ Issues                            ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ scripts/process_scorecard.py     │    85 │ 1 Red ACL functions (-15)         │
+│ tests/test_auditor.py            │    90 │ 2 Yellow ACL functions (-10)      │
+│ tests/verify_acl_structure.py    │    80 │ Type Safety Index 0% < 90% (-20)  │
+│ tests/test_dependencies.py       │    80 │ Type Safety Index 0% < 90% (-20)  │
+│ src/agent_scorecard/metrics.py   │    80 │ 4 Yellow ACL functions (-20)      │
+│ src/agent_scorecard/auditor.py   │    20 │ 5 Red ACL functions (-75), 1      │
+│                                  │       │ Yellow ACL functions (-5)         │
+│ src/agent_scorecard/graph.py     │    55 │ 3 Red ACL functions (-45)         │
+│ src/agent_scorecard/prompt_anal… │    75 │ 1 Red ACL functions (-15), 2      │
+│                                  │       │ Yellow ACL functions (-10)        │
+│ src/agent_scorecard/remediation… │    70 │ 2 Red ACL functions (-30)         │
+│ src/agent_scorecard/dependencie… │    15 │ 5 Red ACL functions (-75), 2      │
+│                                  │       │ Yellow ACL functions (-10)        │
+│ src/agent_scorecard/analyzer.py  │     3 │ Bloated File: 277 lines (-7), 5   │
+│                                  │       │ Red ACL functions (-75), 3 Yellow │
+│                                  │       │ ACL functions (-15)               │
+│ src/agent_scorecard/report.py    │    52 │ Bloated File: 232 lines (-3), 2   │
+│                                  │       │ Red ACL functions (-30), 3 Yellow │
+│                                  │       │ ACL functions (-15)               │
+│ src/agent_scorecard/main.py      │    43 │ Bloated File: 379 lines (-17), 2  │
+│                                  │       │ Red ACL functions (-30), 2 Yellow │
+│                                  │       │ ACL functions (-10)               │
+│ src/agent_scorecard/llm.py       │    95 │ 1 Yellow ACL functions (-5)       │
+│ src/agent_scorecard/scoring.py   │    80 │ 1 Red ACL functions (-15), 1      │
+│                                  │       │ Yellow ACL functions (-5)         │
+│ src/agent_scorecard/config.py    │    95 │ 1 Yellow ACL functions (-5)       │
+│ src/agent_scorecard/fix.py       │    55 │ 3 Red ACL functions (-45)         │
+└──────────────────────────────────┴───────┴───────────────────────────────────┘
 
-Final Agent Score: 97.7/100
+Final Agent Score: 89.3/100
