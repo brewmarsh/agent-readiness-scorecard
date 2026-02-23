@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 import pytest
 from src.agent_scorecard.dependencies import (
     get_import_graph,
@@ -7,7 +9,9 @@ from src.agent_scorecard.dependencies import (
     _collect_python_files,
 )
 
-def test_collect_python_files(tmp_path):
+
+def test_collect_python_files(tmp_path: Path) -> None:
+    """Verifies that python files are correctly collected from a directory."""
     d = tmp_path / "subdir"
     d.mkdir()
     (d / "file1.py").write_text("print('hello')")
@@ -19,7 +23,9 @@ def test_collect_python_files(tmp_path):
     assert any(f.endswith("file1.py") for f in files)
     assert any(f.endswith("root.py") for f in files)
 
-def test_import_graph_and_cycles(tmp_path):
+
+def test_import_graph_and_cycles(tmp_path: Path) -> None:
+    """Verifies import graph construction and cycle detection."""
     # A -> B -> C -> A (cycle)
     # D -> B
 
@@ -42,7 +48,9 @@ def test_import_graph_and_cycles(tmp_path):
     # Canonical cycle should start with min element
     assert cycle == ["a.py", "b.py", "c.py"]
 
-def test_calculate_context_tokens(tmp_path):
+
+def test_calculate_context_tokens(tmp_path: Path) -> None:
+    """Verifies context token calculation for simple dependencies."""
     # A -> B
     # B has 10 tokens
     # A has 20 tokens
@@ -64,7 +72,9 @@ def test_calculate_context_tokens(tmp_path):
     assert context["b.py"] == 10
     assert context["a.py"] == 30
 
-def test_calculate_context_tokens_with_cycle(tmp_path):
+
+def test_calculate_context_tokens_with_cycle(tmp_path: Path) -> None:
+    """Verifies context token calculation with cycles."""
     # A -> B -> A
     # A: 10, B: 20
     # Context(A) = 10 + 20 = 30
@@ -85,7 +95,9 @@ def test_calculate_context_tokens_with_cycle(tmp_path):
     assert context["a.py"] == 30
     assert context["b.py"] == 30
 
-def test_calculate_context_tokens_complex(tmp_path):
+
+def test_calculate_context_tokens_complex(tmp_path: Path) -> None:
+    """Verifies context token calculation for complex graphs."""
     # A -> B, C
     # B -> D
     # C -> D
