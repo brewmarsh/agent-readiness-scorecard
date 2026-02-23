@@ -1,7 +1,5 @@
 ## 🤖 Agent Scorecard
 
-![Agent Score](./agent_score.svg) [![CI](https://github.com/brewmarsh/agent-readiness-scorecard/actions/workflows/ci.yml/badge.svg)](https://github.com/brewmarsh/agent-readiness-scorecard/actions/workflows/ci.yml) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) ![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue) ![Strictly Typed](https://img.shields.io/badge/Strictly-Typed-blue)
-
 **Is your codebase ready for the AI workforce?**
 
 `agent-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin).
@@ -55,6 +53,7 @@ Generate a detailed report for your team or CI/CD logs. Control the level of det
 
 ```bash
 agent-score . --report scorecard.md --report-style actionable
+
 ```
 
 * **`--report-style=full`**: Includes all sections and a complete breakdown of every file.
@@ -64,14 +63,6 @@ agent-score . --report scorecard.md --report-style actionable
 ## ⚙️ Configuration
 
 `agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
-
-### Priority
-
-Settings are resolved in the following order (highest to lowest):
-
-1. **CLI Flags** (e.g., `--agent`, `--verbosity`)
-2. **Configuration File** (`pyproject.toml` or `.agent-scorecard.json`)
-3. **Defaults**
 
 ### Customizing Output Verbosity
 
@@ -91,25 +82,14 @@ report_style = "actionable"
 acl_yellow = 10
 acl_red = 15
 type_safety = 90
-```
 
-### Verbosity Levels (CLI Output)
+```
 
 | Level | Description |
 | --- | --- |
-| `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. Ideal for CI/CD. |
-| `summary` | (Default) Displays Environment Health and actionable files with issues. Perfect scores (100) are hidden to reduce noise. |
-| `detailed` | Deep-dive mode. Provides a full breakdown of every file, using progressive disclosure for passing metrics. |
-
-### Report Styles (Markdown Report)
-
-Used when generating a report via the `--report` flag.
-
-| Style | Description |
-| --- | --- |
-| `collapsed` | (Minimal) Only includes the Executive Summary. |
-| `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows from tables. |
-| `full` | Includes all sections and a complete breakdown of every file and metric. |
+| `quiet` | Suppresses tables; only prints the Final Score and Project-Wide Issues. |
+| `summary` | (Default) Displays Environment Health and actionable files with issues. |
+| `detailed` | Deep-dive mode. Provides a full breakdown using progressive disclosure. |
 
 ## 📊 The Scoring System
 
@@ -118,7 +98,7 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | Metric | Penalty | Why? |
 | --- | --- | --- |
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
-| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: `(Depth*2) + (Complexity*1.5) + (LOC/50)`. Target <= 10. |
+| **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: `(Depth * 2) + (Complexity * 1.5) + (LOC / 50)`. Target <= 10. |
 | **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
 | **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
 | **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
@@ -137,20 +117,6 @@ my-project/
 
 ```
 
-## 🚀 Beta Features
-
-The `beta` branch includes upcoming capabilities for enhanced agent-readiness:
-
-* **`pyproject.toml` Configuration**: Centralize settings alongside your other tools.
-* **Prompt Linter (`check-prompts`)**: Validate your system prompts against LLM best practices (Role Definition, Few-Shot, etc.).
-* **Verbosity Control (`--verbosity`)**: Choose between `quiet`, `summary` (default), or `detailed` output.
-* **Enhanced Metrics**: Track "Average ACL" and "Average Type Safety" in the summary report.
-* **CI/CD Automation**: Automated badge updates and GitHub Actions workflows for continuous agent-readiness.
-
-## 🛡 Badges
-
-Show off your Agent-Readiness! Run `agent-score --badge` to generate an `agent_score.svg` for your repo.
-
 ## ⚡ CI/CD & Diff Mode
 
 Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request.
@@ -159,23 +125,9 @@ Optimize your CI/CD pipeline by scoring only the files changed in a Pull Request
 
 The provided GitHub Action defaults to **Diff-Aware Reporting**. This means that in a Pull Request, the scorecard will automatically detect and only score the files you've modified.
 
-**Benefits:**
-- **Noise Reduction**: Developers only see scores and issues for the code they are actually touching.
-- **Speed**: Analysis is significantly faster on large repositories.
-- **Project Integrity**: While focusing on specific files for scoring, the tool still validates project-wide issues like circular dependencies and global context health.
-
-### Manual File Limitation
-
-You can also manually use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times.
-
-```bash
-# Score only specific files
-agent-score score . --limit-to src/core.py --limit-to src/utils.py
-```
-
 ## 📝 Prompt Engineering Linter
 
-Static analysis for your LLM prompts. Ensure your system prompts follow best practices before deploying them to production.
+Static analysis for your LLM prompts. Ensure your system prompts follow best practices.
 
 ```bash
 agent-score check-prompts prompts/system_v1.txt
@@ -189,5 +141,3 @@ agent-score check-prompts prompts/system_v1.txt
 * **Delimiter Hygiene**: Are instructions separated from data using XML/Markdown tags?
 * **Few-Shot Examples**: Does it include 1-3 examples?
 * **Negative Constraints**: Identifies "Don't" statements and suggests positive alternatives.
-
----
