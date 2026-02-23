@@ -119,6 +119,7 @@ jobs:
             - Improved Agent-readiness for autonomous refactoring.
           branch: auto-type-hints
           delete-branch: true
+          base: ${{ github.head_ref || github.ref_name }}
           labels: |
             ai-ready
             automated-refactor
