@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
-from .types import FileAnalysisResult, DepAnalysis, DirectoryStat, AnalysisResult
+from .types import FileAnalysisResult, AnalysisResult
 
 # Re-export metrics for backward compatibility
 from .metrics import (  # noqa: F401
@@ -169,7 +169,8 @@ def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     unique_cycles = []
     seen = set()
     for cycle in cycles:
-        if len(cycle) < 2: continue
+        if len(cycle) < 2:
+            continue
         min_node = min(cycle)
         idx = cycle.index(min_node)
         canonical = tuple(cycle[idx:] + cycle[:idx])
