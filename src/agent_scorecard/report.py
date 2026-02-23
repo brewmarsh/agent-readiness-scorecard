@@ -11,14 +11,6 @@ def _generate_summary_section(
 ) -> str:
     """
     Creates the executive summary section of the report.
-
-    Args:
-        final_score (float): The overall project score.
-        profile (Dict[str, Any]): The agent profile used.
-        project_issues (Optional[List[str]]): List of project-level issues.
-
-    Returns:
-        str: Markdown string for the summary section.
     """
     summary = "# Agent Scorecard Report\n\n"
     profile_desc = profile.get("description", "Generic").split(".")[0]
@@ -46,22 +38,14 @@ def _generate_acl_section(
     thresholds: Dict[str, Any],
 ) -> str:
     """
-    Analyzes and reports on units with high Agent Cognitive Load.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        thresholds (Dict[str, Any]): Scoring thresholds.
-
-    Returns:
-        str: Markdown string for the ACL section.
+    Analyzes and reports on units with high Agent Cognitive Load using AST-depth weights.
     """
     acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    targets += (
-        f"ACL = Complexity + (Lines of Code / 20). Target: ACL <= {acl_yellow}.\n\n"
-    )
+    # RESOLUTION: Adopted the high-fidelity formula focusing on nesting depth
+    targets += f"ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
     for f_res in stats:
@@ -94,14 +78,6 @@ def _generate_type_safety_section(
 ) -> str:
     """
     Summarizes type hint coverage across the project.
-
-    Args:
-        stats (Union[List[FileAnalysisResult], List[Dict[str, Any]]]): File analysis statistics.
-        thresholds (Dict[str, Any]): Scoring thresholds.
-        verbosity (str): Output verbosity level (default: "detailed").
-
-    Returns:
-        str: Markdown string for the type safety section.
     """
     type_safety_threshold = thresholds.get(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
@@ -172,24 +148,10 @@ def generate_markdown_report(
 ) -> str:
     """
     Orchestrates the Markdown report generation using customizable styles.
-
-    Args:
-        stats: File analysis statistics.
-        final_score: The overall project score.
-        path: The project path.
-        profile: The agent profile used.
-        project_issues: Optional list of project-level issues.
-        thresholds: Optional scoring thresholds.
-        report_style: The visual style ("full", "actionable", "collapsed").
-
-    Returns:
-        str: The full Markdown report.
     """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
 
-    # Map report_style to internal verbosity logic
-    # full -> detailed, actionable -> summary, collapsed -> quiet
     style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
     verbosity = style_map.get(report_style, "summary")
 
@@ -225,9 +187,9 @@ def generate_advisor_report(
     """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    report += (
-        "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = Complexity + (LOC / 20)*\n\n"
-    )
+    # RESOLUTION: Updated Advisor report to reflect high-fidelity ACL formula
+    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)*\n\n"
+    
     high_acl_files = sorted(
         [s for s in stats if s.get("acl", 0) > 15],
         key=lambda x: x.get("acl", 0),

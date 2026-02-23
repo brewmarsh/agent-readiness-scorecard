@@ -9,28 +9,31 @@ def test_acl_calculation_logic() -> None:
     """
     Tests the Agent Cognitive Load (ACL) calculation formula.
 
-    The formula verified is: ACL = Cyclomatic Complexity + (Lines of Code / 20)
+    The formula verified is: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
 
     Returns:
         None
     """
-    # Case 1: Simple file (Low complexity, short length)
+    # Case 1: Simple file (Low complexity, short length, depth 0)
     cc = 1.0
     loc = 20
-    # ACL = 1 + 1 = 2.0
-    assert calculate_acl(cc, loc) == 2.0
+    depth = 0
+    # ACL = (0*2) + (1*1.5) + (20/50) = 1.5 + 0.4 = 1.9
+    assert calculate_acl(cc, loc, depth) == 1.9
 
-    # Case 2: Complex file (Medium complexity, medium length)
+    # Case 2: Complex file (Medium complexity, medium length, depth 5)
     cc = 10.0
     loc = 100
-    # ACL = 10 + 5 = 15.0
-    assert calculate_acl(cc, loc) == 15.0
+    depth = 5
+    # ACL = (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
+    assert calculate_acl(cc, loc, depth) == 27.0
 
-    # Case 3: High ACL (High complexity, high length - Hallucination risk)
+    # Case 3: High ACL (High complexity, high length, depth 0)
     cc = 10.0
     loc = 200
-    # ACL = 10 + 10 = 20.0
-    assert calculate_acl(cc, loc) == 20.0
+    depth = 0
+    # ACL = (0*2) + (10*1.5) + (200/50) = 15 + 4 = 19.0
+    assert calculate_acl(cc, loc, depth) == 19.0
 
 
 def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
@@ -44,17 +47,22 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
         None
     """
 
-    # RESOLUTION: We use the Advisor-Mode setup (Large Function) because
-    # the new logic ignores global scope for ACL calculations to focus on unit depth.
+    # RESOLUTION: Combined the deep nesting from the refactor branch with 
+    # the volume testing from beta to thoroughly stress-test the new ACL formula.
     content = textwrap.dedent(
         """
     def big_function():
-        x = 0
-    """
-    )
-    # Add 320 lines of assignment inside the function to force a high ACL
+        if True:
+            if True:
+                if True:
+                    if True:
+                        if True:
+                            x = 0
+    """)
+    
+    # Add 320 lines of assignment inside the function to force a high ACL/LOC penalty
     for i in range(320):
-        content += f"    x = {i}\n"
+        content += f"            x = {i}\n"
 
     py_file = tmp_path / "high_acl.py"
     py_file.write_text(content, encoding="utf-8")
@@ -65,7 +73,9 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
     )
 
     # RESOLUTION: Verify the specific output format from scoring.py
-    # Math: 322 LOC / 20 + 1 CC = 17.1 ACL -> Red ACL status (>15)
+    # Math: Depth=5, CC=6, LOC=328.
+    # ACL = (5 * 2) + (6 * 1.5) + (328 / 50) = 10 + 9 + 6.56 = 25.56
+    # This triggers the "Red ACL status" (>15) which applies a -15 point penalty.
     assert "Red ACL functions" in details
     assert "(-15)" in details
 
