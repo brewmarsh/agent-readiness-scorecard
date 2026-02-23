@@ -2,12 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.40.0] - 2026-02-23
 
 ### Features
-- **llm:** Implement Provider-Agnostic Engine using `litellm`.
-- **fix:** Enable real LLM-based code fixing with syntax validation and markdown cleaning.
-- **config:** Add `llm` configuration support in `pyproject.toml`.
+- **report:** Add configurable report styles (`full`, `actionable`, `collapsed`) to allow progressive disclosure of information (918c2a9).
+- **cli:** Add `--limit-to` option to restrict analysis to specific files (bd6a3ae).
+- **cli:** Add `--badge` option to generate an SVG scorecard badge (bd6a3ae).
+- **llm:** Implement Provider-Agnostic Engine using `litellm` (cfd2efa).
+- **fix:** Refactor `fix` command to use CRAFT prompts for higher quality LLM-driven remediation (866daf2).
+- **economics:** Implement Dynamic Context Economics metric to track token budget across the dependency graph (bd47e60).
+- **metrics:** Integrate AST-based nesting depth analyzer into scoring (b2de9f1).
+
+### Bug Fixes
+- **ci:** Resolve `create-pull-request` error in detached HEAD states (35de045).
+- **windows:** Fix `UnicodeDecodeError` in reports when running on Windows (06d307f).
+- **tests:** Mock `litellm` in CLI tests to ensure environment-independent verification (06d307f).
+- **tests:** Fix `ImportError` in `test_dependencies.py` after module refactoring (805a332).
+- **docs:** Add configuration documentation and example file (3325405).
+- **security:** Complete security audit and resolve minor regressions (9f756ef).
+
+### Refactoring
+- **dependencies:** Move graph analysis functions to `analyzer.py` for better module cohesion.
+- **tests:** Improve type safety and documentation in dependency tests (f74b21f).
+- **workflow:** Streamline Agent Quality Gate and Scorecard Automation workflows.
 
 ## [v0.3.0] - 2026-02-21
 
