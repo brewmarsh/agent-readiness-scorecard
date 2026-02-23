@@ -1,5 +1,4 @@
-import os
-from typing import Dict, Any, List, Tuple, Optional, Set
+from typing import Dict, Any, List, Tuple, Optional
 from tree_sitter import Language, Parser, Node
 import tree_sitter_javascript
 import tree_sitter_typescript
@@ -12,6 +11,7 @@ from ..constants import DEFAULT_THRESHOLDS
 JS_LANGUAGE = Language(tree_sitter_javascript.language())
 TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
 TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+
 
 class JavascriptAnalyzer(BaseAnalyzer):
     """
@@ -109,7 +109,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         else:
             type_safety_index = 100.0
 
-        avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
+        avg_complexity = (
+            sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
+        )
 
         return (
             max(score, 0),
@@ -165,13 +167,13 @@ class JavascriptAnalyzer(BaseAnalyzer):
         # Name
         name = "anonymous"
         if node.type == "function_declaration":
-             name_node = node.child_by_field_name("name")
-             if name_node:
-                 name = name_node.text.decode("utf-8")
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
-             name_node = node.child_by_field_name("name")
-             if name_node:
-                 name = name_node.text.decode("utf-8")
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
         depth = self._calculate_nesting_depth(node)
@@ -179,15 +181,17 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
         is_typed = self._check_is_typed(node)
 
-        stats.append({
-            "name": name,
-            "lineno": start_line,
-            "complexity": complexity,
-            "loc": loc,
-            "acl": acl,
-            "is_typed": is_typed,
-            "nesting_depth": depth,
-        })
+        stats.append(
+            {
+                "name": name,
+                "lineno": start_line,
+                "complexity": complexity,
+                "loc": loc,
+                "acl": acl,
+                "is_typed": is_typed,
+                "nesting_depth": depth,
+            }
+        )
 
     def _calculate_complexity(self, node: Node) -> float:
         """
@@ -213,7 +217,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             elif n.type == "binary_expression":
                 operator = n.child_by_field_name("operator")
                 if not operator and n.child_count >= 2:
-                     operator = n.child(1) # fallback
+                    operator = n.child(1)  # fallback
 
                 if operator and operator.text.decode("utf-8") in ("&&", "||"):
                     complexity += 1.0
@@ -275,7 +279,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             visit(body, 0)
         else:
             for child in node.children:
-                 visit(child, 0)
+                visit(child, 0)
 
         return max_depth
 
@@ -286,7 +290,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         # Return type
         return_type = node.child_by_field_name("return_type")
         if return_type:
-             return True
+            return True
 
         # Parameters
         params = node.child_by_field_name("parameters")
@@ -318,6 +322,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                 return sum(1 for line in f if line.strip())
+                return sum(1 for line in f if line.strip())
         except FileNotFoundError:
             return 0

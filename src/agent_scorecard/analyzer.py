@@ -45,7 +45,12 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
     if filename == "Dockerfile" or filename.startswith("Dockerfile."):
         return DockerAnalyzer()
 
-    if filepath.endswith(".js") or filepath.endswith(".jsx") or filepath.endswith(".ts") or filepath.endswith(".tsx"):
+    if (
+        filepath.endswith(".js")
+        or filepath.endswith(".jsx")
+        or filepath.endswith(".ts")
+        or filepath.endswith(".tsx")
+    ):
         return JavascriptAnalyzer()
 
     raise ValueError(f"Unsupported file type: {filepath}")
