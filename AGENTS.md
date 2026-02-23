@@ -20,9 +20,12 @@
 - Keep files small (<150 LOC)
 - Bash scripts must use standard POSIX syntax (e.g., `else` instead of `else:`)
 - Codebase must be strictly formatted and linted with Ruff
+- Automated PRs must undergo mandatory linting and formatting via Ruff before submission
 - Reporting follows progressive disclosure: use `<details>` and `<summary>` for passing metrics to reduce visual noise
 - Automated PRs bypass prompt physics checks to prevent logic loops
 - Documentation files must follow the uppercase naming convention (e.g., `AGENTS.md`)
 
 ## Operational Requirements
+- **Beta-First Workflow:** All new features, bug fixes, and AI agent activity (including automated remediations) must target the `beta` branch. The `main` branch is reserved exclusively for stable releases.
+- **Automated Remediation:** Automated PRs for type-hinting and other improvements target the `beta` branch and include a mandatory `ruff` validation gate.
 - **Fault-Tolerant Automation:** GitHub Actions workflows must handle transient states gracefully. Specifically, the 'Prompt Physics' workflow is designed to ignore 404 errors when removing labels to prevent unnecessary pipeline failures if a label has already been removed or is missing.

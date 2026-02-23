@@ -54,25 +54,37 @@ def cli(ctx: click.Context) -> None:
 # --- HELPERS ---
 
 
-def get_changed_files(base_ref: str = "origin/main") -> List[str]:
+def get_changed_files(
+    base_ref: str = "origin/main", target_ref: Optional[str] = None
+) -> List[str]:
     """
     Uses git diff to return a list of changed Python files.
 
     Args:
         base_ref (str): The git reference to compare against (default: "origin/main").
+        target_ref (Optional[str]): The target git reference (default: None, meaning working tree).
 
     Returns:
         List[str]: A list of paths to changed Python files.
     """
     try:
-        cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "HEAD"]
+        cmd = ["git", "diff", "--name-only", "--diff-filter=d", base_ref]
+        if target_ref:
+            cmd.append(target_ref)
+
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return [
             f
             for f in result.stdout.splitlines()
             if f.endswith(".py") and os.path.exists(f)
         ]
-    except Exception:
+    except subprocess.CalledProcessError as e:
+        console.print(f"[yellow]Warning: git diff failed: {e.stderr.strip()}[/yellow]")
+        return []
+    except Exception as e:
+        console.print(
+            f"[yellow]Warning: Unexpected error during git diff: {str(e)}[/yellow]"
+        )
         return []
 
 
@@ -313,6 +325,16 @@ def fix(path: str, agent: str) -> None:
 @click.option(
     "--limit-to", "limit_to", multiple=True, help="Limit analysis to these files."
 )
+@click.option(
+    "--diff",
+    is_flag=True,
+    help="Analyze only files changed compared to base reference.",
+)
+@click.option(
+    "--diff-base",
+    default="origin/main",
+    help="Base reference for diff (default: origin/main).",
+)
 def score(
     path: str,
     agent: str,
@@ -322,6 +344,8 @@ def score(
     report_style: Optional[str],
     badge: bool,
     limit_to: tuple,
+    diff: bool,
+    diff_base: str,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -335,6 +359,8 @@ def score(
         report_style (Optional[str]): Optional report style override.
         badge (bool): Whether to generate an SVG badge.
         limit_to (tuple): Optional list of files to limit analysis to.
+        diff (bool): Whether to limit analysis to changed files.
+        diff_base (str): The base reference for git diff.
 
     Returns:
         None
@@ -355,6 +381,30 @@ def score(
             Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False)
         )
 
+    limit_to_files = list(limit_to) if limit_to else None
+
+    if diff:
+        changed_files = get_changed_files(diff_base, None)
+        if final_verbosity != "quiet" and not changed_files:
+            console.print("[yellow]No changed files found to analyze.[/yellow]")
+
+        if limit_to_files:
+            # Intersection: keep files in limit_to_files that are also in changed_files
+            limit_to_files = [
+                f
+                for f in changed_files
+                if any(f.endswith(pattern) for pattern in limit_to_files)
+            ]
+            if final_verbosity != "quiet" and not limit_to_files:
+                console.print(
+                    "[yellow]No changed files matched the provided filters.[/yellow]"
+                )
+        else:
+            limit_to_files = changed_files
+
+        if not limit_to_files:
+            return
+
     if fix:
         console.print(
             Panel(
@@ -368,7 +418,7 @@ def score(
     results = analyzer.perform_analysis(
         path,
         agent,
-        limit_to_files=list(limit_to) if limit_to else None,
+        limit_to_files=limit_to_files,
         thresholds=thresholds,
         report_style=final_report_style,
     )

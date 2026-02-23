@@ -164,9 +164,21 @@ The provided GitHub Action defaults to **Diff-Aware Reporting**. This means that
 - **Speed**: Analysis is significantly faster on large repositories.
 - **Project Integrity**: While focusing on specific files for scoring, the tool still validates project-wide issues like circular dependencies and global context health.
 
+### Local Incremental Analysis
+
+You can use the `--diff` flag to analyze only the files that have changed compared to a base reference (default: `origin/main`). This is useful for quickly checking your work before committing.
+
+```bash
+# Check only changed files (compared to origin/main)
+agent-score --diff
+
+# Check changes compared to a specific branch or commit
+agent-score --diff --diff-base HEAD^
+```
+
 ### Manual File Limitation
 
-You can also manually use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times.
+You can also manually use the `--limit-to` flag to restrict analysis to a subset of files. You can provide the flag multiple times. If used with `--diff`, it will analyze the intersection of changed files and the specified files.
 
 ```bash
 # Score only specific files
