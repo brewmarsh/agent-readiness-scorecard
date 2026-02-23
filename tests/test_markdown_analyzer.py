@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from agent_scorecard.analyzers.markdown import MarkdownAnalyzer
 from agent_scorecard.constants import PROFILES
