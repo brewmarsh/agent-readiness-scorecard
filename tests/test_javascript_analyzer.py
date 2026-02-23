@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from agent_scorecard.analyzers.javascript import JavascriptAnalyzer
 from agent_scorecard.constants import PROFILES
