@@ -1,1 +1,1 @@
-uv run agent-score score . --verbosity summary --report scorecard.txt --limit-to 'src/agent_scorecard/auditor.py' --limit-to 'src/agent_scorecard/auditor_utils.py' > agent_score.log
+uv run agent-score score . --verbosity summary --report scorecard.txt --limit-to 'src/agent_scorecard/analyzer.py' --limit-to 'src/agent_scorecard/analyzers/javascript.py' --limit-to 'src/agent_scorecard/dependencies.py' --limit-to 'tests/test_javascript_analyzer.py' > agent_score.log
