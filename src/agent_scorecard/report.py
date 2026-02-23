@@ -105,16 +105,33 @@ def _generate_type_safety_section(
         "type_safety", DEFAULT_THRESHOLDS["type_safety"]
     )
 
-    types_section = "## 🛡️ Type Safety Index\n\n"
-    types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
-    types_section += "| File | Type Safety Index | Status |\n"
-    types_section += "| :--- | :---------------: | :----- |\n"
+    failing = [s for s in stats if s.get("type_coverage", 0) < type_safety_threshold]
+    passing = [s for s in stats if s.get("type_coverage", 0) >= type_safety_threshold]
 
-    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
-    for res in sorted_types:
-        coverage = res.get("type_coverage", 0)
-        status = "✅" if coverage >= type_safety_threshold else "❌"
-        types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
+    types_section = "### 🛡️ Type Safety Index (Action Required)\n\n"
+    types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
+
+    if failing:
+        types_section += "| File | Type Safety Index | Status |\n"
+        types_section += "| :--- | :---------------: | :----- |\n"
+        for res in sorted(failing, key=lambda x: x.get("type_coverage", 0)):
+            coverage = res.get("type_coverage", 0)
+            types_section += f"| `{res['file']}` | {coverage:.0f}% | ❌ |\n"
+        types_section += "\n"
+    else:
+        types_section += "✅ All files meet type safety requirements.\n\n"
+
+    if passing:
+        types_section += f"✅ View {len(passing)} passing files\n\n"
+        types_section += "<details>\n<summary>Details</summary>\n\n"
+        types_section += "| File | Type Safety Index | Status |\n"
+        types_section += "| :--- | :---------------: | :----- |\n"
+        for res in sorted(
+            passing, key=lambda x: x.get("type_coverage", 0), reverse=True
+        ):
+            coverage = res.get("type_coverage", 0)
+            types_section += f"| {res['file']} | {coverage:.0f}% | ✅ |\n"
+        types_section += "\n</details>\n"
 
     return types_section + "\n"
 
@@ -126,26 +143,35 @@ def _generate_file_table_section(
     """
     Creates a breakdown of analysis for every file.
     """
+    failing = [s for s in stats if s.get("score", 0) < 70]
+    passing = [s for s in stats if s.get("score", 0) >= 70]
+
     if verbosity == "summary":
-        table = "### 📂 Failing File Analysis\n\n"
+        section = "### 📂 Failing File Analysis\n\n"
     else:
-        table = "### 📂 Full File Analysis\n\n"
+        section = "### 📂 Full File Analysis\n\n"
 
-    table += "| File | Score | Issues |\n"
-    table += "| :--- | :---: | :--- |\n"
-    has_rows = False
-    for res in stats:
-        score = res.get("score", 0)
-        if verbosity == "summary" and score >= 70:
-            continue
-        status = "✅" if score >= 70 else "❌"
-        table += f"| {res['file']} | {score} {status} | {res.get('issues', '')} |\n"
-        has_rows = True
+    if failing:
+        section += "| File | Score | Issues |\n"
+        section += "| :--- | :---: | :--- |\n"
+        for res in sorted(failing, key=lambda x: x.get("score", 0)):
+            score = res.get("score", 0)
+            section += f"| `{res['file']}` | {score} ❌ | {res.get('issues', '')} |\n"
+        section += "\n"
+    else:
+        section += "✅ All files passed analysis!\n\n"
 
-    if not has_rows and verbosity == "summary":
-        return "### 📂 File Analysis\n\n✅ All files passed!\n"
+    if passing:
+        section += f"✅ View {len(passing)} passing files\n\n"
+        section += "<details>\n<summary>Details</summary>\n\n"
+        section += "| File | Score | Issues |\n"
+        section += "| :--- | :---: | :--- |\n"
+        for res in sorted(passing, key=lambda x: x.get("score", 0), reverse=True):
+            score = res.get("score", 0)
+            section += f"| {res['file']} | {score} ✅ | {res.get('issues', '')} |\n"
+        section += "\n</details>\n"
 
-    return table
+    return section
 
 
 def generate_markdown_report(
