@@ -107,16 +107,24 @@ def _generate_type_safety_section(
 
     types_section = "## 🛡️ Type Safety Index\n\n"
     types_section += f"Target: >{type_safety_threshold}% of functions must have explicit type signatures.\n\n"
-    types_section += "| File | Type Safety Index | Status |\n"
-    types_section += "| :--- | :---------------: | :----- |\n"
 
     sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
+    table_rows = []
     for res in sorted_types:
         coverage = res.get("type_coverage", 0)
+        if verbosity == "summary" and coverage >= type_safety_threshold:
+            continue
         status = "✅" if coverage >= type_safety_threshold else "❌"
-        types_section += f"| {res['file']} | {coverage:.0f}% | {status} |\n"
+        table_rows.append(f"| {res['file']} | {coverage:.0f}% | {status} |")
 
-    return types_section + "\n"
+    if not table_rows:
+        return types_section + "✅ All files meet type safety requirements.\n\n"
+
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
+    types_section += "\n".join(table_rows)
+
+    return types_section + "\n\n"
 
 
 def _generate_file_table_section(
@@ -155,13 +163,30 @@ def generate_markdown_report(
     profile: Dict[str, Any],
     project_issues: Optional[List[str]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
-    verbosity: str = "detailed",
+    report_style: str = "actionable",
 ) -> str:
     """
-    Orchestrates the Markdown report generation.
+    Orchestrates the Markdown report generation using customizable styles.
+
+    Args:
+        stats: File analysis statistics.
+        final_score: The overall project score.
+        path: The project path.
+        profile: The agent profile used.
+        project_issues: Optional list of project-level issues.
+        thresholds: Optional scoring thresholds.
+        report_style: The visual style ("full", "actionable", "collapsed").
+
+    Returns:
+        str: The full Markdown report.
     """
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS.copy()
+
+    # Map report_style to internal verbosity logic
+    # full -> detailed, actionable -> summary, collapsed -> quiet
+    style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
+    verbosity = style_map.get(report_style, "summary")
 
     summary = _generate_summary_section(final_score, profile, project_issues)
 

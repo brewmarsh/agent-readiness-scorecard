@@ -28,6 +28,7 @@ class Thresholds(TypedDict, total=False):
 
 class Config(TypedDict):
     verbosity: str
+    report_style: str
     thresholds: Thresholds
 
 
@@ -36,6 +37,7 @@ class Config(TypedDict):
 # to ensure consistency across the entire package.
 DEFAULT_CONFIG: Config = {
     "verbosity": "summary",
+    "report_style": "actionable",
     "thresholds": typing_cast(Thresholds, DEFAULT_THRESHOLDS),
 }
 
