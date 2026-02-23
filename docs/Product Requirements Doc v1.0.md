@@ -26,8 +26,13 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 
 
 * **Multi-Language Support (Strategy Pattern):** [COMPLETED]
-* *Feature:* Introduction of a `BaseAnalyzer` abstraction and language-specific implementations (e.g., `PythonAnalyzer`).
-* *Value:* Decouples the scoring engine from specific language parsing logic, enabling future support for TypeScript, Go, and other languages while maintaining a consistent scoring interface.
+* *Feature:* Introduction of a `BaseAnalyzer` abstraction and language-specific implementations (e.g., `PythonAnalyzer`, `MarkdownAnalyzer`).
+* *Value:* Decouples the scoring engine from specific language parsing logic, enabling support for both code (Python) and documentation (Markdown) while maintaining a consistent scoring interface.
+
+
+* **Markdown Physics Analysis:** [COMPLETED]
+* *Feature:* Introduction of a `MarkdownAnalyzer` to evaluate the Agent Cognitive Load (ACL) of documentation.
+* *Value:* Documentation is part of the agent's context. Large, poorly structured markdown files increase hallucination risks. Evaluated using the formula: `ACL = (Header Depth * 1.5) + (Tokens in Section / 100)`.
 
 
 * **Dynamic Context Economics:** [COMPLETED]

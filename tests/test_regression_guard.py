@@ -91,7 +91,9 @@ def test_malformed_pyproject(tmp_path: Path) -> None:
 
     results = analyzer.perform_analysis(str(tmp_path), "generic")
     assert "Malformed pyproject.toml detected" in results["project_issues"]
-    assert results["final_score"] == 80.0
+    # Score is 88.0 because README.md (100) and ok.py (80) average to 90.0
+    # Project score is 80.0. Final: 90*0.8 + 80*0.2 = 72 + 16 = 88.0
+    assert results["final_score"] == 88.0
 
 
 def test_missing_dependencies_parsing(tmp_path: Path) -> None:

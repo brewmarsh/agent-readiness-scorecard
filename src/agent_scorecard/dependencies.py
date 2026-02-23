@@ -5,36 +5,38 @@ from typing import List, Dict, Set, Tuple
 
 def _scan_directory(path: str) -> List[str]:
     """
-    Recursively scans a directory for Python files, ignoring hidden directories.
+    Recursively scans a directory for analyzable files (Python, Markdown),
+    ignoring hidden directories.
 
     Args:
         path (str): The directory to scan.
 
     Returns:
-        List[str]: List of absolute paths to Python files.
+        List[str]: List of absolute paths to analyzable files.
     """
-    py_files = []
+    analyzable_files = []
     for root, _, files in os.walk(path):
         parts = root.split(os.sep)
         if any(p.startswith(".") and p != "." for p in parts):
             continue
         for file in files:
-            if file.endswith(".py"):
-                py_files.append(os.path.join(root, file))
-    return py_files
+            if file.endswith(".py") or file.endswith(".md"):
+                analyzable_files.append(os.path.join(root, file))
+    return analyzable_files
 
 
 def collect_python_files(path: str) -> List[str]:
     """
-    Collects all Python files in the given path, ignoring hidden directories.
+    Collects all analyzable files in the given path, ignoring hidden directories.
+    Note: Kept as collect_python_files for backward compatibility but now includes .md.
 
     Args:
         path (str): The path to scan.
 
     Returns:
-        List[str]: A list of absolute paths to Python files.
+        List[str]: A list of absolute paths to analyzable files.
     """
-    if os.path.isfile(path) and path.endswith(".py"):
+    if os.path.isfile(path) and (path.endswith(".py") or path.endswith(".md")):
         return [path]
     elif os.path.isdir(path):
         return _scan_directory(path)
