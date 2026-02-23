@@ -26,4 +26,6 @@
 - Documentation files must follow the uppercase naming convention (e.g., `AGENTS.md`)
 
 ## Operational Requirements
+- **Beta-First Workflow:** All new features, bug fixes, and AI agent activity (including automated remediations) must target the `beta` branch. The `main` branch is reserved exclusively for stable releases.
+- **Automated Remediation:** Automated PRs for type-hinting and other improvements target the `beta` branch and include a mandatory `ruff` validation gate.
 - **Fault-Tolerant Automation:** GitHub Actions workflows must handle transient states gracefully. Specifically, the 'Prompt Physics' workflow is designed to ignore 404 errors when removing labels to prevent unnecessary pipeline failures if a label has already been removed or is missing.
