@@ -3,7 +3,7 @@ import ast
 from typing import List, Dict, Set, Tuple
 
 
-def _collect_python_files(path: str) -> List[str]:
+def collect_python_files(path: str) -> List[str]:
     """
     Collects all Python files in the given path, ignoring hidden directories.
 
@@ -27,7 +27,7 @@ def _collect_python_files(path: str) -> List[str]:
     return py_files
 
 
-def _parse_imports(filepath: str) -> Set[str]:
+def parse_imports(filepath: str) -> Set[str]:
     """
     Parses a Python file and returns a set of imported module names.
 
@@ -69,14 +69,14 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
         all_py_files = [os.path.basename(root_path)]
         root_path = os.path.dirname(root_path)
     else:
-        full_paths = _collect_python_files(root_path)
+        full_paths = collect_python_files(root_path)
         all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
 
     graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
 
     for rel_path in all_py_files:
         full_path = os.path.join(root_path, rel_path)
-        imported_names = _parse_imports(full_path)
+        imported_names = parse_imports(full_path)
 
         for name in imported_names:
             suffix = name.replace(".", os.sep)
