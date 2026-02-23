@@ -5,6 +5,8 @@ from agent_scorecard.constants import PROFILES
 from agent_scorecard.analyzer import (
     calculate_acl,
     get_import_graph,
+)
+from agent_scorecard.dependencies import (
     get_inbound_imports,
     detect_cycles,
 )

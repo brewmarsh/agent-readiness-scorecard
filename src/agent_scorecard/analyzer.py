@@ -1,9 +1,9 @@
 import os
-import ast
 from typing import List, Dict, Any, Tuple, Set, Optional, cast
 from .constants import PROFILES
 from .scoring import score_file
 from . import auditor
+from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
 
 # Re-export metrics for backward compatibility
@@ -44,160 +44,24 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     return missing
 
 
-def _collect_python_files(path: str) -> List[str]:
-    """
-    Collects all Python files in the given path, ignoring hidden directories.
-    """
-    py_files = []
-    if os.path.isfile(path) and path.endswith(".py"):
-        py_files = [path]
-    elif os.path.isdir(path):
-        for root, _, files in os.walk(path):
-            parts = root.split(os.sep)
-            if any(p.startswith(".") and p != "." for p in parts):
-                continue
-            for file in files:
-                if file.endswith(".py"):
-                    py_files.append(os.path.join(root, file))
-    return py_files
-
-
-def _parse_imports(filepath: str) -> Set[str]:
-    """
-    Parses a Python file and returns a set of imported module names.
-    """
-    imported_names: Set[str] = set()
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            code = f.read()
-        tree = ast.parse(code, filename=filepath)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-        return imported_names
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported_names.add(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imported_names.add(node.module)
-    return imported_names
-
-
 def get_import_graph(root_path: str) -> Tuple[Dict[str, Set[str]], Dict[str, int]]:
     """
     Builds a dependency graph and calculates individual token counts.
     """
-    if os.path.isfile(root_path) and root_path.endswith(".py"):
-        all_py_files = [os.path.basename(root_path)]
-        root_path = os.path.dirname(root_path)
-    else:
-        full_paths = _collect_python_files(root_path)
-        all_py_files = [os.path.relpath(f, start=root_path) for f in full_paths]
-
-    graph: Dict[str, Set[str]] = {f: set() for f in all_py_files}
+    graph = dependencies.get_import_graph(root_path)
     token_counts: Dict[str, int] = {}
 
-    for rel_path in all_py_files:
-        full_path = os.path.join(root_path, rel_path)
+    base_dir = (
+        os.path.dirname(root_path)
+        if os.path.isfile(root_path) and root_path.endswith(".py")
+        else root_path
+    )
+
+    for rel_path in graph:
+        full_path = os.path.join(base_dir, rel_path)
         token_counts[rel_path] = auditor.count_python_tokens(full_path)
-        imported_names = _parse_imports(full_path)
 
-        for name in imported_names:
-            suffix = name.replace(".", os.sep)
-            for candidate in all_py_files:
-                if candidate == rel_path:
-                    continue
-                candidate_no_ext = os.path.splitext(candidate)[0]
-                if candidate_no_ext.endswith(suffix):
-                    match_len = len(suffix)
-                    if (
-                        len(candidate_no_ext) == match_len
-                        or candidate_no_ext[-(match_len + 1)] == os.sep
-                    ):
-                        graph[rel_path].add(candidate)
     return graph, token_counts
-
-
-def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
-    """
-    Returns {file: count} of inbound imports to identify 'God Modules'.
-    """
-    inbound: Dict[str, int] = {node: 0 for node in graph}
-    for source, targets in graph.items():
-        for target in targets:
-            if target in inbound:
-                inbound[target] += 1
-    return inbound
-
-
-def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    """
-    Returns list of unique cycles using DFS.
-    """
-    cycles: List[List[str]] = []
-    visited_global: Set[str] = set()
-    path_set: Set[str] = set()
-    nodes = sorted(graph.keys())
-
-    def visit(node: str, current_path: List[str]) -> None:
-        visited_global.add(node)
-        path_set.add(node)
-        current_path.append(node)
-        neighbors = sorted(list(graph.get(node, set())))
-
-        for neighbor in neighbors:
-            if neighbor in path_set:
-                try:
-                    idx = current_path.index(neighbor)
-                    cycle = current_path[idx:]
-                    if cycle not in cycles:
-                        cycles.append(cycle[:])
-                except ValueError:
-                    pass
-            elif neighbor not in visited_global:
-                visit(neighbor, current_path)
-
-        path_set.remove(node)
-        current_path.pop()
-
-    for node in nodes:
-        if node not in visited_global:
-            visit(node, [])
-
-    # Canonicalize unique circular paths
-    unique_cycles = []
-    seen = set()
-    for cycle in cycles:
-        if len(cycle) < 2:
-            continue
-        min_node = min(cycle)
-        idx = cycle.index(min_node)
-        canonical = tuple(cycle[idx:] + cycle[:idx])
-        if canonical not in seen:
-            seen.add(canonical)
-            unique_cycles.append(list(canonical))
-    return unique_cycles
-
-
-def _calculate_cumulative_tokens(
-    graph: Dict[str, Set[str]], file_tokens: Dict[str, int]
-) -> Dict[str, int]:
-    """
-    Calculates the cumulative token budget including all unique reachable local dependencies.
-    """
-    cumulative_map: Dict[str, int] = {}
-    for start_node in graph:
-        reachable: Set[str] = set()
-        stack = [start_node]
-        while stack:
-            current = stack.pop()
-            if current not in reachable:
-                reachable.add(current)
-                for neighbor in graph.get(current, set()):
-                    stack.append(neighbor)
-        cumulative_map[start_node] = sum(file_tokens.get(f, 0) for f in reachable)
-    return cumulative_map
 
 
 def get_project_issues(
@@ -222,7 +86,7 @@ def get_project_issues(
         issues.append("Malformed pyproject.toml detected")
 
     graph, _ = get_import_graph(path)
-    inbound = get_inbound_imports(graph)
+    inbound = dependencies.get_inbound_imports(graph)
     god_modules = [mod for mod, count in inbound.items() if count > 50]
     if god_modules:
         penalty += len(god_modules) * 10
@@ -235,7 +99,7 @@ def get_project_issues(
             f"High Directory Entropy (>50 files): {', '.join(entropy_stats.keys())}"
         )
 
-    cycles = detect_cycles(graph)
+    cycles = dependencies.detect_cycles(graph)
     if cycles:
         penalty += len(cycles) * 5
         issues.append(f"Circular Dependencies Detected: {len(cycles)}")
@@ -260,12 +124,14 @@ def perform_analysis(
     project_root = (
         path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
     )
-    py_files = _collect_python_files(path)
+    py_files = dependencies.collect_python_files(path)
     all_py_files = py_files[:]
 
     # Build graph and calculate cumulative tokens (Context Economics)
     graph, individual_tokens = get_import_graph(path)
-    cumulative_tokens_map = _calculate_cumulative_tokens(graph, individual_tokens)
+    cumulative_tokens_map = dependencies.calculate_context_tokens(
+        graph, individual_tokens
+    )
 
     if limit_to_files is not None:
         py_files = [
@@ -316,9 +182,11 @@ def perform_analysis(
         ),
         "project_issues": project_issues,
         "dep_analysis": {
-            "cycles": detect_cycles(graph),
+            "cycles": dependencies.detect_cycles(graph),
             "god_modules": {
-                m: c for m, c in get_inbound_imports(graph).items() if c > 50
+                m: c
+                for m, c in dependencies.get_inbound_imports(graph).items()
+                if c > 50
             },
         },
         "directory_stats": [
