@@ -1,1 +1,5 @@
+src/agent_scorecard/analyzer.py
+src/agent_scorecard/dependencies.py
+tests/test_advisor.py
+tests/test_analyzer_imports.py
 tests/test_dependencies.py
