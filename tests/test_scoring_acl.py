@@ -18,8 +18,8 @@ def test_score_file_acl_penalty(tmp_path: Path) -> None:
     Returns:
         None
     """
-    # Create a file with a high ACL function (deeply nested + long)
-    # Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
+    # Create a file with a high ACL function
+    # New Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
     code = "def high_acl():\n"
     code += "    if True:\n"
     code += "        if True:\n"
@@ -27,9 +27,7 @@ def test_score_file_acl_penalty(tmp_path: Path) -> None:
     code += "                if True:\n"
     code += "                    if True:\n"
     code += "                        x = 0\n"
-    
-    # 320 lines of assignment to force high LOC and bloat penalty
-    # Indentation maintained at level 6 (24 spaces) for syntax validity
+    # 320 lines of assignment to force high LOC
     for i in range(320):
         code += f"                        x += {i}\n"
     code += "                        return x\n"
@@ -38,7 +36,7 @@ def test_score_file_acl_penalty(tmp_path: Path) -> None:
     p.write_text(code, encoding="utf-8")
 
     # Math Breakdown:
-    # 1. Depth = 5, CC = 6 (Function definition + 5 If statements), LOC = ~328.
+    # 1. ACL: Depth=5, CC=6, LOC=328.
     #    ACL = (5 * 2) + (6 * 1.5) + (328 / 50) = 10 + 9 + 6.56 = 25.56.
     #    Red ACL (>15) Penalty: -15.
     # 2. Type Safety: 0/1 functions typed = 0%. Penalty: -20.

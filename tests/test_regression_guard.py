@@ -40,25 +40,20 @@ def test_acl_strictness(tmp_path: Path) -> None:
     Returns:
         None
     """
-    # RESOLUTION: Adopted Main Branch Logic
-    # Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
-    # Target function: Depth=5, CC=6, LOC=300.
-    # ACL = (5 * 2) + (6 * 1.5) + (300 / 50) = 10 + 9 + 6 = 25.0 (Red status)
-    
-    content = textwrap.dedent(
-        """
+    # RESOLUTION: Adopted New Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
+    # Target function: Depth=3, CC=4, LOC=200.
+    # Math: (3*2) + (4*1.5) + (200/50) = 6 + 6 + 4 = 16.0 (Red status)
+
+    content = textwrap.dedent("""
     def hall_func():
         if True:
             if True:
                 if True:
-                    if True:
-                        if True:
-                            pass
-    """
-    )
-    # Append lines inside the function to reach 300 lines total (approx 7 lines exist)
-    for i in range(293):
-        content += f"                        x = {i}\n"
+                    pass
+    """)
+    # Logic: Function already has 5 lines. Add 195 lines to reach 200 total inside function.
+    for i in range(195):
+        content += f"                x = {i}\n"
 
     py_file = tmp_path / "high_acl.py"
     py_file.write_text(content, encoding="utf-8")
@@ -67,8 +62,8 @@ def test_acl_strictness(tmp_path: Path) -> None:
         str(py_file), PROFILES["generic"]
     )
 
-    # Validate the exact ACL calculation based on the new structural-depth formula
-    assert any(m["acl"] == 25.0 for m in metrics)
+    # Validate that the AST-based depth analysis resulted in the specific 16.0 score
+    assert any(m["acl"] == 16.0 for m in metrics)
     assert "1 Red ACL functions (-15)" in details
 
 

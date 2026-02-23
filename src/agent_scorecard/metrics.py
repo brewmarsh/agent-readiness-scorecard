@@ -81,7 +81,13 @@ class NestingDepthVisitor(ast.NodeVisitor):
 
 def calculate_max_depth(source_code: str) -> int:
     """
-    Calculates the maximum nesting depth of control flow blocks.
+    Calculates the maximum nesting depth of control flow blocks in the given source code.
+
+    Args:
+        source_code (str): The Python source code to analyze.
+
+    Returns:
+        int: The maximum nesting depth detected.
     """
     try:
         tree = ast.parse(source_code)
@@ -96,6 +102,12 @@ def calculate_max_depth(source_code: str) -> int:
 def get_loc(filepath: str) -> int:
     """
     Returns lines of code excluding whitespace/comments roughly.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        int: Logical lines of code.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -109,6 +121,12 @@ def get_loc(filepath: str) -> int:
 def get_complexity_score(filepath: str) -> float:
     """
     Returns average cyclomatic complexity for all functions in a file.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        float: Average cyclomatic complexity.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -130,6 +148,12 @@ def get_complexity_score(filepath: str) -> float:
 def check_type_hints(filepath: str) -> float:
     """
     Returns type hint coverage percentage for functions and async functions.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        float: Type hint coverage percentage (0-100).
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -160,12 +184,12 @@ def calculate_acl(complexity: float, loc: int, depth: int) -> float:
     """
     Calculates Agent Cognitive Load (ACL).
 
-    Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
+    Formula: ACL = (Nesting Depth * 2) + (Complexity * 1.5) + (LOC / 50)
 
     Args:
         complexity (float): Cyclomatic complexity of the code unit.
         loc (int): Logical lines of code of the code unit.
-        depth (int): Maximum nesting depth of control flow blocks.
+        depth (int): Maximum nesting depth of the code unit.
 
     Returns:
         float: Calculated ACL value.
@@ -176,6 +200,12 @@ def calculate_acl(complexity: float, loc: int, depth: int) -> float:
 def count_tokens(filepath: str) -> int:
     """
     Estimates the number of tokens in a file (approx 4 chars/token).
+
+    Args:
+        filepath (str): Path to the file.
+
+    Returns:
+        int: Estimated token count.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -188,6 +218,12 @@ def count_tokens(filepath: str) -> int:
 def get_function_stats(filepath: str) -> List[FunctionMetric]:
     """
     Returns statistics for each function in the file including ACL and Type coverage.
+
+    Args:
+        filepath (str): Path to the Python file.
+
+    Returns:
+        List[FunctionMetric]: A list of metrics for each function found.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -210,11 +246,11 @@ def get_function_stats(filepath: str) -> List[FunctionMetric]:
             loc = end_line - start_line + 1
             complexity = float(complexity_map.get(start_line, 1))
 
+            # Calculate Nesting Depth
             depth_visitor = NestingDepthVisitor()
             depth_visitor.visit(node)
             nesting_depth = depth_visitor.max_depth
 
-            # Calculate ACL using the new structural-depth weighted formula
             acl = calculate_acl(complexity, loc, nesting_depth)
 
             stats.append(

@@ -11,7 +11,6 @@
 
 ## Metrics
 - **AST Nesting Depth:** Measures the maximum depth of nested control flow blocks (`if`, `for`, `while`, `try`, `with`, `list comprehensions`, `lambdas`). This provides a more accurate measure of structural complexity than flat LOC.
-- **Agent Cognitive Load (ACL):** Calculated using the formula `(Depth * 2) + (Complexity * 1.5) + (LOC / 50)`. This metric heavily weights structural depth to better reflect the difficulty an agent has in tracking state across nested blocks.
 - **Dynamic Token Context Economics:** Calculates the cumulative token load of a file and its local module dependencies. Files exceeding a 32,000 token transitive budget are flagged for refactoring to prevent agent context loss.
 
 ## Developer Constraints

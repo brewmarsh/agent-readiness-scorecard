@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import Dict, Set, List
 from agent_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
@@ -6,7 +8,16 @@ from agent_scorecard.dependencies import (
 )
 
 
-def test_collect_python_files(tmp_path):
+def test_collect_python_files(tmp_path: Path) -> None:
+    """
+    Tests the collection of Python files in a directory.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     d = tmp_path / "subdir"
     d.mkdir()
     (d / "file1.py").write_text("print('hello')")
@@ -19,7 +30,16 @@ def test_collect_python_files(tmp_path):
     assert any(f.endswith("root.py") for f in files)
 
 
-def test_import_graph_and_cycles(tmp_path):
+def test_import_graph_and_cycles(tmp_path: Path) -> None:
+    """
+    Tests import graph generation and cycle detection.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B -> C -> A (cycle)
     # D -> B
 
@@ -28,7 +48,7 @@ def test_import_graph_and_cycles(tmp_path):
     (tmp_path / "c.py").write_text("import a")
     (tmp_path / "d.py").write_text("import b")
 
-    graph = get_import_graph(str(tmp_path))
+    graph: Dict[str, Set[str]] = get_import_graph(str(tmp_path))
 
     assert "a.py" in graph
     assert "b.py" in graph["a.py"]
@@ -43,16 +63,25 @@ def test_import_graph_and_cycles(tmp_path):
     assert cycle == ["a.py", "b.py", "c.py"]
 
 
-def test_calculate_context_tokens(tmp_path):
+def test_calculate_context_tokens(tmp_path: Path) -> None:
+    """
+    Tests context token calculation for simple dependencies.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B
     # B has 10 tokens
     # A has 20 tokens
     # Context(B) = 10
     # Context(A) = 20 + 10 = 30
 
-    graph = {"a.py": {"b.py"}, "b.py": set()}
+    graph: Dict[str, Set[str]] = {"a.py": {"b.py"}, "b.py": set()}
 
-    file_tokens = {"a.py": 20, "b.py": 10}
+    file_tokens: Dict[str, int] = {"a.py": 20, "b.py": 10}
 
     context = calculate_context_tokens(graph, file_tokens)
 
@@ -60,15 +89,24 @@ def test_calculate_context_tokens(tmp_path):
     assert context["a.py"] == 30
 
 
-def test_calculate_context_tokens_with_cycle(tmp_path):
+def test_calculate_context_tokens_with_cycle(tmp_path: Path) -> None:
+    """
+    Tests context token calculation with dependency cycles.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B -> A
     # A: 10, B: 20
     # Context(A) = 10 + 20 = 30
     # Context(B) = 20 + 10 = 30
 
-    graph = {"a.py": {"b.py"}, "b.py": {"a.py"}}
+    graph: Dict[str, Set[str]] = {"a.py": {"b.py"}, "b.py": {"a.py"}}
 
-    file_tokens = {"a.py": 10, "b.py": 20}
+    file_tokens: Dict[str, int] = {"a.py": 10, "b.py": 20}
 
     context = calculate_context_tokens(graph, file_tokens)
 
@@ -76,7 +114,16 @@ def test_calculate_context_tokens_with_cycle(tmp_path):
     assert context["b.py"] == 30
 
 
-def test_calculate_context_tokens_complex(tmp_path):
+def test_calculate_context_tokens_complex(tmp_path: Path) -> None:
+    """
+    Tests context token calculation with complex dependencies.
+
+    Args:
+        tmp_path (Path): Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
+    """
     # A -> B, C
     # B -> D
     # C -> D
@@ -85,7 +132,7 @@ def test_calculate_context_tokens_complex(tmp_path):
 
     # Tokens: All 10
 
-    graph = {
+    graph: Dict[str, Set[str]] = {
         "a.py": {"b.py", "c.py"},
         "b.py": {"d.py"},
         "c.py": {"d.py"},
@@ -93,7 +140,7 @@ def test_calculate_context_tokens_complex(tmp_path):
         "e.py": {"d.py"},
     }
 
-    file_tokens = {f: 10 for f in graph}
+    file_tokens: Dict[str, int] = {f: 10 for f in graph}
 
     context = calculate_context_tokens(graph, file_tokens)
 

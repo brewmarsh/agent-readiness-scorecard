@@ -22,15 +22,20 @@ def test_calculate_acl() -> None:
     Returns:
         None
     """
-    # RESOLUTION: Verified with Depth=3, CC=10, LOC=100
-    # Math: (3 * 2) + (10 * 1.5) + (100 / 50) = 6 + 15 + 2 = 23.0
-    assert calculate_acl(10, 100, 3) == 23.0
+    # cc=10, loc=100, depth=5 -> (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
+    assert calculate_acl(10, 100, 5) == 27.0
     assert calculate_acl(0, 0, 0) == 0
 
 
 def test_get_directory_entropy(tmp_path: Path) -> None:
     """
     Tests the directory entropy calculation by simulating high file counts.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
     """
     # Create 25 files in tmp_path to trigger the threshold
     for i in range(25):
@@ -54,6 +59,12 @@ def test_get_directory_entropy(tmp_path: Path) -> None:
 def test_dependency_analysis(tmp_path: Path) -> None:
     """
     Tests the project dependency analysis and inbound import counting.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
     """
     # Simulation: main -> utils -> shared
     (tmp_path / "main.py").write_text("import utils", encoding="utf-8")
@@ -75,6 +86,12 @@ def test_dependency_analysis(tmp_path: Path) -> None:
 def test_cycle_detection(tmp_path: Path) -> None:
     """
     Tests circular dependency detection between project modules.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
     """
     # Simulation: a <-> b (Circular dependency)
     (tmp_path / "a.py").write_text("import b", encoding="utf-8")
@@ -92,6 +109,9 @@ def test_cycle_detection(tmp_path: Path) -> None:
 def test_generate_advisor_report_standalone() -> None:
     """
     Tests the standalone Advisor Report used in the 'agent-score advise' command.
+
+    Returns:
+        None
     """
     stats = [
         {"file": "high_acl.py", "acl": 20.0, "complexity": 10, "loc": 200},
@@ -118,6 +138,12 @@ def test_generate_advisor_report_standalone() -> None:
 def test_function_stats_parsing(tmp_path: Path) -> None:
     """
     Tests that we can parse a file and extract function metrics correctly.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
     """
     code = textwrap.dedent(
         """
@@ -142,23 +168,23 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     assert func["name"] == "complex_function"
     assert func["complexity"] >= 2
     assert func["loc"] >= 20
-    # CC=2, Depth=1, LOC=~26
-    # Math: (1*2) + (2*1.5) + (26/50) = 2 + 3 + 0.52 = 5.52
     assert func["acl"] > 2
 
 
 def test_unified_score_report_content(tmp_path: Path) -> None:
     """
     Tests the detailed Markdown report generated during the 'score' command.
+
+    Args:
+        tmp_path: Pytest fixture for temporary directory creation.
+
+    Returns:
+        None
     """
     # Setup a file that specifically triggers high ACL warnings
     code = "def hallucinate():\n"
-    # Create depth of 10 to ensure a Red ACL status (>15)
     for _ in range(10):
-        code += "    " * (_ + 1) + "if True:\n"
-    code += "    " * 11 + "pass\n"
-    
-    # Add volume to trigger volume penalties
+        code += "    if True: pass\n"
     for i in range(120):
         code += f"    x={i}\n"
 
