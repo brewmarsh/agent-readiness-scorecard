@@ -136,19 +136,21 @@ def test_get_function_stats(tmp_path: Path) -> None:
     complex_func = next(s for s in stats if s["name"] == "complex_long")
     nested_func = next(s for s in stats if s["name"] == "deeply_nested")
 
-    # Simple function verification: Complexity 1, LOC 2.
-    # Calculation: 1 + 2/20 = 1.1 ACL
+    # Simple function verification: CC=1, LOC=2, Depth=0.
+    # Calculation: (0*2) + (1*1.5) + (2/50) = 1.54
     assert simple_func["complexity"] == 1
     assert simple_func["loc"] == 2
-    assert simple_func["acl"] == 1.1
+    assert simple_func["acl"] == 1.54
     assert simple_func["nesting_depth"] == 0
 
-    # Complex function verification: Complexity 2 (if/else branching), LOC ~25.
-    # Calculation: 2 + 25/20 = 3.25 ACL
+    # Complex function verification: CC=2, LOC=~25, Depth=1.
+    # Calculation: (1*2) + (2*1.5) + (25/50) = 5.5
     assert complex_func["complexity"] == 2
     assert complex_func["loc"] >= 20
-    assert complex_func["acl"] > 3.0
+    assert complex_func["acl"] > 5.0
     assert complex_func["nesting_depth"] == 1
 
-    # Deeply nested function
+    # Deeply nested function: CC=4, LOC=5, Depth=3.
+    # Calculation: (3*2) + (4*1.5) + (5/50) = 12.1
     assert nested_func["nesting_depth"] == 3
+    assert nested_func["acl"] == 12.1
