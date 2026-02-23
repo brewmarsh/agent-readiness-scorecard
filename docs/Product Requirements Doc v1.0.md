@@ -20,8 +20,9 @@ The Agent Scorecard measures the "Physics of Agent-Code Interaction." Version 1.
 
 Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Version 1.0 will calculate the actual architectural pressure an AI agent faces.
 
-* **AST-Driven Nesting Analysis:** * *Feature:* Parse the Abstract Syntax Tree to measure maximum nesting depth (e.g., loops inside conditionals inside `try/catch` blocks).
-* *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. This replaces raw LOC as the heaviest weight in the Agent Cognitive Load (ACL) calculation.
+* **AST-Driven Nesting Analysis:** [COMPLETED]
+* *Feature:* Parse the Abstract Syntax Tree to measure maximum nesting depth (e.g., loops inside conditionals inside `try/catch` blocks).
+* *Value:* Deeply nested logic is the primary cause of LLM context loss and hallucination. Implemented using the formula `(Depth * 2) + (Complexity * 1.5) + (LOC / 50)`, heavily weighting structural depth over flat LOC.
 
 
 * **Dynamic Context Economics:** [COMPLETED]
@@ -55,6 +56,11 @@ Remediation must be accessible, agnostic, and highly economical regarding token 
 ## Epic 3: Developer Experience & Adoption (Priority: Fast Follow)
 
 Features designed to lower the barrier to entry and shift feedback to the earliest possible moment in the SDLC.
+
+* **Noise-Reduction & Progressive Disclosure:** [COMPLETED]
+* *Feature:* Implementation of `verbosity` levels (quiet, summary, detailed) and `report_style` options (collapsed, actionable, full).
+* *Value:* Reduces cognitive load for developers by hiding irrelevant "passing" metrics while still providing deep-dive capabilities when needed. Integrates "Diff-Aware" reporting in CI to focus on PR-specific changes.
+
 
 * **Zero-Config Initiation:** An `agent-score init` command that interactively scaffolds `AGENTS.md` and default configurations.
 * **Shift-Left IDE Extension:** Real-time ACL highlighting in VS Code/JetBrains.

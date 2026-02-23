@@ -184,12 +184,12 @@ def calculate_acl(complexity: float, loc: int, depth: int) -> float:
     """
     Calculates Agent Cognitive Load (ACL).
 
-    Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
+    Formula: ACL = (Nesting Depth * 2) + (Complexity * 1.5) + (LOC / 50)
 
     Args:
         complexity (float): Cyclomatic complexity of the code unit.
         loc (int): Logical lines of code of the code unit.
-        depth (int): Maximum nesting depth of control flow blocks.
+        depth (int): Maximum nesting depth of the code unit.
 
     Returns:
         float: Calculated ACL value.
@@ -246,11 +246,11 @@ def get_function_stats(filepath: str) -> List[FunctionMetric]:
             loc = end_line - start_line + 1
             complexity = float(complexity_map.get(start_line, 1))
 
+            # Calculate Nesting Depth
             depth_visitor = NestingDepthVisitor()
             depth_visitor.visit(node)
             nesting_depth = depth_visitor.max_depth
 
-            # Calculate ACL using the new structural-depth weighted formula
             acl = calculate_acl(complexity, loc, nesting_depth)
 
             stats.append(

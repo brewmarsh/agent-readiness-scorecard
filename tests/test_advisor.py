@@ -22,9 +22,8 @@ def test_calculate_acl() -> None:
     Returns:
         None
     """
-    # Depth=3, CC=10, LOC=100
-    # (3 * 2) + (10 * 1.5) + (100 / 50) = 6 + 15 + 2 = 23.0
-    assert calculate_acl(10, 100, 3) == 23.0
+    # cc=10, loc=100, depth=5 -> (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
+    assert calculate_acl(10, 100, 5) == 27.0
     assert calculate_acl(0, 0, 0) == 0
 
 
@@ -169,8 +168,6 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     assert func["name"] == "complex_function"
     assert func["complexity"] >= 2
     assert func["loc"] >= 20
-    # CC=2, Depth=1, LOC=~26
-    # (1*2) + (2*1.5) + (26/50) = 2 + 3 + 0.52 = 5.52
     assert func["acl"] > 2
 
 
@@ -186,18 +183,8 @@ def test_unified_score_report_content(tmp_path: Path) -> None:
     """
     # Setup a file that specifically triggers high ACL warnings
     code = "def hallucinate():\n"
-    # depth 11
-    code += "    if True:\n"
-    code += "        if True:\n"
-    code += "            if True:\n"
-    code += "                if True:\n"
-    code += "                    if True:\n"
-    code += "                        if True:\n"
-    code += "                            if True:\n"
-    code += "                                if True:\n"
-    code += "                                    if True:\n"
-    code += "                                        if True:\n"
-    code += "                                            if True: pass\n"
+    for _ in range(10):
+        code += "    if True: pass\n"
     for i in range(120):
         code += f"    x={i}\n"
 
