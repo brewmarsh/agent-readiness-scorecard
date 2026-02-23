@@ -1,6 +1,6 @@
 import warnings
 from typing import List
-from .analyzers.python import PythonAnalyzer, NestingDepthVisitor
+from .analyzers.python import PythonAnalyzer, NestingDepthVisitor  # noqa: F401
 from .types import FunctionMetric
 
 
