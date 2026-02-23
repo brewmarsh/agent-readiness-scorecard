@@ -4,6 +4,7 @@ from .constants import PROFILES
 from .analyzers.base import BaseAnalyzer
 from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
+from .analyzers.javascript import JavascriptAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -38,6 +39,8 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
         return PythonAnalyzer()
     if filepath.endswith(".md"):
         return MarkdownAnalyzer()
+    if filepath.endswith((".js", ".jsx", ".ts", ".tsx")):
+        return JavascriptAnalyzer()
     raise ValueError(f"Unsupported file type: {filepath}")
 
 

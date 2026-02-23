@@ -20,7 +20,7 @@ def _scan_directory(path: str) -> List[str]:
         if any(p.startswith(".") and p != "." for p in parts):
             continue
         for file in files:
-            if file.endswith(".py") or file.endswith(".md"):
+            if file.endswith((".py", ".md", ".js", ".jsx", ".ts", ".tsx")):
                 analyzable_files.append(os.path.join(root, file))
     return analyzable_files
 
@@ -28,7 +28,7 @@ def _scan_directory(path: str) -> List[str]:
 def collect_python_files(path: str) -> List[str]:
     """
     Collects all analyzable files in the given path, ignoring hidden directories.
-    Note: Kept as collect_python_files for backward compatibility but now includes .md.
+    Note: Kept as collect_python_files for backward compatibility but now includes .md, .js, .ts.
 
     Args:
         path (str): The path to scan.
@@ -36,7 +36,9 @@ def collect_python_files(path: str) -> List[str]:
     Returns:
         List[str]: A list of absolute paths to analyzable files.
     """
-    if os.path.isfile(path) and (path.endswith(".py") or path.endswith(".md")):
+    if os.path.isfile(path) and (
+        path.endswith((".py", ".md", ".js", ".jsx", ".ts", ".tsx"))
+    ):
         return [path]
     elif os.path.isdir(path):
         return _scan_directory(path)
