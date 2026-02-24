@@ -25,7 +25,7 @@ from ..constants import DEFAULT_THRESHOLDS
 
 logger = logging.getLogger(__name__)
 
-# Initialize languages
+# Initialize languages lazily to prevent initialization crashes
 JS_LANGUAGE: Optional["Language"] = None
 TS_LANGUAGE: Optional["Language"] = None
 TSX_LANGUAGE: Optional["Language"] = None
@@ -335,7 +335,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if param and self._has_type_annotation(param):
+                if param is not None and self._has_type_annotation(param):
                     return True
 
         return False
