@@ -1,5 +1,5 @@
 import pytest
-from src.agent_scorecard.analyzers.docker import DockerAnalyzer
+from agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
 @pytest.fixture
@@ -120,414 +120,208 @@ ADD . /app
     assert "Best Practices Compliance" in details
 
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
