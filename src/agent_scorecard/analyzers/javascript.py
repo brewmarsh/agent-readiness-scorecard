@@ -256,7 +256,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 if not operator and n.child_count >= 2:
                     operator = n.child(1)  # fallback
 
-                if operator and operator.text and operator.text.decode("utf-8") in ("&&", "||"):
+                if (
+                    operator
+                    and operator.text
+                    and operator.text.decode("utf-8") in ("&&", "||")
+                ):
                     complexity += 1.0
 
             for child in n.children:
