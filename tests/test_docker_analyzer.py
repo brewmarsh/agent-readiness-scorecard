@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 from src.agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
@@ -41,15 +41,16 @@ def test_docker_analyzer_parsing(docker_analyzer: DockerAnalyzer, sample_dockerf
     # Instructions: FROM, WORKDIR, COPY, RUN, COPY, RUN, CMD
     assert len(stats) == 7
 
-    # Check the complex RUN command (index 5)
+    # Check the complex RUN command (index 5 - 0-indexed: FROM=0, WORKDIR=1, COPY=2, RUN=3, COPY=4, RUN=5)
     complex_run = stats[5]
     assert complex_run["name"] == "RUN"
     # It spans 3 lines
     assert complex_run["loc"] == 3
     # Chained commands: apt-get update (1) && apt-get install (2) && rm (3).
-    # Complexity calculation based on instruction chains
+    # count("&&") = 2.
+    # Complexity = 2 + 1 = 3.
     assert complex_run["complexity"] == 3.0
-    # ACL for Docker follows a specific weighted formula for instructions
+    # ACL = (2 * 1.5) + (3 * 0.5) = 3.0 + 1.5 = 4.5
     assert complex_run["acl"] == 4.5
 
 
@@ -67,31 +68,34 @@ RUN apt-get upgrade
 
     stats = docker_analyzer.get_function_stats(str(bad_dockerfile))
 
-    # FROM python:latest -> Fails "typing" (best practice) check
-    assert stats[0]["name"] == "FROM"
+    # FROM python:latest -> Bad
+    assert (
+        stats[0]["instruction"] == "FROM"
+        if "instruction" in stats[0]
+        else stats[0]["name"] == "FROM"
+    )
     assert stats[0]["is_typed"] is False
 
-    # ADD . /app -> Should use COPY
+    # ADD . /app -> Bad
     assert stats[1]["name"] == "ADD"
     assert stats[1]["is_typed"] is False
 
-    # RUN sudo ... -> Root usage violation
+    # RUN sudo ... -> Bad
     assert stats[2]["name"] == "RUN"
     assert stats[2]["is_typed"] is False
 
-    # RUN apt-get upgrade -> Forbidden instruction
+    # RUN apt-get upgrade -> Bad
     assert stats[3]["name"] == "RUN"
     assert stats[3]["is_typed"] is False
 
 
 def test_docker_analyzer_scoring(docker_analyzer: DockerAnalyzer, sample_dockerfile: str) -> None:
-    # RESOLUTION: Explicit type hints included for profile dict
     profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = docker_analyzer.score_file(
         sample_dockerfile, profile
     )
 
-    assert score == 100  # Should be perfect for the compliant sample
+    assert score == 100  # Should be perfect
     assert "Bloated" not in details
     assert type_safety == 100.0
 
@@ -111,8 +115,8 @@ ADD . /app
         str(bad_dockerfile), profile
     )
 
-    # Type safety (Best Practices Index) should be 0% for this file
+    # Type safety should be 0%
     assert type_safety == 0.0
-    # Penalty for low compliance should trigger
+    # Penalty for low type safety (Best Practices)
     assert score < 100
     assert "Best Practices Compliance" in details

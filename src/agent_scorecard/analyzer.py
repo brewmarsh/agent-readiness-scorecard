@@ -6,7 +6,6 @@ from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
 from .analyzers.docker import DockerAnalyzer
 from .analyzers.javascript import JavascriptAnalyzer
-from .analyzers.java import JavaAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -53,9 +52,6 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
         or filepath.endswith(".tsx")
     ):
         return JavascriptAnalyzer()
-
-    if filepath.endswith(".java"):
-        return JavaAnalyzer()
 
     raise ValueError(f"Unsupported file type: {filepath}")
 

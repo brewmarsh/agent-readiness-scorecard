@@ -9,11 +9,6 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
 * **Threshold:** functions with ACL > 15 are "Hallucination Zones."
 
-### Java ACL
-* **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
-* **Threshold:** functions with ACL > 15 are "Hallucination Zones."
-* **Strategy:** Use method extraction to reduce complexity. Java methods are strongly typed, ensuring high type safety.
-
 ### Markdown ACL
 * **Formula:** $ACL = (Header Depth * 1.5) + (Tokens in Section / 100)$
 * **Threshold:** sections with ACL > 15 are "Hallucination Zones."
@@ -49,4 +44,4 @@ acl_yellow = 12
 acl_red = 18
 ```
 
-The tool will automatically detect the language (Python, Java, JavaScript, Markdown, Docker) and apply the appropriate overrides, falling back to global thresholds if none are specified.
+The tool will automatically detect the language (Python, JavaScript, Markdown, Docker) and apply the appropriate overrides, falling back to global thresholds if none are specified.

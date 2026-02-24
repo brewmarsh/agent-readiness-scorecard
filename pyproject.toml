@@ -19,7 +19,6 @@ dependencies = [
     "tree-sitter>=0.22.0",
     "tree-sitter-javascript",
     "tree-sitter-typescript",
-    "tree-sitter-java",
 ]
 requires-python = ">=3.10"
 
