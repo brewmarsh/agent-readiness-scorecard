@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [v0.50.0] - 2026-02-23
 
 ### Features
+- **report:** Replace empty ACL tables with success messages when targets are met.
 - **multilang:** Refactor scoring logic to Strategy Pattern to support multiple languages (ca75f3c, a4d5aa2).
 - **javascript:** Add support for JavaScript/TypeScript Agent Cognitive Load (ACL) analysis using tree-sitter (555ad49, a952736).
 - **docker:** Add support for Dockerfile ACL analysis (bbaf69d).
