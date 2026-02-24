@@ -9,6 +9,15 @@ def js_analyzer() -> JavascriptAnalyzer:
 
 
 def test_js_simple_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test basic JavaScript function analysis.
+
+    Mathematical Breakdown:
+    - complexity: 2.0 (1.0 base + 1.0 for 'if')
+    - nesting_depth: 1 (1 level for 'if')
+    - loc: 6
+    - ACL = (1 * 2.0) + (2.0 * 1.5) + (6 / 50.0) = 2 + 3 + 0.12 = 5.12
+    """
     js_file = tmp_path / "test.js"
     js_file.write_text(
         """
@@ -34,6 +43,15 @@ function add(a, b) {
 
 
 def test_js_arrow_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test basic arrow function analysis.
+
+    Mathematical Breakdown:
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 3
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (3 / 50.0) = 0 + 1.5 + 0.06 = 1.56
+    """
     js_file = tmp_path / "arrow.js"
     js_file.write_text(
         """
@@ -55,6 +73,15 @@ const mul = (a, b) => {
 
 
 def test_ts_typed_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test TypeScript function with type annotations.
+
+    Mathematical Breakdown:
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 3
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (3 / 50.0) = 1.56
+    """
     ts_file = tmp_path / "typed.ts"
     ts_file.write_text(
         """
@@ -72,6 +99,15 @@ function add(a: number, b: number): number {
 
 
 def test_ts_untyped_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test TypeScript function without type annotations.
+
+    Mathematical Breakdown:
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 3
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (3 / 50.0) = 1.56
+    """
     ts_file = tmp_path / "untyped.ts"
     ts_file.write_text(
         """
@@ -89,6 +125,15 @@ function add(a, b) {
 
 
 def test_js_complex_logic(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test complex JavaScript logic with multiple branching and nesting.
+
+    Mathematical Breakdown:
+    - complexity: 5.0 (1.0 base + 1.0 for 'if', 1.0 for '&&', 1.0 for 'while', 1.0 for 'if')
+    - nesting_depth: 3 (if -> while -> if)
+    - loc: 11
+    - ACL = (3 * 2.0) + (5.0 * 1.5) + (11 / 50.0) = 6 + 7.5 + 0.22 = 13.72
+    """
     js_file = tmp_path / "complex.js"
     js_file.write_text(
         """
@@ -126,6 +171,9 @@ function complex(a, b) {
 
 
 def test_score_file(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test scoring of a TypeScript file.
+    """
     ts_file = tmp_path / "score.ts"
     ts_file.write_text(
         """
@@ -146,6 +194,9 @@ function add(a: number, b: number): number {
 
 
 def test_score_file_untyped_ts(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test scoring of an untyped TypeScript file, verifying Type Safety penalty.
+    """
     ts_file = tmp_path / "score_bad.ts"
     ts_file.write_text(
         """

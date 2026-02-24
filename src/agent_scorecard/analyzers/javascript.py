@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING, cast
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Language, Parser, Node
