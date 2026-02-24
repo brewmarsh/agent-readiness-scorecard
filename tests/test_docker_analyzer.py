@@ -1,5 +1,5 @@
 import pytest
-from src.agent_scorecard.analyzers.docker import DockerAnalyzer
+from agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
 @pytest.fixture
