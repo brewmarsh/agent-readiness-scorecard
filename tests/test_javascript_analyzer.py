@@ -1,13 +1,14 @@
 import pytest
+from pathlib import Path
 from src.agent_scorecard.analyzers.javascript import JavascriptAnalyzer
 
 
 @pytest.fixture
-def js_analyzer():
+def js_analyzer() -> JavascriptAnalyzer:
     return JavascriptAnalyzer()
 
 
-def test_js_simple_function(js_analyzer, tmp_path):
+def test_js_simple_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     js_file = tmp_path / "test.js"
     js_file.write_text(
         """
@@ -32,7 +33,7 @@ function add(a, b) {
     assert func["acl"] == 5.12
 
 
-def test_js_arrow_function(js_analyzer, tmp_path):
+def test_js_arrow_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     js_file = tmp_path / "arrow.js"
     js_file.write_text(
         """
@@ -53,7 +54,7 @@ const mul = (a, b) => {
     assert func["loc"] == 3
 
 
-def test_ts_typed_function(js_analyzer, tmp_path):
+def test_ts_typed_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     ts_file = tmp_path / "typed.ts"
     ts_file.write_text(
         """
@@ -70,7 +71,7 @@ function add(a: number, b: number): number {
     assert func["is_typed"] is True
 
 
-def test_ts_untyped_function(js_analyzer, tmp_path):
+def test_ts_untyped_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     ts_file = tmp_path / "untyped.ts"
     ts_file.write_text(
         """
@@ -87,7 +88,7 @@ function add(a, b) {
     assert func["is_typed"] is False
 
 
-def test_js_complex_logic(js_analyzer, tmp_path):
+def test_js_complex_logic(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     js_file = tmp_path / "complex.js"
     js_file.write_text(
         """
@@ -124,7 +125,7 @@ function complex(a, b) {
     assert func["nesting_depth"] == 3
 
 
-def test_score_file(js_analyzer, tmp_path):
+def test_score_file(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     ts_file = tmp_path / "score.ts"
     ts_file.write_text(
         """
@@ -144,7 +145,7 @@ function add(a: number, b: number): number {
     assert type_safety == 100.0
 
 
-def test_score_file_untyped_ts(js_analyzer, tmp_path):
+def test_score_file_untyped_ts(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     ts_file = tmp_path / "score_bad.ts"
     ts_file.write_text(
         """
@@ -165,414 +166,84 @@ function add(a, b) {
     assert "Type Safety Index" in details
 
 
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
-
-# Auto-remediated: Added PEP 484 type hints (Verified)
+def test_callback_hell(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test that deeply nested asynchronous callbacks increase the nesting_depth of the parent function.
+
+    Mathematical Breakdown for 'outer':
+    - complexity: 1.0 (base)
+    - nesting_depth: 3 (3 levels of nested anonymous functions)
+    - loc: 9 (lines 2 to 10)
+    - ACL = (3 * 2.0) + (1.0 * 1.5) + (9 / 50.0) = 6 + 1.5 + 0.18 = 7.68
+    """
+    js_file = tmp_path / "callback_hell.js"
+    js_file.write_text(
+        """
+function outer() {
+    setTimeout(() => {
+        setTimeout(() => {
+            setTimeout(() => {
+                console.log("Hell");
+            }, 100);
+        }, 100);
+    }, 100);
+}
+""",
+        encoding="utf-8",
+    )
+
+    metrics = js_analyzer.get_function_stats(str(js_file))
+    # Functions: outer, and 3 nested arrow functions
+    assert len(metrics) == 4
+
+    outer = next(m for m in metrics if m["name"] == "outer")
+    assert outer["nesting_depth"] == 3
+    assert outer["acl"] == 7.68
+
+
+def test_inline_arrow_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test that inline arrow functions (e.g., as callbacks in .map()) are identified as functional units.
+
+    Mathematical Breakdown for the arrow function 'x => x * 2':
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 1 (single line arrow function)
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (1 / 50.0) = 0 + 1.5 + 0.02 = 1.52
+    """
+    js_file = tmp_path / "inline.js"
+    js_file.write_text(
+        "const doubled = [1, 2, 3].map(x => x * 2);",
+        encoding="utf-8",
+    )
+
+    metrics = js_analyzer.get_function_stats(str(js_file))
+    assert len(metrics) == 1
+    func = metrics[0]
+    assert func["name"] == "anonymous"
+    assert func["loc"] == 1
+    assert func["nesting_depth"] == 0
+    assert func["acl"] == 1.52
+
+
+def test_missing_tree_sitter_graceful_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Test that the JavascriptAnalyzer handles missing tree-sitter gracefully.
+
+    Mocking HAS_TREE_SITTER to False should result in an empty list of metrics
+    as the analyzer cannot proceed without the underlying parser.
+    """
+    # Mock the flag that indicates tree-sitter presence
+    monkeypatch.setattr(
+        "src.agent_scorecard.analyzers.javascript.HAS_TREE_SITTER", False
+    )
+
+    analyzer = JavascriptAnalyzer()
+    p = tmp_path / "valid.js"
+    p.write_text("function a() {}", encoding="utf-8")
+
+    # Should not raise an exception and should return an empty list
+    stats = analyzer.get_function_stats(str(p))
+    assert stats == []

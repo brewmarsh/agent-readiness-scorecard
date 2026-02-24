@@ -1,16 +1,33 @@
+import logging
 from typing import Dict, Any, List, Tuple, Optional
-from tree_sitter import Language, Parser, Node
-import tree_sitter_javascript
-import tree_sitter_typescript
+
+try:
+    from tree_sitter import Language, Parser, Node
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+
+    HAS_TREE_SITTER = True
+except ImportError:
+    HAS_TREE_SITTER = False
+    Language = Any
+    Parser = Any
+    Node = Any
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
+logger = logging.getLogger(__name__)
+
 # Initialize languages
-JS_LANGUAGE = Language(tree_sitter_javascript.language())
-TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+if HAS_TREE_SITTER:
+    JS_LANGUAGE = Language(tree_sitter_javascript.language())
+    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+else:
+    JS_LANGUAGE = None
+    TS_LANGUAGE = None
+    TSX_LANGUAGE = None
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -18,6 +35,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Analyzes JavaScript and TypeScript files using tree-sitter.
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
+
+    @property
+    def language(self) -> str:
+        return "JavaScript"
 
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
@@ -126,6 +147,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
+        if not HAS_TREE_SITTER:
+            logger.warning("tree-sitter or its language grammars are not installed.")
+            return []
+
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
@@ -249,7 +274,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if current_depth > max_depth:
                 max_depth = current_depth
 
-            # Control flow structures increase depth
+            # Control flow structures and anonymous functions increase depth
             if n.type in (
                 "if_statement",
                 "for_statement",
@@ -259,16 +284,19 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 "try_statement",
                 "catch_clause",
                 "switch_statement",
+                "arrow_function",
+                "function_expression",
             ):
                 next_depth = current_depth + 1
             else:
                 next_depth = current_depth
 
             for child in n.children:
+                # We skip named function declarations and method definitions for depth
+                # but we visit arrow_functions and function_expressions because they
+                # are often used as callbacks (anonymous functions).
                 if child.type not in (
                     "function_declaration",
-                    "function_expression",
-                    "arrow_function",
                     "method_definition",
                 ):
                     visit(child, next_depth)
