@@ -40,6 +40,11 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 * *Value:* Infrastructure as Code is critical context. Complex `RUN` commands and poor practices reduce agent ability to modify environments safely. Evaluated using the formula: `ACL = (Chained Commands * 1.5) + (Lines * 0.5)`.
 
 
+* **Config Analysis:** [COMPLETED]
+* *Feature:* Introduction of a `ConfigAnalyzer` to evaluate the Agent Cognitive Load (ACL) of configuration files (JSON, YAML, TOML).
+* *Value:* Highly nested configuration files increase the risk of Agent misconfiguration. Evaluated using the formula: `ACL = (Max Depth * 2) + (LOC / 50)`.
+
+
 * **Dynamic Context Economics:** [COMPLETED]
 * *Feature:* Map the import graph to calculate the *cumulative* token load of a file plus its required dependencies.
 * *Value:* An agent cannot edit a file in isolation if it relies on a "God Module." The token budget must reflect the entire context window required to understand the target unit. Implemented with a 32,000 token limit.

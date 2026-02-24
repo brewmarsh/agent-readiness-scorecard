@@ -15,6 +15,7 @@ dependencies = [
     "tiktoken",
     "networkx",
     "tomli; python_version < '3.11'",
+    "PyYAML",
     "litellm",
     "tree-sitter>=0.22.0",
     "tree-sitter-javascript",

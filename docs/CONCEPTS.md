@@ -19,6 +19,11 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Threshold:** instructions with ACL > 15 are "Hallucination Zones."
 * **Strategy:** Break down complex RUN instructions into smaller, logical steps or use scripts. Avoid excessively long chained commands.
 
+### Config ACL
+* **Formula:** $ACL = (Max Depth * 2) + (LOC / 50)$
+* **Threshold:** files with ACL > 15 are "Hallucination Zones."
+* **Strategy:** Flat is better than nested. Keep configuration files shallow and well-documented.
+
 ## 2. Dependency Entanglement
 Agents traverse code like a graph.
 * **Circular Dependencies:** Cause infinite recursion loops in Agent planning.

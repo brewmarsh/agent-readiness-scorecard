@@ -6,6 +6,7 @@ from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
 from .analyzers.docker import DockerAnalyzer
 from .analyzers.javascript import JavascriptAnalyzer
+from .analyzers.config import ConfigAnalyzer
 from . import auditor
 from . import dependencies
 from .types import FileAnalysisResult, AnalysisResult
@@ -52,6 +53,14 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
         or filepath.endswith(".tsx")
     ):
         return JavascriptAnalyzer()
+
+    if (
+        filepath.endswith(".json")
+        or filepath.endswith(".yaml")
+        or filepath.endswith(".yml")
+        or filepath.endswith(".toml")
+    ):
+        return ConfigAnalyzer()
 
     raise ValueError(f"Unsupported file type: {filepath}")
 
