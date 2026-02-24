@@ -19,6 +19,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
+    @property
+    def language(self) -> str:
+        return "JavaScript"
+
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
             return TSX_LANGUAGE
