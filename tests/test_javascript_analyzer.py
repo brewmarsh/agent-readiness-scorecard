@@ -267,9 +267,7 @@ def test_missing_tree_sitter_graceful_fail(
     Test that the JavascriptAnalyzer handles missing tree-sitter gracefully.
     """
     # Mock the flag that indicates tree-sitter presence
-    monkeypatch.setattr(
-        "agent_scorecard.analyzers.javascript.HAS_TREE_SITTER", False
-    )
+    monkeypatch.setattr("agent_scorecard.analyzers.javascript.HAS_TREE_SITTER", False)
 
     analyzer = JavascriptAnalyzer()
     p = tmp_path / "valid.js"
