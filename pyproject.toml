@@ -16,9 +16,9 @@ dependencies = [
     "networkx",
     "tomli; python_version < '3.11'",
     "litellm",
-    "tree-sitter>=0.21.0",
-    "tree-sitter-javascript>=0.21.0",
-    "tree-sitter-typescript>=0.21.0",
+    "tree-sitter>=0.22.0",
+    "tree-sitter-javascript",
+    "tree-sitter-typescript",
 ]
 requires-python = ">=3.10"
 
@@ -49,6 +49,7 @@ verbosity = "summary"
 report_style = "actionable"
 
 [tool.mypy]
+mypy_path = "src"
 explicit_package_bases = true
 namespace_packages = true
 

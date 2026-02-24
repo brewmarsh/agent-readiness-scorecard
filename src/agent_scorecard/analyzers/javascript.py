@@ -1,30 +1,16 @@
 from typing import Dict, Any, List, Tuple, Optional
-
-try:
-    from tree_sitter import Language, Parser, Node
-    import tree_sitter_javascript
-    import tree_sitter_typescript
-
-    HAS_TREE_SITTER = True
-except ImportError:
-    HAS_TREE_SITTER = False
-    Language = Any  # type: ignore
-    Parser = Any  # type: ignore
-    Node = Any  # type: ignore
+from tree_sitter import Language, Parser, Node
+import tree_sitter_javascript
+import tree_sitter_typescript
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-if HAS_TREE_SITTER:
-    JS_LANGUAGE = Language(tree_sitter_javascript.language())
-    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
-else:
-    JS_LANGUAGE = None  # type: ignore
-    TS_LANGUAGE = None  # type: ignore
-    TSX_LANGUAGE = None  # type: ignore
+JS_LANGUAGE = Language(tree_sitter_javascript.language())
+TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -35,19 +21,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
     @property
     def language(self) -> str:
-        return "JavaScript"
-
-    def __init__(self) -> None:
-        if not HAS_TREE_SITTER:
-            print(
-                "Warning: tree-sitter or language grammars not found. JavaScript/TypeScript analysis will be limited."
-            )
-            print(
-                "Install them using: uv add tree-sitter>=0.21.0 tree-sitter-javascript>=0.21.0 tree-sitter-typescript>=0.21.0"
-            )
-            self.parser = None
-        else:
-            self.parser = Parser()
+        return "Javascript"
 
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
@@ -66,10 +40,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
-        if not HAS_TREE_SITTER:
-            loc = self._get_loc(filepath)
-            return 100, "", loc, 0.0, 100.0, []
-
         p_thresholds = profile.get("thresholds", {})
 
         if thresholds is None:
@@ -160,9 +130,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
-        if not HAS_TREE_SITTER:
-            return []
-
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
@@ -205,11 +172,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            if name_node and name_node.text:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
-            if name_node and name_node.text:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
@@ -258,7 +225,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
                 if (
                     operator
-                    and operator.text
+                    and operator.text is not None
                     and operator.text.decode("utf-8") in ("&&", "||")
                 ):
                     complexity += 1.0
@@ -338,7 +305,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if param and self._has_type_annotation(param):
+                if param is not None and self._has_type_annotation(param):
                     return True
 
         return False

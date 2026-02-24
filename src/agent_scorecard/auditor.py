@@ -7,6 +7,7 @@ from .auditor_utils import (
     _get_critical_files_content,
     _get_project_signatures,
     _check_agents_md,
+    _find_agent_context_file,
     _check_linter_config,
     _check_lock_file,
     _validate_pyproject,
@@ -131,8 +132,9 @@ def check_environment_health(path: str) -> EnvironmentHealth:
     Returns:
         EnvironmentHealth: Dictionary containing the status of various environment checks.
     """
-    results = {
+    results: EnvironmentHealth = {
         "agents_md": False,
+        "context_file": None,
         "linter_config": False,
         "lock_file": False,
         "pyproject_valid": True,
@@ -145,6 +147,7 @@ def check_environment_health(path: str) -> EnvironmentHealth:
     root_files = os.listdir(base_dir)
 
     results["agents_md"] = _check_agents_md(root_files)
+    results["context_file"] = _find_agent_context_file(root_files)
     results["linter_config"] = _check_linter_config(root_files)
     results["lock_file"] = _check_lock_file(root_files)
     results["pyproject_valid"] = _validate_pyproject(base_dir, root_files)

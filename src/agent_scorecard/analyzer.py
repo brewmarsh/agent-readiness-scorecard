@@ -8,6 +8,7 @@ from .analyzers.docker import DockerAnalyzer
 from .analyzers.javascript import JavascriptAnalyzer
 from . import auditor
 from . import dependencies
+from .auditor_utils import _find_agent_context_file
 from .types import FileAnalysisResult, AnalysisResult
 
 # Re-export metrics for backward compatibility
@@ -60,6 +61,8 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """
     Checks for existence of agent-critical markdown files.
 
+    Supports flexible agent context files (agents.md, .cursorrules, etc.).
+
     Args:
         root_path (str): The root path of the project.
         required_files (List[str]): List of filenames required for the agent.
@@ -68,12 +71,18 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
         List[str]: List of missing required files.
     """
     missing = []
-    root_files = (
-        [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
-    )
+    if not os.path.isdir(root_path):
+        return required_files
+
+    root_files = os.listdir(root_path)
+    root_files_lower = [f.lower() for f in root_files]
 
     for req in required_files:
-        if req.lower() not in root_files:
+        if req.lower() == "agents.md":
+            # Flexible check for any valid agent context file
+            if not _find_agent_context_file(root_files):
+                missing.append(req)
+        elif req.lower() not in root_files_lower:
             missing.append(req)
     return missing
 
