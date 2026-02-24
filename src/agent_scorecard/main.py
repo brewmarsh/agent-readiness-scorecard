@@ -134,7 +134,8 @@ def _print_environment_health(
         context_label = f"Context File ({health['context_file']})"
 
     health_table.add_row(
-        context_label, "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]"
+        context_label,
+        "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]",
     )
     health_table.add_row(
         "Linter Config",
