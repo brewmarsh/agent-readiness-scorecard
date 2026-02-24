@@ -1,30 +1,16 @@
 from typing import Dict, Any, List, Tuple, Optional
-
-try:
-    from tree_sitter import Language, Parser, Node
-    import tree_sitter_javascript
-    import tree_sitter_typescript
-
-    HAS_TREE_SITTER = True
-except ImportError:
-    HAS_TREE_SITTER = False
-    Language = Any  # type: ignore
-    Parser = Any  # type: ignore
-    Node = Any  # type: ignore
+from tree_sitter import Language, Parser, Node
+import tree_sitter_javascript
+import tree_sitter_typescript
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-if HAS_TREE_SITTER:
-    JS_LANGUAGE = Language(tree_sitter_javascript.language())
-    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
-else:
-    JS_LANGUAGE = None  # type: ignore
-    TS_LANGUAGE = None  # type: ignore
-    TSX_LANGUAGE = None  # type: ignore
+JS_LANGUAGE = Language(tree_sitter_javascript.language())
+TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -33,23 +19,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
-    def __init__(self) -> None:
-        # RESOLUTION: Robust initialization from main
-        if not HAS_TREE_SITTER:
-            print(
-                "Warning: tree-sitter or language grammars not found. JavaScript/TypeScript analysis will be limited."
-            )
-            print(
-                "Install them using: uv add tree-sitter>=0.21.0 tree-sitter-javascript>=0.21.0 tree-sitter-typescript>=0.21.0"
-            )
-            self.parser = None
-        else:
-            self.parser = Parser()
-
     @property
     def language(self) -> str:
-        # RESOLUTION: Standardized capitalization
-        return "JavaScript"
+        return "Javascript"
 
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
@@ -68,10 +40,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
-        if not HAS_TREE_SITTER:
-            loc = self._get_loc(filepath)
-            return 100, "", loc, 0.0, 100.0, []
-
         p_thresholds = profile.get("thresholds", {})
 
         if thresholds is None:
@@ -162,9 +130,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
-        if not HAS_TREE_SITTER:
-            return []
-
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
@@ -207,7 +172,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            # RESOLUTION: Explicit null checks for node and text properties
             if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
@@ -236,6 +200,8 @@ class JavascriptAnalyzer(BaseAnalyzer):
     def _calculate_complexity(self, node: Node) -> float:
         """
         Calculates cyclomatic complexity.
+        Branching nodes: if, for, while, do, switch_case, catch, ternary (conditional_expression).
+        Logical operators: &&, ||.
         """
         complexity = 1.0
 
@@ -255,7 +221,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             elif n.type == "binary_expression":
                 operator = n.child_by_field_name("operator")
                 if not operator and n.child_count >= 2:
-                    operator = n.child(1)
+                    operator = n.child(1)  # fallback
 
                 if (
                     operator
@@ -265,6 +231,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
                     complexity += 1.0
 
             for child in n.children:
+                # Don't descend into nested functions for complexity of THIS function
                 if child.type not in (
                     "function_declaration",
                     "function_expression",
@@ -273,6 +240,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 ):
                     visit(child)
 
+        # Start visiting children of the function node
         for child in node.children:
             visit(child)
 
@@ -289,6 +257,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if current_depth > max_depth:
                 max_depth = current_depth
 
+            # Control flow structures increase depth
             if n.type in (
                 "if_statement",
                 "for_statement",
@@ -312,6 +281,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 ):
                     visit(child, next_depth)
 
+        # Initial depth is 0 relative to function body
         body = node.child_by_field_name("body")
         if body:
             visit(body, 0)
@@ -325,15 +295,16 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Checks if the function has type annotations.
         """
+        # Return type
         return_type = node.child_by_field_name("return_type")
         if return_type:
             return True
 
+        # Parameters
         params = node.child_by_field_name("parameters")
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                # RESOLUTION: Robust null check for parameter node
                 if param is not None and self._has_type_annotation(param):
                     return True
 
