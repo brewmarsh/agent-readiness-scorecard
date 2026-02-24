@@ -179,9 +179,7 @@ class ConfigAnalyzer(BaseAnalyzer):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return sum(
-                    1
-                    for line in f
-                    if line.strip() and not line.strip().startswith("#")
+                    1 for line in f if line.strip() and not line.strip().startswith("#")
                 )
         except Exception:
             return 0

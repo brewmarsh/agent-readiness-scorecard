@@ -2,23 +2,21 @@ import pytest
 import json
 from agent_scorecard.analyzers.config import ConfigAnalyzer
 
+
 @pytest.fixture
 def analyzer():
     return ConfigAnalyzer()
 
+
 def test_config_analyzer_language(analyzer):
     assert analyzer.language == "Config"
+
 
 def test_json_depth(analyzer, tmp_path):
     config = {
         "server": {
             "port": 8080,
-            "database": {
-                "host": "localhost",
-                "credentials": {
-                    "user": "admin"
-                }
-            }
+            "database": {"host": "localhost", "credentials": {"user": "admin"}},
         }
     }
     config_file = tmp_path / "config.json"
@@ -53,6 +51,7 @@ def test_json_depth(analyzer, tmp_path):
     expected_acl = (3 * 2.0) + (loc / 50.0)
     assert stats[0]["acl"] == pytest.approx(expected_acl)
 
+
 def test_yaml_depth(analyzer, tmp_path):
     yaml_content = """
 server:
@@ -68,7 +67,8 @@ server:
 
     stats = analyzer.get_function_stats(str(config_file))
     assert stats[0]["nesting_depth"] == 3
-    assert stats[0]["loc"] == 6 # server, port, database, host, credentials, user
+    assert stats[0]["loc"] == 6  # server, port, database, host, credentials, user
+
 
 def test_malformed_config(analyzer, tmp_path):
     config_file = tmp_path / "bad.json"
@@ -80,6 +80,7 @@ def test_malformed_config(analyzer, tmp_path):
     )
     assert score == 80
     assert "Malformed Configuration File" in details
+
 
 def test_acl_penalties(analyzer, tmp_path):
     # Create a very deep config to trigger penalties
@@ -99,7 +100,7 @@ def test_acl_penalties(analyzer, tmp_path):
 
     # ACL = 6 * 2 + 1/50 = 12.02 -> Yellow (> 10)
     score, details, _, _, _, _ = analyzer.score_file(str(config_file), profile={})
-    assert score == 95 # 100 - 5
+    assert score == 95  # 100 - 5
     assert "Yellow ACL detected" in details
 
     # Even deeper
@@ -109,5 +110,5 @@ def test_acl_penalties(analyzer, tmp_path):
         json.dump(way_deep, f)
 
     score, details, _, _, _, _ = analyzer.score_file(str(config_file), profile={})
-    assert score == 85 # 100 - 15
+    assert score == 85  # 100 - 15
     assert "Red ACL detected" in details
