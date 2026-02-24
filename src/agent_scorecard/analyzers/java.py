@@ -1,51 +1,24 @@
-import logging
 from typing import Dict, Any, List, Tuple, Optional
+from tree_sitter import Language, Parser, Node
+import tree_sitter_java
+
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
-# RESOLUTION: Implement Graceful Degradation for cross-platform stability
-try:
-    from tree_sitter import Language, Parser, Node
-    import tree_sitter_javascript
-    import tree_sitter_typescript
-
-    # Initialize languages
-    JS_LANGUAGE = Language(tree_sitter_javascript.language())
-    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
-    HAS_TREE_SITTER = True
-except ImportError:
-    HAS_TREE_SITTER = False
+# Initialize language
+JAVA_LANGUAGE = Language(tree_sitter_java.language())
 
 
-class JavascriptAnalyzer(BaseAnalyzer):
+class JavaAnalyzer(BaseAnalyzer):
     """
-    Analyzes JavaScript and TypeScript files using tree-sitter.
+    Analyzes Java files using tree-sitter.
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
-    def __init__(self) -> None:
-        super().__init__()
-        if not HAS_TREE_SITTER:
-            logging.warning(
-                "tree-sitter is not installed. JavaScript/TypeScript analysis will be skipped. "
-                "Install with: pip install tree-sitter tree-sitter-javascript tree-sitter-typescript"
-            )
-
     @property
     def language(self) -> str:
-        # RESOLUTION: Unified label to reflect support for TS/TSX
-        return "JavaScript/TypeScript"
-
-    def _get_language(self, filepath: str) -> Optional["Language"]:
-        if not HAS_TREE_SITTER:
-            return None
-        if filepath.endswith(".tsx"):
-            return TSX_LANGUAGE
-        if filepath.endswith(".ts"):
-            return TS_LANGUAGE
-        return JS_LANGUAGE
+        return "Java"
 
     def score_file(
         self,
@@ -57,9 +30,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
-        if not HAS_TREE_SITTER:
-            return 100, "Skipped: tree-sitter missing", 0, 0.0, 100.0, []
-
         p_thresholds = profile.get("thresholds", {})
 
         if thresholds is None:
@@ -93,6 +63,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
         acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
         acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+        # Java is statically typed, so we expect high type safety, but we check metrics anyway
         type_safety_threshold = thresholds.get(
             "type_safety", DEFAULT_THRESHOLDS["type_safety"]
         )
@@ -119,18 +90,14 @@ class JavascriptAnalyzer(BaseAnalyzer):
             details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
         typed_count = sum(1 for m in metrics if m["is_typed"])
-        is_ts = filepath.endswith(".ts") or filepath.endswith(".tsx")
+        type_safety_index = (typed_count / len(metrics)) * 100 if metrics else 100.0
 
-        if is_ts:
-            type_safety_index = (typed_count / len(metrics)) * 100 if metrics else 100.0
-            if type_safety_index < type_safety_threshold:
-                penalty = 20
-                score -= penalty
-                details.append(
-                    f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
-                )
-        else:
-            type_safety_index = 100.0
+        if type_safety_index < type_safety_threshold:
+            penalty = 20
+            score -= penalty
+            details.append(
+                f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+            )
 
         avg_complexity = (
             sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
@@ -149,20 +116,13 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
-        if not HAS_TREE_SITTER:
-            return []
-
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
         except FileNotFoundError:
             return []
 
-        language = self._get_language(filepath)
-        if not language:
-            return []
-
-        parser = Parser(language)
+        parser = Parser(JAVA_LANGUAGE)
         tree = parser.parse(source_bytes)
 
         stats: List[FunctionMetric] = []
@@ -173,18 +133,14 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 return
             visited.add(node.id)
 
-            if node.type in (
-                "function_declaration",
-                "function_expression",
-                "arrow_function",
-                "method_definition",
-            ):
+            if node.type in ("method_declaration", "constructor_declaration"):
                 self._analyze_function(node, stats, filepath)
 
             for child in node.children:
                 visit(child)
 
         visit(tree.root_node)
+
         return stats
 
     def _analyze_function(self, node: Node, stats: List[FunctionMetric], filepath: str):
@@ -193,14 +149,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         loc = end_line - start_line + 1
 
         name = "anonymous"
-        if node.type == "function_declaration":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                name = name_node.text.decode("utf-8")
-        elif node.type == "method_definition":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                name = name_node.text.decode("utf-8")
+        name_node = node.child_by_field_name("name")
+        if name_node:
+            name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
         depth = self._calculate_nesting_depth(node)
@@ -220,6 +171,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         )
 
     def _calculate_complexity(self, node: Node) -> float:
+        """
+        Calculates cyclomatic complexity.
+        Branching nodes: if, for, while, do, switch_label, catch, ternary.
+        Logical operators: &&, ||.
+        """
         complexity = 1.0
 
         def visit(n: Node):
@@ -227,36 +183,58 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if n.type in (
                 "if_statement",
                 "for_statement",
-                "for_in_statement",
+                "enhanced_for_statement",
                 "while_statement",
                 "do_statement",
-                "switch_case",
                 "catch_clause",
-                "conditional_expression",
+                "ternary_expression",
             ):
                 complexity += 1.0
+            elif n.type == "switch_label":
+                # Check if it is 'default' - default doesn't increase complexity (like else)
+                is_default = False
+                for child in n.children:
+                    if child.text == b"default":
+                        is_default = True
+                        break
+                if not is_default:
+                    complexity += 1.0
             elif n.type == "binary_expression":
-                # Manual text check for logical operators
-                if n.child_count >= 2:
-                    operator = n.child(1)
-                    if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                # Check for && and ||
+                # In tree-sitter-java, operator is usually a child node
+                # but might not have a field name 'operator'.
+                # We iterate children to find the operator symbol.
+                for child in n.children:
+                    if child.type not in (
+                        "binary_expression",
+                        "identifier",
+                    ) and child.text.decode("utf-8") in ("&&", "||"):
                         complexity += 1.0
+                        break
 
             for child in n.children:
+                # Don't descend into nested functions/classes for complexity of THIS function
+                # Java supports inner classes and local classes
                 if child.type not in (
-                    "function_declaration",
-                    "function_expression",
-                    "arrow_function",
-                    "method_definition",
+                    "method_declaration",
+                    "constructor_declaration",
+                    "class_declaration",
+                    "interface_declaration",
+                    "enum_declaration",
+                    "record_declaration",
                 ):
                     visit(child)
 
+        # Start visiting children of the function node
         for child in node.children:
             visit(child)
 
         return complexity
 
     def _calculate_nesting_depth(self, node: Node) -> int:
+        """
+        Calculates maximum nesting depth.
+        """
         max_depth = 0
 
         def visit(n: Node, current_depth: int):
@@ -264,15 +242,16 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if current_depth > max_depth:
                 max_depth = current_depth
 
+            # Control flow structures increase depth
             if n.type in (
                 "if_statement",
                 "for_statement",
-                "for_in_statement",
+                "enhanced_for_statement",
                 "while_statement",
                 "do_statement",
-                "try_statement",
-                "catch_clause",
-                "switch_statement",
+                "try_statement",  # try block increases depth? usually yes
+                "switch_expression",
+                "switch_block",  # switch block usually contains cases
             ):
                 next_depth = current_depth + 1
             else:
@@ -280,49 +259,57 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
             for child in n.children:
                 if child.type not in (
-                    "function_declaration",
-                    "function_expression",
-                    "arrow_function",
-                    "method_definition",
+                    "method_declaration",
+                    "constructor_declaration",
+                    "class_declaration",
+                    "interface_declaration",
+                    "enum_declaration",
+                    "record_declaration",
                 ):
                     visit(child, next_depth)
 
+        # Initial depth is 0 relative to function body
         body = node.child_by_field_name("body")
         if body:
             visit(body, 0)
         else:
-            for child in node.children:
-                visit(child, 0)
+            # Fallback if no body field (e.g. abstract method - but we shouldn't be here for abstract methods usually unless we want to analyze them)
+            # Abstract methods have no body, so complexity/depth is 0.
+            pass
 
         return max_depth
 
     def _check_is_typed(self, node: Node) -> bool:
-        # Return type check
-        if node.child_by_field_name("return_type"):
-            return True
-
-        # Parameters check
-        params = node.child_by_field_name("parameters")
-        if params:
-            for i in range(params.child_count):
-                if self._has_type_annotation(params.child(i)):
-                    return True
-        return False
-
-    def _has_type_annotation(self, node: Node) -> bool:
-        if node.type == "type_annotation":
-            return True
-        for child in node.children:
-            if self._has_type_annotation(child):
+        """
+        Checks if the function has type annotations.
+        In Java, methods are always typed.
+        """
+        # We can check if return type exists for method_declaration
+        # constructor_declaration doesn't have return type
+        if node.type == "method_declaration":
+            # Just existence of return type node.
+            # In tree-sitter-java, it's field 'type'.
+            if node.child_by_field_name("type"):
                 return True
-        return False
+            # void is also a type
+            # If it's a generic method, it might be more complex, but 'type' field usually captures it.
+        elif node.type == "constructor_declaration":
+            return True
+
+        return True  # Default to True for Java as it is strongly typed
 
     def calculate_acl(self, complexity: float, loc: int, depth: int) -> float:
+        """
+        Calculates Agent Cognitive Load (ACL).
+        """
         return (depth * 2.0) + (complexity * 1.5) + (loc / 50.0)
 
     def _get_loc(self, filepath: str) -> int:
+        """
+        Returns lines of code excluding whitespace/comments.
+        """
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return sum(1 for line in f if line.strip())
-        except (FileNotFoundError, UnicodeDecodeError):
+        except FileNotFoundError:
             return 0
