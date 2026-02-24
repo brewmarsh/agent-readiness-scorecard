@@ -1,4 +1,5 @@
 import pytest
+from typing import Dict, Any
 from agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
@@ -88,7 +89,7 @@ RUN apt-get upgrade
 
 
 def test_docker_analyzer_scoring(docker_analyzer, sample_dockerfile):
-    profile = {"thresholds": {}}
+    profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = docker_analyzer.score_file(
         sample_dockerfile, profile
     )
@@ -108,7 +109,7 @@ ADD . /app
         encoding="utf-8",
     )
 
-    profile = {"thresholds": {}}
+    profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = docker_analyzer.score_file(
         str(bad_dockerfile), profile
     )
