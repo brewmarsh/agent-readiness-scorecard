@@ -1,7 +1,5 @@
 import pytest
-import os
 import json
-import yaml
 from agent_scorecard.analyzers.config import ConfigAnalyzer
 
 @pytest.fixture
