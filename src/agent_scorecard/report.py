@@ -126,7 +126,7 @@ def _generate_file_table_section(
         lang = res.get("language", "Unknown")
         if lang not in grouped:
             grouped[lang] = []
-        grouped[lang].append(res)
+        grouped[lang].append(cast(Dict[str, Any], res))
 
     sections = []
     for lang in sorted(grouped.keys()):

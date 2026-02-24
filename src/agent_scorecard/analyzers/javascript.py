@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
 
+# RESOLUTION: Use TYPE_CHECKING to prevent crashes during static analysis
 if TYPE_CHECKING:
     from tree_sitter import Language, Parser, Node
 
@@ -12,6 +13,7 @@ try:
     HAS_TREE_SITTER = True
 except ImportError:
     HAS_TREE_SITTER = False
+    # RESOLUTION: Fallback to Any for runtime stability when binaries are missing
     if not TYPE_CHECKING:
         Language = Any  # type: ignore
         Parser = Any  # type: ignore
@@ -40,6 +42,20 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
+    def __init__(self) -> None:
+        super().__init__()
+        # RESOLUTION: Retained robust user-facing warnings from main
+        if not HAS_TREE_SITTER:
+            print(
+                "Warning: tree-sitter or language grammars not found. JavaScript/TypeScript analysis will be limited."
+            )
+            print(
+                "Install them using: uv add tree-sitter>=0.21.0 tree-sitter-javascript>=0.21.0 tree-sitter-typescript>=0.21.0"
+            )
+            self.parser = None
+        else:
+            self.parser = Parser()
+
     @property
     def language(self) -> str:
         return "JavaScript"
@@ -67,6 +83,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
+        if not HAS_TREE_SITTER:
+            loc = self._get_loc(filepath)
+            return 100, "", loc, 0.0, 100.0, []
+
         p_thresholds = profile.get("thresholds", {})
 
         if thresholds is None:
@@ -126,7 +146,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
             details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
         typed_count = sum(1 for m in metrics if m["is_typed"])
-
         is_ts = filepath.endswith(".ts") or filepath.endswith(".tsx")
 
         if is_ts:
@@ -191,7 +210,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 visit(child)
 
         visit(tree.root_node)
-
         return stats
 
     def _analyze_function(self, node: Node, stats: List[FunctionMetric], filepath: str):
@@ -199,7 +217,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         end_line = node.end_point[0] + 1
         loc = end_line - start_line + 1
 
-        # Name
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
@@ -213,7 +230,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         complexity = self._calculate_complexity(node)
         depth = self._calculate_nesting_depth(node)
         acl = self.calculate_acl(complexity, loc, depth)
-
         is_typed = self._check_is_typed(node)
 
         stats.append(
@@ -229,11 +245,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         )
 
     def _calculate_complexity(self, node: Node) -> float:
-        """
-        Calculates cyclomatic complexity.
-        Branching nodes: if, for, while, do, switch_case, catch, ternary (conditional_expression).
-        Logical operators: &&, ||.
-        """
         complexity = 1.0
 
         def visit(n: Node):
@@ -252,7 +263,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             elif n.type == "binary_expression":
                 operator = n.child_by_field_name("operator")
                 if not operator and n.child_count >= 2:
-                    operator = n.child(1)  # fallback
+                    operator = n.child(1)
 
                 if (
                     operator
@@ -262,7 +273,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
                     complexity += 1.0
 
             for child in n.children:
-                # Don't descend into nested functions for complexity of THIS function
                 if child.type not in (
                     "function_declaration",
                     "function_expression",
@@ -271,16 +281,12 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 ):
                     visit(child)
 
-        # Start visiting children of the function node
         for child in node.children:
             visit(child)
 
         return complexity
 
     def _calculate_nesting_depth(self, node: Node) -> int:
-        """
-        Calculates maximum nesting depth.
-        """
         max_depth = 0
 
         def visit(n: Node, current_depth: int):
@@ -288,7 +294,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if current_depth > max_depth:
                 max_depth = current_depth
 
-            # Control flow structures and anonymous functions increase depth
             if n.type in (
                 "if_statement",
                 "for_statement",
@@ -306,16 +311,12 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 next_depth = current_depth
 
             for child in n.children:
-                # We skip named function declarations and method definitions for depth
-                # but we visit arrow_functions and function_expressions because they
-                # are often used as callbacks (anonymous functions).
                 if child.type not in (
                     "function_declaration",
                     "method_definition",
                 ):
                     visit(child, next_depth)
 
-        # Initial depth is 0 relative to function body
         body = node.child_by_field_name("body")
         if body:
             visit(body, 0)
@@ -326,15 +327,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
         return max_depth
 
     def _check_is_typed(self, node: Node) -> bool:
-        """
-        Checks if the function has type annotations.
-        """
-        # Return type
         return_type = node.child_by_field_name("return_type")
         if return_type:
             return True
 
-        # Parameters
         params = node.child_by_field_name("parameters")
         if params:
             for i in range(params.child_count):
@@ -355,15 +351,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         return False
 
     def calculate_acl(self, complexity: float, loc: int, depth: int) -> float:
-        """
-        Calculates Agent Cognitive Load (ACL).
-        """
         return (depth * 2.0) + (complexity * 1.5) + (loc / 50.0)
 
     def _get_loc(self, filepath: str) -> int:
-        """
-        Returns lines of code excluding whitespace/comments.
-        """
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return sum(1 for line in f if line.strip())
