@@ -3,6 +3,23 @@ import ast
 from typing import List, Dict, Set, Tuple
 
 
+def _is_analyzable_file(filename: str) -> bool:
+    """
+    Checks if a file is analyzable based on extension or name.
+    Supported types: Python, Markdown, JavaScript, TypeScript, Dockerfile.
+    """
+    return (
+        filename.endswith(".py")
+        or filename.endswith(".md")
+        or filename.endswith(".js")
+        or filename.endswith(".jsx")
+        or filename.endswith(".ts")
+        or filename.endswith(".tsx")
+        or filename == "Dockerfile"
+        or filename.startswith("Dockerfile.")
+    )
+
+
 def _scan_directory(path: str) -> List[str]:
     """
     Recursively scans a directory for analyzable files (Python, Markdown),
@@ -20,16 +37,7 @@ def _scan_directory(path: str) -> List[str]:
         if any(p.startswith(".") and p != "." for p in parts):
             continue
         for file in files:
-            if (
-                file.endswith(".py")
-                or file.endswith(".md")
-                or file.endswith(".js")
-                or file.endswith(".jsx")
-                or file.endswith(".ts")
-                or file.endswith(".tsx")
-                or file == "Dockerfile"
-                or file.startswith("Dockerfile.")
-            ):
+            if _is_analyzable_file(file):
                 analyzable_files.append(os.path.join(root, file))
     return analyzable_files
 
@@ -45,16 +53,7 @@ def collect_python_files(path: str) -> List[str]:
     Returns:
         List[str]: A list of absolute paths to analyzable files.
     """
-    if os.path.isfile(path) and (
-        path.endswith(".py")
-        or path.endswith(".md")
-        or path.endswith(".js")
-        or path.endswith(".jsx")
-        or path.endswith(".ts")
-        or path.endswith(".tsx")
-        or os.path.basename(path) == "Dockerfile"
-        or os.path.basename(path).startswith("Dockerfile.")
-    ):
+    if os.path.isfile(path) and _is_analyzable_file(os.path.basename(path)):
         return [path]
     elif os.path.isdir(path):
         return _scan_directory(path)
@@ -74,12 +73,22 @@ def _extract_imports_from_ast(tree: ast.AST) -> Set[str]:
     imported_names: Set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported_names.add(alias.name)
+            _extract_from_import_node(node, imported_names)
         elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imported_names.add(node.module)
+            _extract_from_import_from_node(node, imported_names)
     return imported_names
+
+
+def _extract_from_import_node(node: ast.Import, imported_names: Set[str]) -> None:
+    for alias in node.names:
+        imported_names.add(alias.name)
+
+
+def _extract_from_import_from_node(
+    node: ast.ImportFrom, imported_names: Set[str]
+) -> None:
+    if node.module:
+        imported_names.add(node.module)
 
 
 def parse_imports(filepath: str) -> Set[str]:
@@ -207,21 +216,34 @@ def _dfs_visit_cycle(
 
     neighbors = sorted(list(graph.get(node, set())))
     for neighbor in neighbors:
-        if neighbor in path_set:
-            try:
-                idx = current_path.index(neighbor)
-                cycle = current_path[idx:]
-                if cycle not in cycles:
-                    cycles.append(cycle[:])
-            except ValueError:
-                pass
-        elif neighbor not in visited_global:
-            _dfs_visit_cycle(
-                neighbor, graph, visited_global, path_set, current_path, cycles
-            )
+        _process_neighbor(
+            neighbor, graph, visited_global, path_set, current_path, cycles
+        )
 
     path_set.remove(node)
     current_path.pop()
+
+
+def _process_neighbor(
+    neighbor: str,
+    graph: Dict[str, Set[str]],
+    visited_global: Set[str],
+    path_set: Set[str],
+    current_path: List[str],
+    cycles: List[List[str]],
+) -> None:
+    if neighbor in path_set:
+        try:
+            idx = current_path.index(neighbor)
+            cycle = current_path[idx:]
+            if cycle not in cycles:
+                cycles.append(cycle[:])
+        except ValueError:
+            pass
+    elif neighbor not in visited_global:
+        _dfs_visit_cycle(
+            neighbor, graph, visited_global, path_set, current_path, cycles
+        )
 
 
 def _find_raw_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
