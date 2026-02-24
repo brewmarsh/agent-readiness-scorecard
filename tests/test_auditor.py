@@ -236,6 +236,31 @@ def test_check_environment_health() -> None:
             f.write("")
         res = auditor.check_environment_health(tmpdir)
         assert res["agents_md"] is True
+        assert res["context_file"] == "AGENTS.md"
+        os.remove(os.path.join(tmpdir, "AGENTS.md"))
+
+        # Verify detection of .cursorrules
+        with open(os.path.join(tmpdir, ".cursorrules"), "w") as f:
+            f.write("")
+        res = auditor.check_environment_health(tmpdir)
+        assert res["agents_md"] is True
+        assert res["context_file"] == ".cursorrules"
+        os.remove(os.path.join(tmpdir, ".cursorrules"))
+
+        # Verify detection of .windsurfrules
+        with open(os.path.join(tmpdir, ".windsurfrules"), "w") as f:
+            f.write("")
+        res = auditor.check_environment_health(tmpdir)
+        assert res["agents_md"] is True
+        assert res["context_file"] == ".windsurfrules"
+        os.remove(os.path.join(tmpdir, ".windsurfrules"))
+
+        # Verify detection of copilot-instructions.md
+        with open(os.path.join(tmpdir, "copilot-instructions.md"), "w") as f:
+            f.write("")
+        res = auditor.check_environment_health(tmpdir)
+        assert res["agents_md"] is True
+        assert res["context_file"] == "copilot-instructions.md"
 
         # Verify detection of external linter config
         with open(os.path.join(tmpdir, "ruff.toml"), "w") as f:

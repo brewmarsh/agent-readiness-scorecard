@@ -54,6 +54,7 @@ class EnvironmentHealth(TypedDict):
     """Checklist for the project's agent-readiness environment."""
 
     agents_md: bool
+    context_file: Optional[str]
     linter_config: bool
     lock_file: bool
     pyproject_valid: bool
