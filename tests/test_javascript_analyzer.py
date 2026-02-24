@@ -27,7 +27,7 @@ function add(a, b) {
     assert len(metrics) == 1
     func = metrics[0]
     assert func["name"] == "add"
-    assert func["complexity"] == 2.0  # if
+    assert func["complexity"] == 2.0  # base 1 + if statement
     assert func["nesting_depth"] == 1
     assert func["loc"] == 6
     # ACL = (1 * 2) + (2 * 1.5) + (6 / 50) = 2 + 3 + 0.12 = 5.12
@@ -48,8 +48,7 @@ const mul = (a, b) => {
     metrics = js_analyzer.get_function_stats(str(js_file))
     assert len(metrics) == 1
     func = metrics[0]
-    # Name might be anonymous for arrow function currently
-    # assert func["name"] == "anonymous"
+    # Current tree-sitter logic identifies these as arrow functions (anonymous)
     assert func["complexity"] == 1.0
     assert func["nesting_depth"] == 0
     assert func["loc"] == 3
@@ -110,19 +109,12 @@ function complex(a, b) {
     metrics = js_analyzer.get_function_stats(str(js_file))
     assert len(metrics) == 1
     func = metrics[0]
-    # Complexity:
-    # if (a && b) -> if + && = 2
-    # while -> 1
-    # if (b > 10) -> 1
-    # Total = 1 (base) + 2 + 1 + 1 = 5
-
+    # Complexity Math:
+    # 1 (base) + 1 (if) + 1 (&&) + 1 (while) + 1 (if nested) = 5.0
     assert func["complexity"] == 5.0
 
-    # Depth:
-    # if -> depth 1
-    #   while -> depth 2
-    #     if -> depth 3
-    # Max depth = 3
+    # Nesting Depth Math:
+    # 1 (if) -> 2 (while) -> 3 (if inside while)
     assert func["nesting_depth"] == 3
 
 
@@ -137,6 +129,7 @@ function add(a: number, b: number): number {
         encoding="utf-8",
     )
 
+    # Explicitly typed profile for consistency with project refactor
     profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = js_analyzer.score_file(
         str(ts_file), profile
