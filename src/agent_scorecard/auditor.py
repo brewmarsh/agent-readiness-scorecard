@@ -132,7 +132,7 @@ def check_environment_health(path: str) -> EnvironmentHealth:
     Returns:
         EnvironmentHealth: Dictionary containing the status of various environment checks.
     """
-    results = {
+    results: EnvironmentHealth = {
         "agents_md": False,
         "context_file": None,
         "linter_config": False,

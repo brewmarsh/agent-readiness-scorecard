@@ -19,6 +19,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
 
+    @property
+    def language(self) -> str:
+        return "Javascript"
+
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
             return TSX_LANGUAGE
@@ -168,11 +172,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
@@ -219,7 +223,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 if not operator and n.child_count >= 2:
                     operator = n.child(1)  # fallback
 
-                if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                if (
+                    operator
+                    and operator.text is not None
+                    and operator.text.decode("utf-8") in ("&&", "||")
+                ):
                     complexity += 1.0
 
             for child in n.children:
@@ -297,7 +305,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if self._has_type_annotation(param):
+                if param is not None and self._has_type_annotation(param):
                     return True
 
         return False
