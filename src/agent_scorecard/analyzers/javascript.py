@@ -1,5 +1,8 @@
 import logging
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from tree_sitter import Language, Parser, Node
 
 try:
     from tree_sitter import Language, Parser, Node
@@ -9,9 +12,10 @@ try:
     HAS_TREE_SITTER = True
 except ImportError:
     HAS_TREE_SITTER = False
-    Language = Any
-    Parser = Any
-    Node = Any
+    if not TYPE_CHECKING:
+        Language = Any  # type: ignore
+        Parser = Any  # type: ignore
+        Node = Any  # type: ignore
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
@@ -20,14 +24,14 @@ from ..constants import DEFAULT_THRESHOLDS
 logger = logging.getLogger(__name__)
 
 # Initialize languages
+JS_LANGUAGE: Optional["Language"] = None
+TS_LANGUAGE: Optional["Language"] = None
+TSX_LANGUAGE: Optional["Language"] = None
+
 if HAS_TREE_SITTER:
     JS_LANGUAGE = Language(tree_sitter_javascript.language())
     TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
     TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
-else:
-    JS_LANGUAGE = None
-    TS_LANGUAGE = None
-    TSX_LANGUAGE = None
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -40,12 +44,18 @@ class JavascriptAnalyzer(BaseAnalyzer):
     def language(self) -> str:
         return "JavaScript"
 
-    def _get_language(self, filepath: str) -> Language:
+    def _get_language(self, filepath: str) -> "Language":
+        lang: Optional["Language"] = None
         if filepath.endswith(".tsx"):
-            return TSX_LANGUAGE
-        if filepath.endswith(".ts"):
-            return TS_LANGUAGE
-        return JS_LANGUAGE
+            lang = TSX_LANGUAGE
+        elif filepath.endswith(".ts"):
+            lang = TS_LANGUAGE
+        else:
+            lang = JS_LANGUAGE
+
+        if lang is None:
+            raise ValueError(f"Language not initialized for {filepath}")
+        return lang
 
     def score_file(
         self,
@@ -193,11 +203,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
@@ -244,7 +254,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 if not operator and n.child_count >= 2:
                     operator = n.child(1)  # fallback
 
-                if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                if (
+                    operator
+                    and operator.text is not None
+                    and operator.text.decode("utf-8") in ("&&", "||")
+                ):
                     complexity += 1.0
 
             for child in n.children:
@@ -325,12 +339,14 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if self._has_type_annotation(param):
+                if param and self._has_type_annotation(param):
                     return True
 
         return False
 
-    def _has_type_annotation(self, node: Node) -> bool:
+    def _has_type_annotation(self, node: Optional["Node"]) -> bool:
+        if node is None:
+            return False
         if node.type == "type_annotation":
             return True
         for child in node.children:

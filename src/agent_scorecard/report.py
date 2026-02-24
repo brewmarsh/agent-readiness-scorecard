@@ -121,8 +121,8 @@ def _generate_file_table_section(
         title = "### 📂 Full File Analysis"
 
     # Group files by language
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
-    for res in stats:
+    grouped: Dict[str, List[FileAnalysisResult]] = {}
+    for res in cast(List[FileAnalysisResult], stats):
         lang = res.get("language", "Unknown")
         if lang not in grouped:
             grouped[lang] = []
