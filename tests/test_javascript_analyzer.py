@@ -73,6 +73,12 @@ const mul = (a, b) => {
 def test_ts_typed_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     """
     Test TypeScript function with type annotations.
+
+    Mathematical Breakdown:
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 3
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (3 / 50.0) = 1.56
     """
     ts_file = tmp_path / "typed.ts"
     ts_file.write_text(
@@ -93,6 +99,12 @@ function add(a: number, b: number): number {
 def test_ts_untyped_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     """
     Test TypeScript function without type annotations.
+
+    Mathematical Breakdown:
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 3
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (3 / 50.0) = 1.56
     """
     ts_file = tmp_path / "untyped.ts"
     ts_file.write_text(
@@ -169,9 +181,39 @@ function add(a: number, b: number): number {
     assert type_safety == 100.0
 
 
+def test_score_file_untyped_ts(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Test scoring of an untyped TypeScript file, verifying Type Safety penalty.
+    """
+    ts_file = tmp_path / "score_bad.ts"
+    ts_file.write_text(
+        """
+function add(a, b) {
+    return a + b;
+}
+""",
+        encoding="utf-8",
+    )
+
+    profile: Dict[str, Any] = {"thresholds": {"type_safety": 90}}
+    score, details, loc, complexity, type_safety, metrics = js_analyzer.score_file(
+        str(ts_file), profile
+    )
+
+    assert type_safety == 0.0
+    assert score < 100
+    assert "Type Safety Index" in details
+
+
 def test_callback_hell(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     """
     Test that deeply nested asynchronous callbacks increase the nesting_depth of the parent function.
+
+    Mathematical Breakdown for 'outer':
+    - complexity: 1.0 (base)
+    - nesting_depth: 3 (3 levels of nested anonymous functions)
+    - loc: 9 (lines 2 to 10)
+    - ACL = (3 * 2.0) + (1.0 * 1.5) + (9 / 50.0) = 6 + 1.5 + 0.18 = 7.68
     """
     js_code = """
 function outer() {
@@ -198,6 +240,12 @@ function outer() {
 def test_inline_arrow_function(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
     """
     Test that inline arrow functions are correctly identified.
+
+    Mathematical Breakdown for the arrow function 'x => x * 2':
+    - complexity: 1.0 (base)
+    - nesting_depth: 0
+    - loc: 1 (single line arrow function)
+    - ACL = (0 * 2.0) + (1.0 * 1.5) + (1 / 50.0) = 0 + 1.5 + 0.02 = 1.52
     """
     js_file = tmp_path / "inline.js"
     js_file.write_text(
