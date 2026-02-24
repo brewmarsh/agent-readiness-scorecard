@@ -1,16 +1,30 @@
 from typing import Dict, Any, List, Tuple, Optional
-from tree_sitter import Language, Parser, Node
-import tree_sitter_javascript
-import tree_sitter_typescript
+
+try:
+    from tree_sitter import Language, Parser, Node
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+
+    HAS_TREE_SITTER = True
+except ImportError:
+    HAS_TREE_SITTER = False
+    Language = Any  # type: ignore
+    Parser = Any  # type: ignore
+    Node = Any  # type: ignore
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-JS_LANGUAGE = Language(tree_sitter_javascript.language())
-TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+if HAS_TREE_SITTER:
+    JS_LANGUAGE = Language(tree_sitter_javascript.language())
+    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+else:
+    JS_LANGUAGE = None  # type: ignore
+    TS_LANGUAGE = None  # type: ignore
+    TSX_LANGUAGE = None  # type: ignore
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -18,6 +32,22 @@ class JavascriptAnalyzer(BaseAnalyzer):
     Analyzes JavaScript and TypeScript files using tree-sitter.
     Calculates ACL: (Depth * 2) + (Complexity * 1.5) + (LOC / 50).
     """
+
+    @property
+    def language(self) -> str:
+        return "JavaScript"
+
+    def __init__(self) -> None:
+        if not HAS_TREE_SITTER:
+            print(
+                "Warning: tree-sitter or language grammars not found. JavaScript/TypeScript analysis will be limited."
+            )
+            print(
+                "Install them using: uv add tree-sitter>=0.21.0 tree-sitter-javascript>=0.21.0 tree-sitter-typescript>=0.21.0"
+            )
+            self.parser = None
+        else:
+            self.parser = Parser()
 
     def _get_language(self, filepath: str) -> Language:
         if filepath.endswith(".tsx"):
@@ -36,6 +66,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
+        if not HAS_TREE_SITTER:
+            loc = self._get_loc(filepath)
+            return 100, "", loc, 0.0, 100.0, []
+
         p_thresholds = profile.get("thresholds", {})
 
         if thresholds is None:
@@ -126,6 +160,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
+        if not HAS_TREE_SITTER:
+            return []
+
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
@@ -168,11 +205,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text:
                 name = name_node.text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
@@ -219,7 +256,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 if not operator and n.child_count >= 2:
                     operator = n.child(1)  # fallback
 
-                if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                if (
+                    operator
+                    and operator.text
+                    and operator.text.decode("utf-8") in ("&&", "||")
+                ):
                     complexity += 1.0
 
             for child in n.children:
@@ -297,7 +338,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if self._has_type_annotation(param):
+                if param and self._has_type_annotation(param):
                     return True
 
         return False

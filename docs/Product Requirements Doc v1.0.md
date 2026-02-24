@@ -77,6 +77,11 @@ Features designed to lower the barrier to entry and shift feedback to the earlie
 * *Value:* Reduces cognitive load for developers by hiding irrelevant "passing" metrics while still providing deep-dive capabilities when needed. Integrates "Diff-Aware" reporting in CI to focus on PR-specific changes.
 
 
+* **Graceful Degradation for Parsing Binaries:** [COMPLETED]
+* *Feature:* Implementation of `try...except` blocks for external parsing libraries like `tree-sitter`.
+* *Value:* Ensures the CLI remains functional for other languages (Python, Markdown) even if specific platform binaries for JavaScript/TypeScript parsing are missing. Provides clear installation instructions when a failure occurs.
+
+
 * **Zero-Config Initiation:** An `agent-score init` command that interactively scaffolds `AGENTS.md` and default configurations.
 * **Shift-Left IDE Extension:** Real-time ACL highlighting in VS Code/JetBrains.
 * **Trend Tracking:** A `.agent-score.json` artifact to gamify improvements and track PR-over-PR agent-readiness progress.
