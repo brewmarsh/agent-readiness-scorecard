@@ -1,13 +1,14 @@
 import pytest
+from pathlib import Path
 from src.agent_scorecard.analyzers.java import JavaAnalyzer
 
 
 @pytest.fixture
-def java_analyzer():
+def java_analyzer() -> JavaAnalyzer:
     return JavaAnalyzer()
 
 
-def test_java_simple_method(java_analyzer, tmp_path):
+def test_java_simple_method(java_analyzer: JavaAnalyzer, tmp_path: Path) -> None:
     java_file = tmp_path / "Test.java"
     java_file.write_text(
         """
@@ -35,7 +36,7 @@ public class Test {
     assert func["is_typed"] is True
 
 
-def test_java_complexity(java_analyzer, tmp_path):
+def test_java_complexity(java_analyzer: JavaAnalyzer, tmp_path: Path) -> None:
     java_file = tmp_path / "Complex.java"
     java_file.write_text(
         """
@@ -64,7 +65,7 @@ public class Complex {
     assert func["nesting_depth"] == 3
 
 
-def test_java_switch(java_analyzer, tmp_path):
+def test_java_switch(java_analyzer: JavaAnalyzer, tmp_path: Path) -> None:
     java_file = tmp_path / "Switch.java"
     java_file.write_text(
         """
@@ -98,7 +99,7 @@ public class Switch {
     assert func["complexity"] == 3.0
 
 
-def test_score_file_java(java_analyzer, tmp_path):
+def test_score_file_java(java_analyzer: JavaAnalyzer, tmp_path: Path) -> None:
     java_file = tmp_path / "Score.java"
     java_file.write_text(
         """
