@@ -173,11 +173,15 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
             if name_node:
-                name = name_node.text.decode("utf-8")
+                text = name_node.text
+                if text is not None:
+                    name = text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
             if name_node:
-                name = name_node.text.decode("utf-8")
+                text = name_node.text
+                if text is not None:
+                    name = text.decode("utf-8")
 
         complexity = self._calculate_complexity(node)
         depth = self._calculate_nesting_depth(node)
@@ -223,8 +227,10 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 if not operator and n.child_count >= 2:
                     operator = n.child(1)  # fallback
 
-                if operator and operator.text.decode("utf-8") in ("&&", "||"):
-                    complexity += 1.0
+                if operator:
+                    text = operator.text
+                    if text is not None and text.decode("utf-8") in ("&&", "||"):
+                        complexity += 1.0
 
             for child in n.children:
                 # Don't descend into nested functions for complexity of THIS function
@@ -301,7 +307,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if self._has_type_annotation(param):
+                if param is not None and self._has_type_annotation(param):
                     return True
 
         return False

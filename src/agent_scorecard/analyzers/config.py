@@ -3,17 +3,17 @@ import os
 from typing import Dict, Any, List, Tuple, Optional
 
 try:
-    import yaml
+    import yaml  # type: ignore
 except ImportError:
-    yaml = None
+    yaml = None  # type: ignore
 
 try:
-    import tomllib
+    import tomllib as toml_parser
 except ImportError:
     try:
-        import tomli as tomllib
+        import tomli as toml_parser  # type: ignore
     except ImportError:
-        tomllib = None
+        toml_parser = None  # type: ignore
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
@@ -165,8 +165,8 @@ class ConfigAnalyzer(BaseAnalyzer):
             else:
                 raise ImportError("PyYAML not installed")
         elif ext == ".toml":
-            if tomllib:
-                return tomllib.loads(content)
+            if toml_parser:
+                return toml_parser.loads(content)
             else:
                 raise ImportError("TOML parser not available")
         else:

@@ -38,7 +38,8 @@ dev = [
     "types-click",
     "types-toml",
     "types-tabulate",
-    "types-networkx"
+    "types-networkx",
+    "types-PyYAML"
 ]
 
 [tool.setuptools_scm]
