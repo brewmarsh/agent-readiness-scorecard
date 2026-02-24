@@ -1,5 +1,5 @@
 import pytest
-from src.agent_scorecard.analyzers.javascript import JavascriptAnalyzer
+from agent_scorecard.analyzers.javascript import JavascriptAnalyzer
 
 
 @pytest.fixture
