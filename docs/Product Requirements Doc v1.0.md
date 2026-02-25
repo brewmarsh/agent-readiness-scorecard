@@ -40,11 +40,6 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 * *Value:* Infrastructure as Code is critical context. Complex `RUN` commands and poor practices reduce agent ability to modify environments safely. Evaluated using the formula: `ACL = (Chained Commands * 1.5) + (Lines * 0.5)`.
 
 
-* **Config Analysis:** [COMPLETED]
-* *Feature:* Introduction of a `ConfigAnalyzer` to evaluate the Agent Cognitive Load (ACL) of configuration files (JSON, YAML, TOML).
-* *Value:* Highly nested configuration files increase the risk of Agent misconfiguration. Evaluated using the formula: `ACL = (Max Depth * 2) + (LOC / 50)`.
-
-
 * **Dynamic Context Economics:** [COMPLETED]
 * *Feature:* Map the import graph to calculate the *cumulative* token load of a file plus its required dependencies.
 * *Value:* An agent cannot edit a file in isolation if it relies on a "God Module." The token budget must reflect the entire context window required to understand the target unit. Implemented with a 32,000 token limit.
@@ -79,7 +74,7 @@ Features designed to lower the barrier to entry and shift feedback to the earlie
 
 * **Noise-Reduction & Progressive Disclosure:** [COMPLETED]
 * *Feature:* Implementation of `verbosity` levels (quiet, summary, detailed) and `report_style` options (collapsed, actionable, full).
-* *Value:* Reduces cognitive load for developers by hiding irrelevant "passing" metrics while still providing deep-dive capabilities when needed. Integrates "Diff-Aware" reporting in CI to focus on PR-specific changes.
+* *Value:* Reduces cognitive load for developers by hiding irrelevant "passing" metrics while still providing deep-dive capabilities when needed. Integrates "Diff-Aware" reporting in CI to focus on PR-specific changes. Includes automated "Success State" messaging for ACL and Type Safety when targets are met, omitting empty tables.
 
 
 * **Zero-Config Initiation:** An `agent-score init` command that interactively scaffolds `AGENTS.md` and default configurations.

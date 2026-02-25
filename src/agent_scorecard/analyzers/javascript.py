@@ -41,49 +41,90 @@ class JavascriptAnalyzer(BaseAnalyzer):
         Calculates score based on the selected profile and Agent Readiness spec.
         """
         p_thresholds = profile.get("thresholds", {})
-
         if thresholds is None:
-            thresholds = {
-                "acl_yellow": p_thresholds.get(
-                    "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
-                ),
-                "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-                "type_safety": p_thresholds.get(
-                    "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-                ),
-                "token_limit": p_thresholds.get(
-                    "token_limit", DEFAULT_THRESHOLDS["token_limit"]
-                ),
-            }
+            thresholds = self._get_default_thresholds(p_thresholds)
 
         metrics = self.get_function_stats(filepath)
         loc = self._get_loc(filepath)
 
-        score = 100
-        details = []
+        score = 100.0
+        details: List[str] = []
 
+        score, details = self._apply_bloat_penalty(score, details, loc)
+
+        if not metrics:
+            return max(int(score), 0), ", ".join(details), loc, 0.0, 100.0, []
+
+        score, details = self._apply_token_penalty(
+            score, details, cumulative_tokens, thresholds
+        )
+        score, details = self._apply_acl_penalty(score, details, metrics, thresholds)
+        score, details, type_safety_index = self._apply_type_safety_penalty(
+            score, details, metrics, thresholds, filepath
+        )
+
+        avg_complexity = (
+            sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
+        )
+
+        return (
+            max(int(score), 0),
+            ", ".join(details),
+            loc,
+            avg_complexity,
+            type_safety_index,
+            metrics,
+        )
+
+    def _get_default_thresholds(self, p_thresholds: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "acl_yellow": p_thresholds.get(
+                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+            ),
+            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
+            "type_safety": p_thresholds.get(
+                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+            ),
+            "token_limit": p_thresholds.get(
+                "token_limit", DEFAULT_THRESHOLDS["token_limit"]
+            ),
+        }
+
+    def _apply_bloat_penalty(
+        self, score: float, details: List[str], loc: int
+    ) -> Tuple[float, List[str]]:
         if loc > 200:
             bloat_penalty = (loc - 200) // 10
             if bloat_penalty > 0:
                 score -= bloat_penalty
                 details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
+        return score, details
 
-        if not metrics:
-            return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
-
-        acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-        acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-        type_safety_threshold = thresholds.get(
-            "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-        )
+    def _apply_token_penalty(
+        self,
+        score: float,
+        details: List[str],
+        cumulative_tokens: int,
+        thresholds: Dict[str, Any],
+    ) -> Tuple[float, List[str]]:
         token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
-
         if cumulative_tokens > token_limit:
             penalty = 15
             score -= penalty
             details.append(
                 f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
             )
+        return score, details
+
+    def _apply_acl_penalty(
+        self,
+        score: float,
+        details: List[str],
+        metrics: List[FunctionMetric],
+        thresholds: Dict[str, Any],
+    ) -> Tuple[float, List[str]]:
+        acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+        acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
         red_count = sum(1 for m in metrics if m["acl"] > acl_red)
         yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
@@ -98,9 +139,24 @@ class JavascriptAnalyzer(BaseAnalyzer):
             score -= penalty
             details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
 
+        return score, details
+
+    def _apply_type_safety_penalty(
+        self,
+        score: float,
+        details: List[str],
+        metrics: List[FunctionMetric],
+        thresholds: Dict[str, Any],
+        filepath: str,
+    ) -> Tuple[float, List[str], float]:
         typed_count = sum(1 for m in metrics if m["is_typed"])
 
         is_ts = filepath.endswith(".ts") or filepath.endswith(".tsx")
+
+        type_safety_threshold = thresholds.get(
+            "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+        )
+        type_safety_index = 100.0
 
         if is_ts:
             type_safety_index = (typed_count / len(metrics)) * 100 if metrics else 100.0
@@ -110,21 +166,8 @@ class JavascriptAnalyzer(BaseAnalyzer):
                 details.append(
                     f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
                 )
-        else:
-            type_safety_index = 100.0
 
-        avg_complexity = (
-            sum(m["complexity"] for m in metrics) / len(metrics) if metrics else 0.0
-        )
-
-        return (
-            max(score, 0),
-            ", ".join(details),
-            loc,
-            avg_complexity,
-            type_safety_index,
-            metrics,
-        )
+        return score, details, type_safety_index
 
     def get_function_stats(self, filepath: str) -> List[FunctionMetric]:
         """
@@ -142,47 +185,37 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
         stats: List[FunctionMetric] = []
         visited = set()
-
-        def visit(node: Node):
-            if node.id in visited:
-                return
-            visited.add(node.id)
-
-            if node.type in (
-                "function_declaration",
-                "function_expression",
-                "arrow_function",
-                "method_definition",
-            ):
-                self._analyze_function(node, stats, filepath)
-
-            for child in node.children:
-                visit(child)
-
-        visit(tree.root_node)
-
+        self._visit_tree(tree.root_node, visited, stats, filepath)
         return stats
+
+    def _visit_tree(
+        self,
+        node: Node,
+        visited: set,
+        stats: List[FunctionMetric],
+        filepath: str,
+    ) -> None:
+        if node.id in visited:
+            return
+        visited.add(node.id)
+
+        if node.type in (
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        ):
+            self._analyze_function(node, stats, filepath)
+
+        for child in node.children:
+            self._visit_tree(child, visited, stats, filepath)
 
     def _analyze_function(self, node: Node, stats: List[FunctionMetric], filepath: str):
         start_line = node.start_point[0] + 1
         end_line = node.end_point[0] + 1
         loc = end_line - start_line + 1
 
-        # Name
-        name = "anonymous"
-        if node.type == "function_declaration":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                text = name_node.text
-                if text is not None:
-                    name = text.decode("utf-8")
-        elif node.type == "method_definition":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                text = name_node.text
-                if text is not None:
-                    name = text.decode("utf-8")
-
+        name = self._get_function_name(node)
         complexity = self._calculate_complexity(node)
         depth = self._calculate_nesting_depth(node)
         acl = self.calculate_acl(complexity, loc, depth)
@@ -201,96 +234,112 @@ class JavascriptAnalyzer(BaseAnalyzer):
             }
         )
 
+    def _get_function_name(self, node: Node) -> str:
+        name = "anonymous"
+        if node.type == "function_declaration":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
+        elif node.type == "method_definition":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode("utf-8")
+        return name
+
     def _calculate_complexity(self, node: Node) -> float:
         """
         Calculates cyclomatic complexity.
-        Branching nodes: if, for, while, do, switch_case, catch, ternary (conditional_expression).
-        Logical operators: &&, ||.
         """
-        complexity = 1.0
+        # Base complexity is 1.0 plus branching count
+        return 1.0 + self._count_branching_nodes(node)
 
-        def visit(n: Node):
-            nonlocal complexity
-            if n.type in (
-                "if_statement",
-                "for_statement",
-                "for_in_statement",
-                "while_statement",
-                "do_statement",
-                "switch_case",
-                "catch_clause",
-                "conditional_expression",
-            ):
-                complexity += 1.0
-            elif n.type == "binary_expression":
-                operator = n.child_by_field_name("operator")
-                if not operator and n.child_count >= 2:
-                    operator = n.child(1)  # fallback
-
-                if operator:
-                    text = operator.text
-                    if text is not None and text.decode("utf-8") in ("&&", "||"):
-                        complexity += 1.0
-
-            for child in n.children:
-                # Don't descend into nested functions for complexity of THIS function
-                if child.type not in (
-                    "function_declaration",
-                    "function_expression",
-                    "arrow_function",
-                    "method_definition",
-                ):
-                    visit(child)
-
+    def _count_branching_nodes(self, node: Node) -> float:
+        count = 0.0
         # Start visiting children of the function node
         for child in node.children:
-            visit(child)
+            count += self._visit_complexity(child)
+        return count
 
-        return complexity
+    def _visit_complexity(self, n: Node) -> float:
+        count = 0.0
+        if n.type in (
+            "if_statement",
+            "for_statement",
+            "for_in_statement",
+            "while_statement",
+            "do_statement",
+            "switch_case",
+            "catch_clause",
+            "conditional_expression",
+        ):
+            count += 1.0
+        elif n.type == "binary_expression":
+            operator = n.child_by_field_name("operator")
+            if not operator and n.child_count >= 2:
+                operator = n.child(1)  # fallback
+
+            if operator and operator.text.decode("utf-8") in ("&&", "||"):
+                count += 1.0
+
+        for child in n.children:
+            # Don't descend into nested functions for complexity of THIS function
+            if child.type not in (
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            ):
+                count += self._visit_complexity(child)
+        return count
 
     def _calculate_nesting_depth(self, node: Node) -> int:
         """
         Calculates maximum nesting depth.
         """
-        max_depth = 0
-
-        def visit(n: Node, current_depth: int):
-            nonlocal max_depth
-            if current_depth > max_depth:
-                max_depth = current_depth
-
-            # Control flow structures increase depth
-            if n.type in (
-                "if_statement",
-                "for_statement",
-                "for_in_statement",
-                "while_statement",
-                "do_statement",
-                "try_statement",
-                "catch_clause",
-                "switch_statement",
-            ):
-                next_depth = current_depth + 1
-            else:
-                next_depth = current_depth
-
-            for child in n.children:
-                if child.type not in (
-                    "function_declaration",
-                    "function_expression",
-                    "arrow_function",
-                    "method_definition",
-                ):
-                    visit(child, next_depth)
-
-        # Initial depth is 0 relative to function body
         body = node.child_by_field_name("body")
         if body:
-            visit(body, 0)
+            return self._visit_depth(body, 0)
         else:
+            # If no body (e.g. arrow function expression), check children
+            max_d = 0
             for child in node.children:
-                visit(child, 0)
+                d = self._visit_depth(child, 0)
+                if d > max_d:
+                    max_d = d
+            return max_d
 
+    def _visit_depth(self, n: Node, current_depth: int) -> int:
+        max_depth = current_depth
+
+        # Control flow structures increase depth
+        if n.type in (
+            "if_statement",
+            "for_statement",
+            "for_in_statement",
+            "while_statement",
+            "do_statement",
+            "try_statement",
+            "catch_clause",
+            "switch_statement",
+        ):
+            next_depth = current_depth + 1
+        else:
+            next_depth = current_depth
+
+        # Update max_depth if we increased it
+        if next_depth > max_depth:
+            max_depth = next_depth
+
+        for child in n.children:
+            if child.type not in (
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            ):
+                d = self._visit_depth(child, next_depth)
+                if d > max_depth:
+                    max_depth = d
         return max_depth
 
     def _check_is_typed(self, node: Node) -> bool:
@@ -307,7 +356,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
         if params:
             for i in range(params.child_count):
                 param = params.child(i)
-                if param is not None and self._has_type_annotation(param):
+                if self._has_type_annotation(param):
                     return True
 
         return False

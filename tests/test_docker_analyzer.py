@@ -1,14 +1,16 @@
 import pytest
-from agent_scorecard.analyzers.docker import DockerAnalyzer
+from pathlib import Path
+from typing import Dict, Any
+from src.agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
 @pytest.fixture
-def docker_analyzer():
+def docker_analyzer() -> DockerAnalyzer:
     return DockerAnalyzer()
 
 
 @pytest.fixture
-def sample_dockerfile(tmp_path):
+def sample_dockerfile(tmp_path: Path) -> str:
     dockerfile = tmp_path / "Dockerfile"
     dockerfile.write_text(
         """
@@ -34,7 +36,9 @@ CMD ["python", "app.py"]
     return str(dockerfile)
 
 
-def test_docker_analyzer_parsing(docker_analyzer, sample_dockerfile):
+def test_docker_analyzer_parsing(
+    docker_analyzer: DockerAnalyzer, sample_dockerfile: str
+) -> None:
     stats = docker_analyzer.get_function_stats(sample_dockerfile)
     # Instructions: FROM, WORKDIR, COPY, RUN, COPY, RUN, CMD
     assert len(stats) == 7
@@ -52,7 +56,9 @@ def test_docker_analyzer_parsing(docker_analyzer, sample_dockerfile):
     assert complex_run["acl"] == 4.5
 
 
-def test_docker_analyzer_best_practices(docker_analyzer, tmp_path):
+def test_docker_analyzer_best_practices(
+    docker_analyzer: DockerAnalyzer, tmp_path: Path
+) -> None:
     bad_dockerfile = tmp_path / "Dockerfile.bad"
     bad_dockerfile.write_text(
         """
@@ -87,8 +93,10 @@ RUN apt-get upgrade
     assert stats[3]["is_typed"] is False
 
 
-def test_docker_analyzer_scoring(docker_analyzer, sample_dockerfile):
-    profile = {"thresholds": {}}
+def test_docker_analyzer_scoring(
+    docker_analyzer: DockerAnalyzer, sample_dockerfile: str
+) -> None:
+    profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = docker_analyzer.score_file(
         sample_dockerfile, profile
     )
@@ -98,7 +106,9 @@ def test_docker_analyzer_scoring(docker_analyzer, sample_dockerfile):
     assert type_safety == 100.0
 
 
-def test_docker_analyzer_scoring_bad(docker_analyzer, tmp_path):
+def test_docker_analyzer_scoring_bad(
+    docker_analyzer: DockerAnalyzer, tmp_path: Path
+) -> None:
     bad_dockerfile = tmp_path / "Dockerfile.bad"
     bad_dockerfile.write_text(
         """

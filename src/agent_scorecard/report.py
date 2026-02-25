@@ -53,21 +53,26 @@ def _generate_acl_section(
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
-    top_acl = sorted(all_functions, key=lambda x: x.get("acl", 0), reverse=True)[:10]
+    # Filter for functions that exceed the yellow threshold
+    high_acl_functions = [
+        fn for fn in all_functions if cast(float, fn.get("acl", 0)) > acl_yellow
+    ]
+    top_acl = sorted(high_acl_functions, key=lambda x: x.get("acl", 0), reverse=True)[
+        :10
+    ]
 
     if top_acl:
         targets += "| Function | File | ACL | Status |\n"
         targets += "|----------|------|-----|--------|\n"
         for fn in top_acl:
             acl_val = cast(float, fn.get("acl", 0))
-            if acl_val > acl_yellow:
-                status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-                targets += (
-                    f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
-                )
+            status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
+            targets += (
+                f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+            )
         targets += "\n"
     else:
-        targets += "✅ No functions with high cognitive load found.\n\n"
+        targets += f"✅ All functions meet the Agent Cognitive Load (ACL) target of <= {acl_yellow}.\n\n"
     return targets
 
 

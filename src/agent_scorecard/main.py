@@ -421,7 +421,7 @@ def score(
         limit_to_files=limit_to_files,
         thresholds=thresholds,
         report_style=final_report_style,
-        config=cast(Dict[str, Any], cfg),
+        config=cfg,
     )
 
     _print_environment_health(path, results, final_verbosity)
@@ -482,7 +482,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
         path,
         "generic",
         thresholds=cast(Dict[str, Any], cfg.get("thresholds")),
-        config=cast(Dict[str, Any], cfg),
+        config=cfg,
     )
 
     stats: List[AdvisorFileResult] = []

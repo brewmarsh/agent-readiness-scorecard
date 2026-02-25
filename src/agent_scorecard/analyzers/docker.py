@@ -177,7 +177,7 @@ class DockerAnalyzer(BaseAnalyzer):
         """
         lines = content.splitlines()
         instructions = []
-        current_instruction: List[str] = []
+        current_instruction = []
         start_lineno = 0
 
         i = 0
