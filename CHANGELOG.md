@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.70.0] - 2026-02-23
+
+### Features
+- **cli:** Add dynamic `--version` string to display current package version (0362def).
+- **ci:** Enforce `beta` branch requirement across all workflows to ensure proper staging (d6ce6dd, 04784fb).
+
+### Bug Fixes
+- **types:** Resolve type safety and linting issues in CLI and analyzers (5599400, 985191e, 56e8613).
+
+### Refactoring
+- **core:** Improve module cohesion by refining dependencies between analyzers and metrics.
+
 ## [v0.60.0] - 2026-02-23
 
 ### Features
