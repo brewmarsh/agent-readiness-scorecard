@@ -76,9 +76,7 @@ class JavascriptAnalyzer(BaseAnalyzer):
             metrics,
         )
 
-    def _get_default_thresholds(
-        self, p_thresholds: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _get_default_thresholds(self, p_thresholds: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "acl_yellow": p_thresholds.get(
                 "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]

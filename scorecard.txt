@@ -1,7 +1,7 @@
 # Agent Scorecard Report
 
 **Target Agent Profile:** Standard Agent Readiness checks (ACL & Type Safety)
-**Overall Score: 73.2/100** - PASS
+**Overall Score: 92.1/100** - PASS
 
 ✅ **Status: PASSED** - This codebase is Agent-Ready.
 
@@ -11,24 +11,164 @@ ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= 10.
 
 | Function | File | ACL | Status |
 |----------|------|-----|--------|
-| `_visit_complexity` | `src/agent_scorecard/analyzers/javascript.py` | 17.1 | 🔴 Red |
-| `_visit_depth` | `src/agent_scorecard/analyzers/javascript.py` | 15.7 | 🔴 Red |
-| `_check_is_typed` | `src/agent_scorecard/analyzers/javascript.py` | 13.9 | 🟡 Yellow |
-| `_get_function_name` | `src/agent_scorecard/analyzers/javascript.py` | 13.7 | 🟡 Yellow |
-| `_calculate_nesting_depth` | `src/agent_scorecard/analyzers/javascript.py` | 12.3 | 🟡 Yellow |
-| `_get_loc` | `src/agent_scorecard/analyzers/javascript.py` | 10.7 | 🟡 Yellow |
-| `_has_type_annotation` | `src/agent_scorecard/analyzers/javascript.py` | 10.1 | 🟡 Yellow |
+| `score` | `src/agent_scorecard/main.py` | 30.0 | 🔴 Red |
+| `check_prompts` | `src/agent_scorecard/main.py` | 26.8 | 🔴 Red |
+| `generate_advisor_report` | `src/agent_scorecard/report.py` | 25.3 | 🔴 Red |
+| `_check_best_practices` | `src/agent_scorecard/analyzers/docker.py` | 25.3 | 🔴 Red |
+| `_generate_file_table_section` | `src/agent_scorecard/report.py` | 25.2 | 🔴 Red |
+| `get_function_stats` | `src/agent_scorecard/analyzers/markdown.py` | 23.9 | 🔴 Red |
+| `_ensure_project_files` | `src/agent_scorecard/fix.py` | 22.6 | 🔴 Red |
+| `_extract_signature_from_node` | `src/agent_scorecard/auditor_utils.py` | 22.5 | 🔴 Red |
+| `build_dependency_graph` | `src/agent_scorecard/graph.py` | 22.2 | 🔴 Red |
+| `generate_prompts_section` | `src/agent_scorecard/remediation.py` | 21.8 | 🔴 Red |
 
 ## 🛡️ Type Safety Index
 
 Target: >90% of functions must have explicit type signatures.
 
-| File | Type Safety Index | Status |
-| :--- | :---------------: | :----- |
-| tests/test_docker_analyzer.py | 0% | ❌ |
-| tests/test_javascript_analyzer.py | 0% | ❌ |
+✅ All files meet type safety requirements.
 
 ## 🤖 Agent Prompts for Remediation (CRAFT Format)
+
+### File: `scripts/process_scorecard.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `scripts/process_scorecard.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `main`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/auditor.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/auditor.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `get_crowded_directories`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/graph.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/graph.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `get_imports`, `resolve_module_path`, `build_dependency_graph`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/prompt_analyzer.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/prompt_analyzer.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `_check_few_shot`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/remediation.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/remediation.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `generate_prompts_section`, `generate_recommendations_report`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/dependencies.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/dependencies.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `_process_neighbor`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/analyzer.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/analyzer.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `perform_analysis`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/report.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/report.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `_generate_acl_section`, `_generate_file_table_section`, `generate_advisor_report`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/main.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/main.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `check_prompts`, `score`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/auditor_utils.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/auditor_utils.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `_validate_pyproject`, `_extract_signature_from_node`, `get_python_signatures`, `_get_critical_files_content`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/fix.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/fix.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `fix_file_issues`, `_ensure_project_files`, `_collect_target_files`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/analyzers/python.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/analyzers/python.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `score_file`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/analyzers/markdown.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/analyzers/markdown.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `score_file`, `get_function_stats`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
+
+### File: `src/agent_scorecard/analyzers/docker.py` - High Cognitive Load
+> **Context**: You are a Senior Python Engineer focused on code maintainability.
+> **Request**: Refactor functions in `src/agent_scorecard/analyzers/docker.py` with Red ACL scores.
+> **Actions**:
+> - Target functions: `score_file`, `_check_best_practices`.
+> - Extract nested logic into smaller helper functions.
+> - Ensure all units result in an ACL score < 10.
+> **Frame**: Keep functions under 50 lines. Ensure all tests pass.
+> **Template**: Markdown code blocks for the refactored code.
 
 ### File: `src/agent_scorecard/analyzers/javascript.py` - High Cognitive Load
 > **Context**: You are a Senior Python Engineer focused on code maintainability.
@@ -46,9 +186,18 @@ Target: >90% of functions must have explicit type signatures.
 #### Python
 | File | Score | Issues |
 | :--- | :---: | :--- |
-| src/agent_scorecard/analyzers/javascript.py | 33 ❌ | Bloated File: 323 lines (-12), 2 Red ACL functions (-30), 5 Yellow ACL functions (-25) |
+| src/agent_scorecard/graph.py | 55 ❌ | 3 Red ACL functions (-45) |
+| src/agent_scorecard/dependencies.py | 47 ❌ | Bloated File: 289 lines (-8), 1 Red ACL functions (-15), 6 Yellow ACL functions (-30) |
+| src/agent_scorecard/report.py | 43 ❌ | Bloated File: 225 lines (-2), 3 Red ACL functions (-45), 2 Yellow ACL functions (-10) |
+| src/agent_scorecard/main.py | 33 ❌ | Bloated File: 427 lines (-22), 2 Red ACL functions (-30), 3 Yellow ACL functions (-15) |
+| src/agent_scorecard/auditor_utils.py | 30 ❌ | 4 Red ACL functions (-60), 2 Yellow ACL functions (-10) |
+| src/agent_scorecard/fix.py | 55 ❌ | 3 Red ACL functions (-45) |
+| src/agent_scorecard/analyzers/python.py | 61 ❌ | Bloated File: 240 lines (-4), 1 Red ACL functions (-15), 4 Yellow ACL functions (-20) |
+| src/agent_scorecard/analyzers/markdown.py | 65 ❌ | 2 Red ACL functions (-30), 1 Yellow ACL functions (-5) |
+| src/agent_scorecard/analyzers/docker.py | 55 ❌ | 2 Red ACL functions (-30), 3 Yellow ACL functions (-15) |
+| src/agent_scorecard/analyzers/javascript.py | 33 ❌ | Bloated File: 325 lines (-12), 2 Red ACL functions (-30), 5 Yellow ACL functions (-25) |
 
-*Plus 1 passing files hidden.*
+*Plus 48 passing files hidden.*
 
 ---
 *Generated by Agent-Scorecard*
