@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Union, cast
+from typing import List, Dict, Any, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
@@ -67,7 +67,7 @@ def _generate_acl_section(
                 )
         targets += "\n"
     else:
-        targets += "✅ All functions meet the Agent Cognitive Load (ACL) targets.\n\n"
+        targets += "✅ No functions with high cognitive load found.\n\n"
     return targets
 
 
@@ -120,13 +120,13 @@ def _generate_file_table_section(
     else:
         title = "### 📂 Full File Analysis"
 
-    # RESOLUTION: Group files by language for multi-engine support (Python/JS/MD)
-    grouped: Dict[str, List[FileAnalysisResult]] = {}
-    for res in cast(List[FileAnalysisResult], stats):
+    # Group files by language
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for res in stats:
         lang = res.get("language", "Unknown")
         if lang not in grouped:
             grouped[lang] = []
-        grouped[lang].append(res)
+        grouped[lang].append(cast(Dict[str, Any], res))
 
     sections = []
     for lang in sorted(grouped.keys()):

@@ -29,6 +29,10 @@ def _scan_directory(path: str) -> List[str]:
                 or file.endswith(".tsx")
                 or file == "Dockerfile"
                 or file.startswith("Dockerfile.")
+                or file.endswith(".json")
+                or file.endswith(".yaml")
+                or file.endswith(".yml")
+                or file.endswith(".toml")
             ):
                 analyzable_files.append(os.path.join(root, file))
     return analyzable_files
@@ -54,6 +58,10 @@ def collect_python_files(path: str) -> List[str]:
         or path.endswith(".tsx")
         or os.path.basename(path) == "Dockerfile"
         or os.path.basename(path).startswith("Dockerfile.")
+        or path.endswith(".json")
+        or path.endswith(".yaml")
+        or path.endswith(".yml")
+        or path.endswith(".toml")
     ):
         return [path]
     elif os.path.isdir(path):

@@ -6,9 +6,9 @@ from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
 from .analyzers.docker import DockerAnalyzer
 from .analyzers.javascript import JavascriptAnalyzer
+from .analyzers.config import ConfigAnalyzer
 from . import auditor
 from . import dependencies
-from .auditor_utils import _find_agent_context_file
 from .types import FileAnalysisResult, AnalysisResult
 
 # Re-export metrics for backward compatibility
@@ -54,14 +54,20 @@ def get_analyzer(filepath: str) -> BaseAnalyzer:
     ):
         return JavascriptAnalyzer()
 
+    if (
+        filepath.endswith(".json")
+        or filepath.endswith(".yaml")
+        or filepath.endswith(".yml")
+        or filepath.endswith(".toml")
+    ):
+        return ConfigAnalyzer()
+
     raise ValueError(f"Unsupported file type: {filepath}")
 
 
 def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
     """
     Checks for existence of agent-critical markdown files.
-
-    Supports flexible agent context files (agents.md, .cursorrules, etc.).
 
     Args:
         root_path (str): The root path of the project.
@@ -71,18 +77,12 @@ def scan_project_docs(root_path: str, required_files: List[str]) -> List[str]:
         List[str]: List of missing required files.
     """
     missing = []
-    if not os.path.isdir(root_path):
-        return required_files
-
-    root_files = os.listdir(root_path)
-    root_files_lower = [f.lower() for f in root_files]
+    root_files = (
+        [f.lower() for f in os.listdir(root_path)] if os.path.isdir(root_path) else []
+    )
 
     for req in required_files:
-        if req.lower() == "agents.md":
-            # Flexible check for any valid agent context file
-            if not _find_agent_context_file(root_files):
-                missing.append(req)
-        elif req.lower() not in root_files_lower:
+        if req.lower() not in root_files:
             missing.append(req)
     return missing
 

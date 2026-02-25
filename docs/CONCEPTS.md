@@ -9,11 +9,6 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
 * **Threshold:** functions with ACL > 15 are "Hallucination Zones."
 
-### JavaScript / TypeScript ACL
-* **Formula:** $ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)$
-* **Threshold:** functions with ACL > 15 are "Hallucination Zones."
-* **Callback Hell Detection:** In JavaScript, anonymous functions (`arrow_functions` and `function_expressions`) increase the nesting depth of their parent function. This ensures that deeply nested callback structures are penalized correctly as high-ACL areas.
-
 ### Markdown ACL
 * **Formula:** $ACL = (Header Depth * 1.5) + (Tokens in Section / 100)$
 * **Threshold:** sections with ACL > 15 are "Hallucination Zones."
@@ -23,6 +18,11 @@ Agents have a "Reasoning Budget." High complexity burns tokens on logic, leaving
 * **Formula:** $ACL = (Chained Commands * 1.5) + (Lines in Instruction * 0.5)$
 * **Threshold:** instructions with ACL > 15 are "Hallucination Zones."
 * **Strategy:** Break down complex RUN instructions into smaller, logical steps or use scripts. Avoid excessively long chained commands.
+
+### Config ACL
+* **Formula:** $ACL = (Max Depth * 2) + (LOC / 50)$
+* **Threshold:** files with ACL > 15 are "Hallucination Zones."
+* **Strategy:** Flat is better than nested. Keep configuration files shallow and well-documented.
 
 ## 2. Dependency Entanglement
 Agents traverse code like a graph.

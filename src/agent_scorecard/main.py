@@ -129,13 +129,8 @@ def _print_environment_health(
     health_table.add_column("Status", justify="right")
 
     health = auditor.check_environment_health(path)
-    context_label = "Agent Context"
-    if health.get("context_file"):
-        context_label = f"Context File ({health['context_file']})"
-
     health_table.add_row(
-        context_label,
-        "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]",
+        "AGENTS.md", "[green]PASS[/green]" if health["agents_md"] else "[red]FAIL[/red]"
     )
     health_table.add_row(
         "Linter Config",
