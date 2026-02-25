@@ -5,8 +5,28 @@ on:
     branches: [ main, beta ]
 
 jobs:
-  agent-review:
+  check-branch:
+    name: 🚩 Branch Enforcement
     runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - name: Verify Base Branch
+        run: |
+          if [ "${{ github.head_ref }}" != "beta" ]; then
+            echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
+            echo "Current head branch: ${{ github.head_ref }}"
+            exit 1
+          fi
+          echo "✅ Branch check passed: PR from 'beta' to 'main'."
+
+  agent-review:
+    name: 🤖 Agent Quality Review
+    runs-on: ubuntu-latest
+    # Run if branch check passed (or was skipped for beta PRs)
+    needs: [check-branch]
+    if: |
+      always() && 
+      (needs.check-branch.result == 'success' || needs.check-branch.result == 'skipped')
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
