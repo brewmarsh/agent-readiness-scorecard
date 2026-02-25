@@ -9,8 +9,26 @@ on:
       - main
 
 jobs:
+  check-branch:
+    name: 🚩 Branch Enforcement
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - name: Verify Base Branch
+        run: |
+          if [ "${{ github.head_ref }}" != "beta" ]; then
+            echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
+            echo "Current head branch: ${{ github.head_ref }}"
+            exit 1
+          fi
+          echo "✅ Branch check passed: PR from 'beta' to 'main'."
+
   test:
     name: Test on Python ${{ matrix.python-version }}
+    needs: [check-branch]
+    if: |
+      always() &&
+      (needs.check-branch.result == 'success' || needs.check-branch.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       matrix:
