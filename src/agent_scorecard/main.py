@@ -43,7 +43,11 @@ class DefaultGroup(click.Group):
 
 
 @click.group(cls=DefaultGroup)
-@click.version_option(version=__version__)
+@click.version_option(
+    version=__version__,
+    prog_name="agent-scorecard",
+    message="%(prog)s version %(version)s",
+)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """Main entry point for the agent-scorecard CLI."""
@@ -421,7 +425,7 @@ def score(
         limit_to_files=limit_to_files,
         thresholds=thresholds,
         report_style=final_report_style,
-        config=cfg,
+        config=cast(Dict[str, Any], cfg),
     )
 
     _print_environment_health(path, results, final_verbosity)
@@ -482,7 +486,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
         path,
         "generic",
         thresholds=cast(Dict[str, Any], cfg.get("thresholds")),
-        config=cfg,
+        config=cast(Dict[str, Any], cfg),
     )
 
     stats: List[AdvisorFileResult] = []

@@ -6,7 +6,7 @@ from typing import List, Dict, Set, Tuple
 def _is_analyzable_file(filename: str) -> bool:
     """
     Checks if a file is analyzable based on extension or name.
-    Supported types: Python, Markdown, JavaScript, TypeScript, Dockerfile.
+    Supported types: Python, Markdown, JavaScript, TypeScript, Dockerfile, Config.
     """
     return (
         filename.endswith(".py")
@@ -17,6 +17,10 @@ def _is_analyzable_file(filename: str) -> bool:
         or filename.endswith(".tsx")
         or filename == "Dockerfile"
         or filename.startswith("Dockerfile.")
+        or filename.endswith(".json")
+        or filename.endswith(".yaml")
+        or filename.endswith(".yml")
+        or filename.endswith(".toml")
     )
 
 

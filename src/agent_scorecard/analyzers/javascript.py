@@ -184,14 +184,14 @@ class JavascriptAnalyzer(BaseAnalyzer):
         tree = parser.parse(source_bytes)
 
         stats: List[FunctionMetric] = []
-        visited = set()
+        visited: set[int] = set()
         self._visit_tree(tree.root_node, visited, stats, filepath)
         return stats
 
     def _visit_tree(
         self,
         node: Node,
-        visited: set,
+        visited: set[int],
         stats: List[FunctionMetric],
         filepath: str,
     ) -> None:
@@ -238,11 +238,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         name = "anonymous"
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         elif node.type == "method_definition":
             name_node = node.child_by_field_name("name")
-            if name_node:
+            if name_node and name_node.text is not None:
                 name = name_node.text.decode("utf-8")
         return name
 
@@ -278,7 +278,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
             if not operator and n.child_count >= 2:
                 operator = n.child(1)  # fallback
 
-            if operator and operator.text.decode("utf-8") in ("&&", "||"):
+            if (
+                operator
+                and operator.text is not None
+                and operator.text.decode("utf-8") in ("&&", "||")
+            ):
                 count += 1.0
 
         for child in n.children:
@@ -361,7 +365,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
 
         return False
 
-    def _has_type_annotation(self, node: Node) -> bool:
+    def _has_type_annotation(self, node: Optional[Node]) -> bool:
+        if node is None:
+            return False
         if node.type == "type_annotation":
             return True
         for child in node.children:

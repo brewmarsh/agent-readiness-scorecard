@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from typing import Dict, Any
-from src.agent_scorecard.analyzers.docker import DockerAnalyzer
+from agent_scorecard.analyzers.docker import DockerAnalyzer
 
 
 @pytest.fixture
@@ -73,11 +73,7 @@ RUN apt-get upgrade
     stats = docker_analyzer.get_function_stats(str(bad_dockerfile))
 
     # FROM python:latest -> Bad
-    assert (
-        stats[0]["instruction"] == "FROM"
-        if "instruction" in stats[0]
-        else stats[0]["name"] == "FROM"
-    )
+    assert stats[0]["name"] == "FROM"
     assert stats[0]["is_typed"] is False
 
     # ADD . /app -> Bad
@@ -118,7 +114,7 @@ ADD . /app
         encoding="utf-8",
     )
 
-    profile = {"thresholds": {}}
+    profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = docker_analyzer.score_file(
         str(bad_dockerfile), profile
     )
