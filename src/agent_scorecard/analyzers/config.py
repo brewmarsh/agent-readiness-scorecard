@@ -8,7 +8,7 @@ except ImportError:
     yaml = None  # type: ignore
 
 try:
-    import tomllib as toml_parser
+    import tomllib as toml_parser  # type: ignore
 except ImportError:
     try:
         import tomli as toml_parser  # type: ignore
