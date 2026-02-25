@@ -25,8 +25,8 @@ Target: >90% of functions must have explicit type signatures.
 
 | File | Type Safety Index | Status |
 | :--- | :---------------: | :----- |
-| tests/test_docker_analyzer.py | 0% | ❌ |
-| tests/test_javascript_analyzer.py | 0% | ❌ |
+| tests/test_config_analyzer.py | 0% | ❌ |
+| tests/test_javascript_analyzer.py | 88% | ❌ |
 
 ## 🤖 Agent Prompts for Remediation (CRAFT Format)
 
