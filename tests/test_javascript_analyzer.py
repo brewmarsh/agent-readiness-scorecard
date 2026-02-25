@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from src.agent_scorecard.analyzers.javascript import JavascriptAnalyzer
+from typing import Dict, Any
+from agent_scorecard.analyzers.javascript import JavascriptAnalyzer
 
 
 @pytest.fixture
@@ -136,7 +137,7 @@ function add(a: number, b: number): number {
         encoding="utf-8",
     )
 
-    profile = {"thresholds": {}}
+    profile: Dict[str, Any] = {"thresholds": {}}
     score, details, loc, complexity, type_safety, metrics = js_analyzer.score_file(
         str(ts_file), profile
     )
@@ -156,7 +157,7 @@ function add(a, b) {
         encoding="utf-8",
     )
 
-    profile = {"thresholds": {"type_safety": 90}}
+    profile: Dict[str, Any] = {"thresholds": {"type_safety": 90}}
     score, details, loc, complexity, type_safety, metrics = js_analyzer.score_file(
         str(ts_file), profile
     )

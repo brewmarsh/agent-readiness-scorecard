@@ -51,6 +51,7 @@ verbosity = "summary"
 report_style = "actionable"
 
 [tool.mypy]
+mypy_path = "src"
 explicit_package_bases = true
 namespace_packages = true
 
