@@ -39,39 +39,17 @@ def _collect_directory_stats(path: str) -> Tuple[int, int, int, List[str]]:
     return total_files, total_folders, max_files, crowded_dirs
 
 
-def _find_agent_context_file(root_files: List[str]) -> Optional[str]:
-    """
-    Finds any standard AI agent context file in the project.
-
-    Args:
-        root_files (List[str]): List of files in the root directory.
-
-    Returns:
-        Optional[str]: The name of the file if found, None otherwise.
-    """
-    context_files = [
-        "agents.md",
-        "copilot-instructions.md",
-        ".cursorrules",
-        ".windsurfrules",
-    ]
-    for f in root_files:
-        if f.lower() in context_files:
-            return f
-    return None
-
-
 def _check_agents_md(root_files: List[str]) -> bool:
     """
-    Checks if any agent context file exists in the root files.
+    Checks if AGENTS.md exists in the root files.
 
     Args:
         root_files (List[str]): List of files in the root directory.
 
     Returns:
-        bool: True if an agent context file exists, False otherwise.
+        bool: True if AGENTS.md exists, False otherwise.
     """
-    return _find_agent_context_file(root_files) is not None
+    return any(f.lower() == "agents.md" for f in root_files)
 
 
 def _check_linter_config(root_files: List[str]) -> bool:
@@ -209,7 +187,7 @@ def get_python_signatures(filepath: str) -> str:
 
 def _get_critical_files_content(base_dir: str) -> str:
     """
-    Reads the content of critical context files (README.md and Agent context).
+    Reads the content of critical context files (README.md, AGENTS.md).
 
     Args:
         base_dir (str): The base directory to search.
@@ -218,28 +196,16 @@ def _get_critical_files_content(base_dir: str) -> str:
         str: Concatenated content of critical files.
     """
     total_content = ""
+    critical_files = ["README.md", "AGENTS.md"]
 
-    # Always check README.md
-    root_files = os.listdir(base_dir) if os.path.isdir(base_dir) else []
-    readme_file = next((f for f in root_files if f.lower() == "readme.md"), None)
-    if readme_file:
-        readme_path = os.path.join(base_dir, readme_file)
-        try:
-            with open(readme_path, "r", encoding="utf-8", errors="ignore") as f:
-                total_content += f.read() + "\n"
-        except Exception:
-            pass
-
-    # Check for flexible agent context files
-    context_file = _find_agent_context_file(root_files)
-    if context_file:
-        cf_path = os.path.join(base_dir, context_file)
-        try:
-            with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
-                total_content += f.read() + "\n"
-        except Exception:
-            pass
-
+    for cf in critical_files:
+        cf_path = os.path.join(base_dir, cf)
+        if os.path.exists(cf_path):
+            try:
+                with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
+                    total_content += f.read() + "\n"
+            except Exception:
+                pass
     return total_content
 
 

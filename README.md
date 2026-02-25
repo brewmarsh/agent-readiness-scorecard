@@ -128,7 +128,7 @@ Your codebase starts at **100 points**. Penalties are applied for:
 | **Bloated Files** | -1 pt per 10 lines > 200 | Agents lose focus in large files. |
 | **High ACL** | -15 (Red) / -5 (Yellow) | Agent Cognitive Load: `(Depth*2) + (Complexity*1.5) + (LOC/50)`. Target <= 10. |
 | **Missing Types** | -20 pts if coverage < 90% | Agents need types to call functions correctly. |
-| **Missing Context** | -15 pts per missing file | Agent context file (`agents.md`, `.cursorrules`, etc.) acts as the System Prompt for your repo. |
+| **Missing Context** | -15 pts per missing file | `agents.md` acts as the System Prompt for your repo. |
 | **God Modules** | -10 pts per module | Modules with > 50 inbound imports overload context. |
 | **High Entropy** | -5 pts per directory | Folders with > 50 files confuse retrieval tools. |
 | **Circular Deps** | -5 pts per cycle | Causes infinite recursion in agent planning. |
@@ -139,7 +139,7 @@ To get a perfect score, your project should look like this:
 
 ```text
 my-project/
-├── agents.md          # High-level architecture map for the Agent (or .cursorrules, .windsurfrules, copilot-instructions.md)
+├── agents.md          # High-level architecture map for the Agent
 ├── instructions.md    # Testing/Linting commands for the Agent
 └── src/               # Your source code (Typed & Docstringed)
 
