@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Union, cast
+from typing import Dict, Any, List, Optional, Union, cast
 from .constants import DEFAULT_THRESHOLDS
 from .types import FileAnalysisResult, AdvisorFileResult
 from .remediation import generate_prompts_section, generate_recommendations_report
@@ -44,7 +44,7 @@ def _generate_acl_section(
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
-    # RESOLUTION: Adopted the high-fidelity formula focusing on nesting depth
+    # Formula uses AST nesting depth as the primary driver for cognitive friction
     targets += f"ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
@@ -72,6 +72,7 @@ def _generate_acl_section(
             )
         targets += "\n"
     else:
+        # RESOLUTION: Adopted descriptive success message with threshold value
         targets += f"✅ All functions meet the Agent Cognitive Load (ACL) target of <= {acl_yellow}.\n\n"
     return targets
 
@@ -125,9 +126,9 @@ def _generate_file_table_section(
     else:
         title = "### 📂 Full File Analysis"
 
-    # Group files by language
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
-    for res in stats:
+    # RESOLUTION: Group files by language for multi-engine support (Python/JS/MD)
+    grouped: Dict[str, List[FileAnalysisResult]] = {}
+    for res in cast(List[FileAnalysisResult], stats):
         lang = res.get("language", "Unknown")
         if lang not in grouped:
             grouped[lang] = []
@@ -223,7 +224,6 @@ def generate_advisor_report(
     """
     report = "# 🧠 Agent Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
 
-    # RESOLUTION: Updated Advisor report to reflect high-fidelity ACL formula
     report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)*\n\n"
 
     high_acl_files = sorted(

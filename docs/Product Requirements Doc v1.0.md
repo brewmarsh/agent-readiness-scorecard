@@ -12,7 +12,7 @@ The Agent Scorecard measures the "Physics of Agent-Code Interaction." Version 1.
 
 1. **Unassailable Accuracy:** Replace blunt heuristics with deep static analysis (AST) to measure true structural complexity.
 2. **Bring-Your-Own-LLM (BYO-LLM) Remediation:** Enable seamless, low-token automated refactoring using the user's preferred model architecture.
-3. **Frictionless DX:** Ensure the tool is immediately actionable without extensive configuration.
+3. **Frictionless DX:** Ensure the tool is immediately actionable without extensive configuration, supporting standard industry context files like `.cursorrules`.
 
 ---
 
@@ -38,6 +38,11 @@ Current heuristics (like LOC and flat Cyclomatic Complexity) can be gamed. Versi
 * **Dockerfile Analysis:** [COMPLETED]
 * *Feature:* Introduction of a `DockerAnalyzer` to evaluate complexity and best practices in Dockerfiles.
 * *Value:* Infrastructure as Code is critical context. Complex `RUN` commands and poor practices reduce agent ability to modify environments safely. Evaluated using the formula: `ACL = (Chained Commands * 1.5) + (Lines * 0.5)`.
+
+
+* **Flexible Agent Context:** [COMPLETED]
+* *Feature:* Support multiple standard AI instruction files: `agents.md`, `copilot-instructions.md`, `.cursorrules`, and `.windsurfrules`.
+* *Value:* Developers use different tools. The scorecard should adapt to existing workflows without forcing a specific filename.
 
 
 * **Dynamic Context Economics:** [COMPLETED]
