@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.60.0] - 2026-02-23
+
+### Features
+- **config:** Implement `ConfigAnalyzer` to support analysis of JSON, YAML, and TOML configuration files (90d2c9d, 0117f56).
+- **report:** Replace empty ACL tables with cleaner success messages when no violations are found (4dd92eb, 1c9772a).
+- **java:** Add `JavaAnalyzer` with tree-sitter support for Agent Cognitive Load analysis (d5065a3).
+- **javascript:** Implement comprehensive JavaScript test suite and enhance nesting depth analysis (a2e0a7d).
+- **javascript:** Implement graceful degradation for JavaScript analyzer when tree-sitter is unavailable (e7fa44d).
+- **context:** Support flexible agent context files beyond standard `AGENTS.md` (7bc146a).
+
+### Bug Fixes
+- **lint:** Resolve multiple CI failures by applying Ruff formatting and fixing unused imports (c1a3e66, cedd059).
+- **types:** Resolve all Mypy type errors across core modules and tests (36a1b36, 745845c, db93c59).
+- **javascript:** Fix `JavascriptAnalyzer` language property and import issues (5ba2294, 5d220a4).
+
+### Refactoring
+- **core:** Modularize configuration analysis and streamline reporting logic.
+- **tests:** Complete type annotations and docstrings across the expanded test suite.
+
 ## [v0.50.0] - 2026-02-23
 
 ### Features
