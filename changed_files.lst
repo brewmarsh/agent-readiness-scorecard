@@ -1,2 +1,1 @@
-src/agent_scorecard/analyzers/javascript.py
-tests/test_docker_analyzer.py
+tests/test_javascript_analyzer.py
