@@ -27,7 +27,7 @@ def _is_analyzable_file(filename: str) -> bool:
 def _scan_directory(path: str) -> List[str]:
     """
     Recursively scans a directory for analyzable files (Python, Markdown),
-    ignoring hidden directories.
+    ignoring hidden directories and common project exclusions.
 
     Args:
         path (str): The directory to scan.
@@ -36,10 +36,15 @@ def _scan_directory(path: str) -> List[str]:
         List[str]: List of absolute paths to analyzable files.
     """
     analyzable_files = []
-    for root, _, files in os.walk(path):
-        parts = root.split(os.sep)
-        if any(p.startswith(".") and p != "." for p in parts):
-            continue
+    excluded_dirs = {"node_modules", "venv", ".venv", ".git"}
+    for root, dirs, files in os.walk(path, topdown=True):
+        # Prune excluded directories and hidden directories
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in excluded_dirs and not (d.startswith(".") and d != ".")
+        ]
+
         for file in files:
             if _is_analyzable_file(file):
                 analyzable_files.append(os.path.join(root, file))
@@ -110,7 +115,7 @@ def parse_imports(filepath: str) -> Set[str]:
             code = f.read()
         tree = ast.parse(code, filename=filepath)
         return _extract_imports_from_ast(tree)
-    except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+    except (SyntaxError, ValueError, UnicodeDecodeError, FileNotFoundError):
         return set()
 
 
@@ -174,7 +179,11 @@ def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
 
     for rel_path in all_py_files:
         full_path = os.path.join(base_dir, rel_path)
-        imported_names = parse_imports(full_path)
+        # Only parse imports for Python files
+        if full_path.endswith(".py"):
+            imported_names = parse_imports(full_path)
+        else:
+            imported_names = set()
 
         for name in imported_names:
             matches = _find_imported_files(name, rel_path, all_py_files)
