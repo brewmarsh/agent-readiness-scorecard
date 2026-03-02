@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from agent_scorecard.dependencies import _scan_directory
 
+
 def test_scan_directory_exclusions(tmp_path: Path) -> None:
     """
     Tests that _scan_directory excludes node_modules, venv, .venv, .git, and hidden directories.
