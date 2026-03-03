@@ -114,3 +114,14 @@ dmypy.json
 # Pyre type checker
 .pyre/
 src/agent_scorecard/_version.py
+
+# agent-scorecard outputs
+scorecard.txt
+agent_score.log
+changed_files.lst
+ruff_errors.txt
+advise_output.txt
+agent_score.svg
+pr_body.md
+test_prompt.txt
+typing_tasks.json
