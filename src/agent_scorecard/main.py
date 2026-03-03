@@ -355,6 +355,12 @@ def fix(path: str, agent: str) -> None:
     is_flag=True,
     help="Filter results to show only failing files (score < 70).",
 )
+@click.option(
+    "--fail-under",
+    type=int,
+    default=70,
+    help="Fail if the final score is below this threshold (default: 70).",
+)
 def score(
     path: str,
     agent: str,
@@ -369,6 +375,7 @@ def score(
     sort: str,
     top: Optional[int],
     failing: bool,
+    fail_under: int,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -503,7 +510,7 @@ def score(
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-    if results["final_score"] < 70 or results.get("project_issues"):
+    if results["final_score"] < fail_under or results.get("project_issues"):
         sys.exit(1)
 
 

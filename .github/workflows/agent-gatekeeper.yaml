@@ -3,30 +3,15 @@ name: 🛡️ Agent Quality Gate
 on:
   pull_request:
     branches: [ main, beta ]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
 
 jobs:
-  check-branch:
-    name: 🚩 Branch Enforcement
+  enforcement:
+    name: 🚩 Branch & Quality Enforcement
     runs-on: ubuntu-latest
-    if: github.base_ref == 'main'
-    steps:
-      - name: Verify Base Branch
-        run: |
-          if [ "${{ github.head_ref }}" != "beta" ]; then
-            echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
-            echo "Current head branch: ${{ github.head_ref }}"
-            exit 1
-          fi
-          echo "✅ Branch check passed: PR from 'beta' to 'main'."
-
-  agent-review:
-    name: 🤖 Agent Quality Review
-    runs-on: ubuntu-latest
-    # Run if branch check passed (or was skipped for beta PRs)
-    needs: [check-branch]
-    if: |
-      always() && 
-      (needs.check-branch.result == 'success' || needs.check-branch.result == 'skipped')
+    permissions:
+      pull-requests: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -47,9 +32,79 @@ jobs:
         run: |
           uv pip install --system -e "."
 
-      - name: Run Agent Scorecard
+      - name: "Context Discovery & Quality Tiering"
+        id: gatekeeper
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          agent-score . --verbosity summary --report pr_health.md
+          # Use event-specific base ref if github.base_ref is empty (common in pull_request_review)
+          TARGET="${{ github.base_ref || github.event.pull_request.base.ref }}"
+          SOURCE="${{ github.head_ref || github.event.pull_request.head.ref }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          echo "::group::Context Discovery"
+          echo "Target Branch: $TARGET"
+          echo "Source Branch: $SOURCE"
+          echo "PR Number: $PR_NUMBER"
+          echo "::endgroup::"
+
+          if [[ "$TARGET" == "main" ]]; then
+            echo "::group::Main Branch Enforcement (Strict)"
+
+            # 1. Branch Source Check
+            if [[ "$SOURCE" != "beta" ]]; then
+              echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'main' requires source=beta, but found source=$SOURCE" >> $GITHUB_STEP_SUMMARY
+              echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
+              exit 1
+            fi
+
+            # 2. Mandatory Review Check
+            echo "Checking for PR approval..."
+            APPROVALS=$(gh pr view $PR_NUMBER --json reviews --jq '.reviews | map(select(.state == "APPROVED")) | length')
+            if [[ "$APPROVALS" -eq 0 ]]; then
+              echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'main' requires at least one approved review." >> $GITHUB_STEP_SUMMARY
+              echo "🛑 ERROR: PR must be approved before merging to 'main'."
+              exit 1
+            fi
+
+            # 3. Scorecard Check
+            echo "Running Scorecard with High Threshold (>= 90)..."
+            agent-score . --verbosity summary --report pr_health.md --fail-under 90 || {
+              echo "### 🛑 Scorecard Failure" >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'main' requires an Agent Scorecard pass >= 90." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            }
+            echo "::endgroup::"
+
+          elif [[ "$TARGET" == "beta" ]]; then
+            echo "::group::Beta Branch Enforcement (Standard)"
+
+            # 1. Parsing Fix Verification
+            echo "Verifying node_modules pruning fix..."
+            if ! grep -q "node_modules" src/agent_scorecard/dependencies.py; then
+              echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'beta' requires 'node_modules' pruning logic fixes." >> $GITHUB_STEP_SUMMARY
+              echo "🛑 ERROR: node_modules parsing fixes are missing in src/agent_scorecard/dependencies.py"
+              exit 1
+            fi
+
+            # 2. Scorecard Check
+            echo "Running Scorecard with Standard Threshold (>= 70)..."
+            agent-score . --verbosity summary --report pr_health.md --fail-under 70 || {
+              echo "### 🛑 Scorecard Failure" >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'beta' requires an Agent Scorecard pass >= 70." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            }
+            echo "::endgroup::"
+
+          else
+            echo "::group::Default Branch Enforcement"
+            echo "Applying default enforcement for branch: $TARGET"
+            agent-score . --verbosity summary --report pr_health.md --fail-under 70
+            echo "::endgroup::"
+          fi
 
       - name: Post Summary to GITHUB_STEP_SUMMARY
         if: always()
@@ -57,5 +112,9 @@ jobs:
           if [ -f pr_health.md ]; then
             cat pr_health.md >> $GITHUB_STEP_SUMMARY
           else
-            echo "No scorecard report generated." >> $GITHUB_STEP_SUMMARY
+            # Only add this if not already added by previous steps
+            if ! grep -q "### 🛑" $GITHUB_STEP_SUMMARY 2>/dev/null; then
+              echo "### ⚠️ Scorecard Result" >> $GITHUB_STEP_SUMMARY
+              echo "No scorecard report generated. Check the logs for enforcement details." >> $GITHUB_STEP_SUMMARY
+            fi
           fi
