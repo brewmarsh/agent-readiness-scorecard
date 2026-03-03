@@ -16,13 +16,12 @@ jobs:
     steps:
       - name: Verify Base Branch
         run: |
-          SOURCE="${{ github.head_ref }}"
-          if [[ "$SOURCE" != "beta" && ! "$SOURCE" =~ ^cleanup- && ! "$SOURCE" =~ ^jules- ]]; then
-            echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch or an authorized agent branch."
-            echo "Current head branch: $SOURCE"
+          if [ "${{ github.head_ref }}" != "beta" ]; then
+            echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
+            echo "Current head branch: ${{ github.head_ref }}"
             exit 1
           fi
-          echo "✅ Branch check passed: PR from '$SOURCE' to 'main'."
+          echo "✅ Branch check passed: PR from 'beta' to 'main'."
 
   test:
     name: Test on Python ${{ matrix.python-version }}

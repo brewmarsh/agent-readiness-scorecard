@@ -50,22 +50,16 @@ jobs:
             echo "::group::Main Branch Enforcement (Strict)"
 
             # 1. Branch Source Check
-            if [[ "$SOURCE" != "beta" && ! "$SOURCE" =~ ^cleanup- && ! "$SOURCE" =~ ^jules- ]]; then
+            if [[ "$SOURCE" != "beta" ]]; then
               echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
-              echo "Targeting 'main' requires source=beta or automated prefix (cleanup-, jules-), but found source=$SOURCE" >> $GITHUB_STEP_SUMMARY
-              echo "🛑 ERROR: Pull Requests to 'main' must originate from 'beta' or an authorized agent branch."
+              echo "Targeting 'main' requires source=beta, but found source=$SOURCE" >> $GITHUB_STEP_SUMMARY
+              echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
               exit 1
             fi
 
             # 2. Mandatory Review Check
             echo "Checking for PR approval..."
-            if [[ "$SOURCE" =~ ^cleanup- || "$SOURCE" =~ ^jules- ]]; then
-              echo "Bypassing mandatory review for authorized agent branch: $SOURCE"
-              APPROVALS=1
-            else
-              APPROVALS=$(gh pr view $PR_NUMBER --json reviews --jq '.reviews | map(select(.state == "APPROVED")) | length')
-            fi
-
+            APPROVALS=$(gh pr view $PR_NUMBER --json reviews --jq '.reviews | map(select(.state == "APPROVED")) | length')
             if [[ "$APPROVALS" -eq 0 ]]; then
               echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
               echo "Targeting 'main' requires at least one approved review." >> $GITHUB_STEP_SUMMARY
