@@ -30,6 +30,23 @@ def test_collect_python_files(tmp_path: Path) -> None:
     assert any(f.endswith("root.py") for f in files)
 
 
+def test_collect_files_pruning(tmp_path: Path) -> None:
+    """
+    Tests that node_modules, .venv, etc. are pruned.
+    """
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "bad.py").write_text("print('no')")
+
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "bad2.py").write_text("print('no')")
+
+    (tmp_path / "good.py").write_text("print('yes')")
+
+    files = collect_python_files(str(tmp_path))
+    assert len(files) == 1
+    assert files[0].endswith("good.py")
+
+
 def test_import_graph_and_cycles(tmp_path: Path) -> None:
     """
     Tests import graph generation and cycle detection.

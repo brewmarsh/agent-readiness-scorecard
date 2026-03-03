@@ -27,7 +27,7 @@ def _is_analyzable_file(filename: str) -> bool:
 def _scan_directory(path: str) -> List[str]:
     """
     Recursively scans a directory for analyzable files (Python, Markdown),
-    ignoring hidden directories.
+    ignoring hidden directories, node_modules, and virtual environments.
 
     Args:
         path (str): The directory to scan.
@@ -36,10 +36,14 @@ def _scan_directory(path: str) -> List[str]:
         List[str]: List of absolute paths to analyzable files.
     """
     analyzable_files = []
-    for root, _, files in os.walk(path):
-        parts = root.split(os.sep)
-        if any(p.startswith(".") and p != "." for p in parts):
-            continue
+    for root, dirs, files in os.walk(path):
+        # Prune unwanted directories in-place to avoid unnecessary traversal
+        dirs[:] = [
+            d
+            for d in dirs
+            if not d.startswith(".") and d not in ("node_modules", "venv", ".venv")
+        ]
+
         for file in files:
             if _is_analyzable_file(file):
                 analyzable_files.append(os.path.join(root, file))
