@@ -1,1 +1,5 @@
+src/agent_scorecard/analyzers/javascript.py
+src/agent_scorecard/dependencies.py
+src/agent_scorecard/main.py
+tests/test_dependencies_exclusion.py
 tests/test_javascript_analyzer.py
