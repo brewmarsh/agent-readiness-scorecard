@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.0] - 2026-03-03
+
+### Features
+- **cli:** Advanced filtering, sorting, and limiting for `advise` command (dab7dae, 27e3c32).
+
+### Bug Fixes
+- **js:** Improved nesting depth calculation for callbacks in JavaScript analyzer (24afdcc).
+- **js:** Graceful handling of tree-sitter as optional import in JavaScript (5d90bd2).
+- **core:** Improved directory pruning and import parsing guards (d106db8, 1f95001).
+
+### Chore
+- **deps:** Migration to `uv` for dependency management (a1f8bf2, 815cc9f).
+- **repo:** Comprehensive repository cleanup of clutter and updated `.gitignore` (6b0734e, aefbea3).
+- **ci:** Major overhaul of CI/CD workflows and Quality Gates (d6f6949, 72f9b8d).
+- **types:** Automated type hint improvements across the core engine (8ba56c6, 4bc8be1).
+
 ## [v0.70.0] - 2026-02-23
 
 ### Features
