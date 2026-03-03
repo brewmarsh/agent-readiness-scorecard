@@ -3,10 +3,9 @@ from pathlib import Path
 from click.testing import CliRunner
 
 # RESOLUTION: Import from the correct modules (analyzer/scoring) as per the architectural cleanup
-from agent_scorecard import analyzer
 from agent_scorecard.constants import PROFILES
 from agent_scorecard.main import cli
-from agent_scorecard.scoring import score_file
+from agent_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_get_loc(tmp_path: Path) -> None:
@@ -26,7 +25,7 @@ def test_get_loc(tmp_path: Path) -> None:
     py_file.write_text(content, encoding="utf-8")
 
     # Ensure internal logic handles string paths for cross-OS compatibility
-    loc = analyzer.get_loc(str(py_file))
+    loc = PythonAnalyzer()._get_loc(str(py_file))
     assert loc == 10
 
 
@@ -56,7 +55,7 @@ def test_get_function_stats(tmp_path: Path) -> None:
     py_file.write_text(content, encoding="utf-8")
 
     # RESOLUTION: Use unified get_function_stats API
-    metrics = analyzer.get_function_stats(str(py_file))
+    metrics = PythonAnalyzer().get_function_stats(str(py_file))
     assert len(metrics) == 2
 
     simple = next(m for m in metrics if m["name"] == "simple_func")
@@ -99,8 +98,8 @@ def untyped_function(a, b):
     untyped_file = tmp_path / "untyped.py"
     untyped_file.write_text(untyped_content, encoding="utf-8")
 
-    typed_coverage = analyzer.check_type_hints(str(typed_file))
-    untyped_coverage = analyzer.check_type_hints(str(untyped_file))
+    typed_coverage = PythonAnalyzer().check_type_hints(str(typed_file))
+    untyped_coverage = PythonAnalyzer().check_type_hints(str(untyped_file))
 
     assert typed_coverage == 100
     assert untyped_coverage == 0
@@ -128,7 +127,7 @@ def test_score_file_logic(tmp_path: Path) -> None:
     profile = PROFILES["generic"]
 
     # RESOLUTION: Updated score_file return signature (6-tuple) from Beta branch
-    score, issues, loc, complexity, type_safety, metrics = score_file(
+    score, issues, loc, complexity, type_safety, metrics = PythonAnalyzer().score_file(
         str(py_file), profile
     )
 

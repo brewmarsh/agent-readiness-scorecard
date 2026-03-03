@@ -3,7 +3,7 @@ from unittest.mock import patch
 import textwrap
 from click.testing import CliRunner
 from agent_scorecard.main import cli
-from agent_scorecard.analyzer import check_type_hints
+from agent_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_async_function_support_checks(tmp_path: Path) -> None:
@@ -25,7 +25,7 @@ async def fetch_data(url):
     )
 
     # Should find 1 function, 0 typed -> 0% coverage.
-    cov = check_type_hints(str(p))
+    cov = PythonAnalyzer().check_type_hints(str(p))
     assert cov == 0
 
 

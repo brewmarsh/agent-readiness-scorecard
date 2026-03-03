@@ -1,11 +1,9 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard import analyzer, report
+from agent_scorecard import report
 from agent_scorecard.constants import PROFILES
-from agent_scorecard.analyzer import (
-    calculate_acl,
-    get_import_graph,
-)
+from agent_scorecard.analyzer import get_import_graph
+from agent_scorecard.analyzers.python import PythonAnalyzer
 from agent_scorecard.dependencies import (
     get_inbound_imports,
     detect_cycles,
@@ -25,8 +23,8 @@ def test_calculate_acl() -> None:
         None
     """
     # cc=10, loc=100, depth=5 -> (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
-    assert calculate_acl(10, 100, 5) == 27.0
-    assert calculate_acl(0, 0, 0) == 0
+    assert PythonAnalyzer().calculate_acl(10, 100, 5) == 27.0
+    assert PythonAnalyzer().calculate_acl(0, 0, 0) == 0
 
 
 def test_get_directory_entropy(tmp_path: Path) -> None:
@@ -164,7 +162,7 @@ def test_function_stats_parsing(tmp_path: Path) -> None:
     p = tmp_path / "test_acl.py"
     p.write_text(code, encoding="utf-8")
 
-    stats = analyzer.get_function_stats(str(p))
+    stats = PythonAnalyzer().get_function_stats(str(p))
     assert len(stats) == 1
     func = stats[0]
     assert func["name"] == "complex_function"
@@ -192,7 +190,7 @@ def test_unified_score_report_content(tmp_path: Path) -> None:
 
     (tmp_path / "hallucination.py").write_text(code, encoding="utf-8")
 
-    func_stats = analyzer.get_function_stats(str(tmp_path / "hallucination.py"))
+    func_stats = PythonAnalyzer().get_function_stats(str(tmp_path / "hallucination.py"))
     acl_violations = [f for f in func_stats if f["acl"] > 15]
 
     stats = [
