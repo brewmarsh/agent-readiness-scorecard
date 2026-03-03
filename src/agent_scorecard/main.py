@@ -519,13 +519,38 @@ def score(
 @click.option(
     "--output", "-o", "output_file", type=click.Path(), help="Save advice to Markdown."
 )
-def advise(path: str, output_file: Optional[str]) -> None:
+@click.option(
+    "--sort",
+    type=click.Choice(["score", "acl", "tokens", "types"]),
+    default="score",
+    help="Sort results by metric.",
+)
+@click.option(
+    "--top",
+    type=int,
+    help="Limit output to the N worst-offending files.",
+)
+@click.option(
+    "--failing",
+    is_flag=True,
+    help="Filter results to show only failing files (score < 70).",
+)
+def advise(
+    path: str,
+    output_file: Optional[str],
+    sort: str,
+    top: Optional[int],
+    failing: bool,
+) -> None:
     """
     Detailed advice based on Agent Physics.
 
     Args:
         path (str): The path to analyze.
         output_file (Optional[str]): Optional path to save advice to Markdown.
+        sort (str): Sort results by metric.
+        top (Optional[int]): Limit output to the N worst-offending files.
+        failing (bool): Filter results to show only failing files.
 
     Returns:
         None
@@ -549,6 +574,26 @@ def advise(path: str, output_file: Optional[str]) -> None:
                 {**res, "acl": m_acl, "tokens": tokens["token_count"]},
             )
         )
+
+    # --- Filtering, Sorting, and Limiting ---
+    # 1. Filtering
+    if failing:
+        stats = [s for s in stats if s["score"] < 70]
+
+    # 2. Sorting
+    reverse_map = {"score": False, "acl": True, "tokens": True, "types": False}
+    key_map = {
+        "score": lambda x: x["score"],
+        "acl": lambda x: x["acl"],
+        "tokens": lambda x: x.get("tokens", 0),
+        "types": lambda x: x["type_coverage"],
+    }
+
+    stats.sort(key=key_map[sort], reverse=reverse_map[sort])
+
+    # 3. Limiting
+    if top is not None:
+        stats = stats[:top]
 
     report_md = report.generate_advisor_report(
         stats=cast(List[Dict[str, Any]], stats),
