@@ -165,7 +165,7 @@ jobs:
 
       - name: Create Pull Request for Type Hints
         if: steps.run-scorecard.outputs.ran == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           # Use GH_PAT here so that CI tests and Jules are triggered on this PR
           token: ${{ secrets.GH_PAT }}
