@@ -11,6 +11,7 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write  # Required to push tags and create releases
 
@@ -20,10 +21,13 @@ jobs:
         with:
           fetch-depth: 0  # Required for setuptools_scm to detect history
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Configure Git
         run: |
@@ -43,11 +47,8 @@ jobs:
             git push origin "$VERSION"
           fi
 
-      - name: Install Build Tools
-        run: pip install build
-
       - name: Build Package
-        run: python -m build
+        run: uv build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4

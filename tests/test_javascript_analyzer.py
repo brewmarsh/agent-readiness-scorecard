@@ -5,7 +5,7 @@ from agent_scorecard.analyzers.javascript import JavascriptAnalyzer
 
 
 @pytest.fixture
-def js_analyzer():
+def js_analyzer() -> JavascriptAnalyzer:
     return JavascriptAnalyzer()
 
 

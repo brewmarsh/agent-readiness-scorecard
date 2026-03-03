@@ -34,19 +34,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Install Agent Scorecard
-        run: pip install .
+        run: uv sync --all-extras
 
       - name: Run Advisor Analysis
         id: advisor
         # Output to a file so we can read it into the step summary
         run: |
-          agent-score advise --output agent_report.md
+          uv run agent-score advise --output agent_report.md
           
       - name: Post Summary to GitHub
         if: always()

@@ -17,7 +17,7 @@ from .config import load_config
 from .constants import PROFILES
 from .fix import apply_fixes
 from .scoring import generate_badge
-from .types import AnalysisResult, AdvisorFileResult
+from .types import AnalysisResult, AdvisorFileResult, FileAnalysisResult
 
 console = Console()
 
@@ -339,6 +339,28 @@ def fix(path: str, agent: str) -> None:
     default="origin/main",
     help="Base reference for diff (default: origin/main).",
 )
+@click.option(
+    "--sort",
+    type=click.Choice(["score", "acl", "tokens", "types"]),
+    default="score",
+    help="Sort results by metric.",
+)
+@click.option(
+    "--top",
+    type=int,
+    help="Limit output to the N worst-offending files.",
+)
+@click.option(
+    "--failing",
+    is_flag=True,
+    help="Filter results to show only failing files (score < 70).",
+)
+@click.option(
+    "--fail-under",
+    type=int,
+    default=70,
+    help="Fail if the final score is below this threshold (default: 70).",
+)
 def score(
     path: str,
     agent: str,
@@ -350,6 +372,10 @@ def score(
     limit_to: tuple,
     diff: bool,
     diff_base: str,
+    sort: str,
+    top: Optional[int],
+    failing: bool,
+    fail_under: int,
 ) -> None:
     """
     Scores a codebase based on agent compatibility.
@@ -428,6 +454,30 @@ def score(
         config=cast(Dict[str, Any], cfg),
     )
 
+    # --- Filtering, Sorting, and Limiting ---
+    file_results = cast(List[Dict[str, Any]], results["file_results"])
+
+    # 1. Filtering
+    if failing:
+        file_results = [res for res in file_results if res["score"] < 70]
+
+    # 2. Sorting
+    reverse_map = {"score": False, "acl": True, "tokens": True, "types": False}
+    key_map = {
+        "score": lambda x: x["score"],
+        "acl": lambda x: x["acl"],
+        "tokens": lambda x: x.get("cumulative_tokens", 0),
+        "types": lambda x: x["type_coverage"],
+    }
+
+    file_results.sort(key=key_map[sort], reverse=reverse_map[sort])
+
+    # 3. Limiting
+    if top is not None:
+        file_results = file_results[:top]
+
+    results["file_results"] = cast(List[FileAnalysisResult], file_results)
+
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
     _print_project_issues(
@@ -460,7 +510,7 @@ def score(
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-    if results["final_score"] < 70 or results.get("project_issues"):
+    if results["final_score"] < fail_under or results.get("project_issues"):
         sys.exit(1)
 
 
