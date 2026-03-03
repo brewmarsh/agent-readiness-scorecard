@@ -1,8 +1,8 @@
 from pathlib import Path
 from click.testing import CliRunner
-from agent_scorecard.analyzers.python import PythonAnalyzer
-from agent_scorecard.constants import PROFILES
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.constants import PROFILES
+from agent_readiness_scorecard.main import cli
 
 
 def test_score_file_acl_penalty(tmp_path: Path) -> None:

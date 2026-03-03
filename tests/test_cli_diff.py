@@ -1,7 +1,7 @@
 import os
 import subprocess
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 
 
 def setup_git_repo(path: str) -> None:

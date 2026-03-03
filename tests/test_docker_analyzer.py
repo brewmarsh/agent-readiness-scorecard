@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from typing import Dict, Any
-from agent_scorecard.analyzers.docker import DockerAnalyzer
+from agent_readiness_scorecard.analyzers.docker import DockerAnalyzer
 
 
 @pytest.fixture

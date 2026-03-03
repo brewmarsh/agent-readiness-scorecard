@@ -29,7 +29,7 @@ Repository = "https://github.com/brewmarsh/agent-readiness-scorecard.git"
 Issues = "https://github.com/brewmarsh/agent-readiness-scorecard/issues"
 
 [project.scripts]
-agent-score = "agent_scorecard.main:cli"
+agent-score = "agent_readiness_scorecard.main:cli"
 
 [project.optional-dependencies]
 llm = ["litellm>=1.0.0"]
@@ -63,9 +63,9 @@ dev = [
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/agent_scorecard/_version.py"
+version-file = "src/agent_readiness_scorecard/_version.py"
 
-[tool.agent-scorecard]
+[tool.agent-readiness-scorecard]
 agent = "generic"
 verbosity = "summary"
 report_style = "actionable"

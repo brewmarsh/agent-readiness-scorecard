@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We actively provide security updates for the following versions of `agent-scorecard`:
+We actively provide security updates for the following versions of `agent-readiness-scorecard`:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -17,7 +17,7 @@ If you discover a potential security vulnerability in this project, please notif
 
 ### How to report:
 1. **Email**: Send a detailed report to [admarsha@gmail.com](mailto:admarsha@gmail.com).
-2. **GitHub Private Reporting**: Use the [GitHub Vulnerability Reporting](https://github.com/brewmarsh/agent-scorecard/security/advisories/new) feature if enabled on this repository.
+2. **GitHub Private Reporting**: Use the [GitHub Vulnerability Reporting](https://github.com/brewmarsh/agent-readiness-scorecard/security/advisories/new) feature if enabled on this repository.
 
 ### What to include:
 * A description of the vulnerability and its potential impact.

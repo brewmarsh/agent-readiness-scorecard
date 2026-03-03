@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_acl_formula_favor_flat_long_over_short_nested(tmp_path: Path) -> None:

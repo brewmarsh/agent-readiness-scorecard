@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzer import get_import_graph
-from agent_scorecard.dependencies import get_inbound_imports
+from agent_readiness_scorecard.analyzer import get_import_graph
+from agent_readiness_scorecard.dependencies import get_inbound_imports
 
 
 def test_analyze_imports_internal_only(tmp_path: Path) -> None:

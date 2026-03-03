@@ -4,7 +4,7 @@
 
 **Is your codebase ready for the AI workforce?**
 
-`agent-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin).
+`agent-readiness-scorecard` is a CLI tool that analyzes your Python project to determine how "friendly" it is for AI Agents (like Jules, Copilot, Gemini, or Devin).
 
 AI Agents struggle with:
 
@@ -17,7 +17,7 @@ This tool scores your repo and helps you fix it.
 ## 📦 Installation
 
 ```bash
-pip install agent-scorecard
+pip install agent-readiness-scorecard
 
 ```
 
@@ -63,14 +63,14 @@ agent-score . --report scorecard.md --report-style actionable
 
 ## ⚙️ Configuration
 
-`agent-scorecard` can be configured via `pyproject.toml`, `.agent-scorecard.json`, or CLI flags.
+`agent-readiness-scorecard` can be configured via `pyproject.toml`, `.agent-readiness-scorecard.json`, or CLI flags.
 
 ### Priority
 
 Settings are resolved in the following order (highest to lowest):
 
 1. **CLI Flags** (e.g., `--agent`, `--verbosity`)
-2. **Configuration File** (`pyproject.toml` or `.agent-scorecard.json`)
+2. **Configuration File** (`pyproject.toml` or `.agent-readiness-scorecard.json`)
 3. **Defaults**
 
 ### Customizing Output Verbosity
@@ -80,24 +80,24 @@ You can control how much visual noise the scorecard generates by adding the `ver
 #### Noise-Reduction Configuration
 
 ```toml
-[tool.agent-scorecard]
+[tool.agent-readiness-scorecard]
 # Control CLI output (quiet, summary, detailed)
 verbosity = "summary"
 
 # Control Markdown report detail (collapsed, actionable, full)
 report_style = "actionable"
 
-[tool.agent-scorecard.thresholds]
+[tool.agent-readiness-scorecard.thresholds]
 acl_yellow = 10
 acl_red = 15
 type_safety = 90
 
 # Language-specific overrides
-[tool.agent-scorecard.javascript.thresholds]
+[tool.agent-readiness-scorecard.javascript.thresholds]
 acl_yellow = 12
 acl_red = 18
 
-[tool.agent-scorecard.markdown.thresholds]
+[tool.agent-readiness-scorecard.markdown.thresholds]
 token_limit = 64000
 ```
 

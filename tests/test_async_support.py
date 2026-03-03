@@ -2,8 +2,8 @@ from pathlib import Path
 from unittest.mock import patch
 import textwrap
 from click.testing import CliRunner
-from agent_scorecard.main import cli
-from agent_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.main import cli
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_async_function_support_checks(tmp_path: Path) -> None:
@@ -59,7 +59,9 @@ async def process_data(data):
     ).strip()
 
     # Mocking the LLM ensures tests run locally without network access
-    with patch("agent_scorecard.llm.LLMClient.generate", return_value=fixed_code):
+    with patch(
+        "agent_readiness_scorecard.llm.LLMClient.generate", return_value=fixed_code
+    ):
         # We invoke the standalone 'fix' command established in the Beta branch
         result = runner.invoke(cli, ["fix", str(p)])
         assert result.exit_code == 0

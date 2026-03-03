@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from agent_scorecard.llm import LLMClient
+from agent_readiness_scorecard.llm import LLMClient
 
 
 class TestLLMClient:
@@ -16,7 +16,7 @@ class TestLLMClient:
         assert client.api_key == "sk-123"
 
     def test_generate_success(self) -> None:
-        with patch("agent_scorecard.llm.litellm") as mock_litellm:
+        with patch("agent_readiness_scorecard.llm.litellm") as mock_litellm:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock(message=MagicMock(content="Fixed code"))]
             mock_litellm.completion.return_value = mock_response
@@ -34,13 +34,13 @@ class TestLLMClient:
             ]
 
     def test_generate_missing_litellm(self) -> None:
-        with patch("agent_scorecard.llm.litellm", None):
+        with patch("agent_readiness_scorecard.llm.litellm", None):
             client = LLMClient()
             with pytest.raises(ImportError, match="litellm is required"):
                 client.generate("sys", "user")
 
     def test_generate_error_handling(self) -> None:
-        with patch("agent_scorecard.llm.litellm") as mock_litellm:
+        with patch("agent_readiness_scorecard.llm.litellm") as mock_litellm:
             mock_litellm.completion.side_effect = Exception("API Error")
 
             client = LLMClient()

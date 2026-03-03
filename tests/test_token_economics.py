@@ -1,6 +1,6 @@
 import os
 import tempfile
-from agent_scorecard.analyzer import perform_analysis
+from agent_readiness_scorecard.analyzer import perform_analysis
 
 
 def test_cumulative_token_budget_exceeded() -> None:

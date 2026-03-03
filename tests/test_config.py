@@ -1,6 +1,6 @@
 import os
 import tempfile
-from agent_scorecard.config import load_config, DEFAULT_CONFIG
+from agent_readiness_scorecard.config import load_config, DEFAULT_CONFIG
 
 
 def test_load_config_defaults() -> None:
@@ -26,9 +26,9 @@ def test_load_config_with_pyproject() -> None:
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         pyproject_content = """
-[tool.agent-scorecard]
+[tool.agent-readiness-scorecard]
 verbosity = "detailed"
-[tool.agent-scorecard.thresholds]
+[tool.agent-readiness-scorecard.thresholds]
 acl_yellow = 5
 type_safety = 80
 """

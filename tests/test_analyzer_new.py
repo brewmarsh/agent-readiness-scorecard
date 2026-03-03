@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_calculate_max_depth() -> None:

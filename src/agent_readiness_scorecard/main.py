@@ -23,7 +23,7 @@ console = Console()
 
 # --- VERSION SETUP ---
 try:
-    __version__ = version("agent-scorecard")
+    __version__ = version("agent-readiness-scorecard")
 except PackageNotFoundError:
     __version__ = "0.0.0"
 
@@ -45,12 +45,12 @@ class DefaultGroup(click.Group):
 @click.group(cls=DefaultGroup)
 @click.version_option(
     version=__version__,
-    prog_name="agent-scorecard",
+    prog_name="agent-readiness-scorecard",
     message="%(prog)s version %(version)s",
 )
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """Main entry point for the agent-scorecard CLI."""
+    """Main entry point for the agent-readiness-scorecard CLI."""
     ctx.ensure_object(dict)
     ctx.obj["config"] = load_config(".")
 

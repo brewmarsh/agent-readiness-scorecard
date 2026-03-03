@@ -1,6 +1,6 @@
 from pathlib import Path
-from agent_scorecard.analyzers.markdown import MarkdownAnalyzer
-from agent_scorecard.constants import PROFILES
+from agent_readiness_scorecard.analyzers.markdown import MarkdownAnalyzer
+from agent_readiness_scorecard.constants import PROFILES
 
 
 def test_markdown_analyzer_get_stats(tmp_path: Path) -> None:

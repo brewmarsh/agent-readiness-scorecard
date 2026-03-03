@@ -1,4 +1,4 @@
-from agent_scorecard.prompt_analyzer import PromptAnalyzer
+from agent_readiness_scorecard.prompt_analyzer import PromptAnalyzer
 
 
 def test_prompt_analyzer_perfect() -> None:

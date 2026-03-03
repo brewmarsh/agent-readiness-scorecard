@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Dict, Set
-from agent_scorecard.dependencies import (
+from agent_readiness_scorecard.dependencies import (
     get_import_graph,
     detect_cycles,
     calculate_context_tokens,

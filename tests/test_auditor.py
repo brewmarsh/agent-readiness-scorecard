@@ -1,6 +1,6 @@
 import os
 import tempfile
-from agent_scorecard import auditor
+from agent_readiness_scorecard import auditor
 
 
 def test_check_directory_entropy() -> None:

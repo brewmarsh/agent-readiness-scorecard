@@ -1,6 +1,6 @@
 import pytest
 import json
-from agent_scorecard.analyzers.config import ConfigAnalyzer
+from agent_readiness_scorecard.analyzers.config import ConfigAnalyzer
 
 
 @pytest.fixture

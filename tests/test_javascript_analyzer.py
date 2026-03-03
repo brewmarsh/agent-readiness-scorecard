@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from typing import Dict, Any
-from agent_scorecard.analyzers.javascript import JavascriptAnalyzer
+from agent_readiness_scorecard.analyzers.javascript import JavascriptAnalyzer
 
 
 @pytest.fixture
