@@ -43,18 +43,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.10'
+          enable-cache: true
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Set up Python
+        run: uv python install 3.10
 
       - name: Install Dependencies
-        run: uv sync --all-extras
+        run: uv pip install --system -e ".[all]"
 
       - name: Fetch Changed Files
         id: changed-files
@@ -102,7 +100,7 @@ jobs:
         run: |
           if [ -f typing_tasks.json ]; then
             echo "Processing typing tasks from typing_tasks.json..."
-            python -c '
+            uv run python -c '
           import json
           import os
           try:

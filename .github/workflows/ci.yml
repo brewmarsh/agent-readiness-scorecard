@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
+      - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -47,7 +47,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv pip install --system -e ".[all]"
 
       - name: Lint with Ruff
         run: |

@@ -52,14 +52,12 @@ jobs:
         with:
           ref: ${{ steps.jules.outputs.branch_name }}
 
-      - name: Set up Python
-        if: success() && steps.jules.outputs.branch_name != ''
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: '.python-version'
-
       - name: Set up uv
         if: success() && steps.jules.outputs.branch_name != ''
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+
+      - name: Set up Python
+        if: success() && steps.jules.outputs.branch_name != ''
+        run: uv python install
