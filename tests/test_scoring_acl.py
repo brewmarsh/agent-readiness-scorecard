@@ -1,6 +1,6 @@
 from pathlib import Path
 from click.testing import CliRunner
-from agent_scorecard.scoring import score_file
+from agent_scorecard.analyzers.python import PythonAnalyzer
 from agent_scorecard.constants import PROFILES
 from agent_scorecard.main import cli
 
@@ -43,7 +43,7 @@ def test_score_file_acl_penalty(tmp_path: Path) -> None:
     # 3. Bloated File: 328 LOC - 200 threshold = 128. Penalty (1 per 10 lines): -12.
     # Total Score: 100 - 15 - 20 - 12 = 53.
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(
+    score, details, loc, avg_comp, type_cov, metrics = PythonAnalyzer().score_file(
         str(p), PROFILES["generic"]
     )
 

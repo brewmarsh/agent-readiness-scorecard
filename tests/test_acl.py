@@ -1,7 +1,6 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzer import calculate_acl
-from agent_scorecard.scoring import score_file
+from agent_scorecard.analyzers.python import PythonAnalyzer
 from agent_scorecard.constants import PROFILES
 
 
@@ -19,21 +18,21 @@ def test_acl_calculation_logic() -> None:
     loc = 20
     depth = 0
     # ACL = (0*2) + (1*1.5) + (20/50) = 1.5 + 0.4 = 1.9
-    assert calculate_acl(cc, loc, depth) == 1.9
+    assert PythonAnalyzer().calculate_acl(cc, loc, depth) == 1.9
 
     # Case 2: Complex file (Medium complexity, medium length, depth 5)
     cc = 10.0
     loc = 100
     depth = 5
     # ACL = (5*2) + (10*1.5) + (100/50) = 10 + 15 + 2 = 27.0
-    assert calculate_acl(cc, loc, depth) == 27.0
+    assert PythonAnalyzer().calculate_acl(cc, loc, depth) == 27.0
 
     # Case 3: High ACL (High complexity, high length, depth 0)
     cc = 10.0
     loc = 200
     depth = 0
     # ACL = (0*2) + (10*1.5) + (200/50) = 15 + 4 = 19.0
-    assert calculate_acl(cc, loc, depth) == 19.0
+    assert PythonAnalyzer().calculate_acl(cc, loc, depth) == 19.0
 
 
 def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
@@ -69,7 +68,7 @@ def test_scoring_with_acl_penalty(tmp_path: Path) -> None:
     py_file.write_text(content, encoding="utf-8")
 
     # Score the file using the generic agent profile
-    score, details, loc, avg_comp, type_cov, func_metrics = score_file(
+    score, details, loc, avg_comp, type_cov, func_metrics = PythonAnalyzer().score_file(
         str(py_file), PROFILES["generic"]
     )
 

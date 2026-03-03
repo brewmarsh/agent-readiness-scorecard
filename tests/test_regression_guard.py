@@ -1,7 +1,7 @@
 import textwrap
 import pytest
 from pathlib import Path
-from agent_scorecard.scoring import score_file
+from agent_scorecard.analyzers.python import PythonAnalyzer
 from agent_scorecard.constants import PROFILES
 from agent_scorecard import analyzer
 
@@ -21,7 +21,7 @@ def test_bloated_files_penalty(tmp_path: Path) -> None:
     py_file = tmp_path / "bloated.py"
     py_file.write_text(content, encoding="utf-8")
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(
+    score, details, loc, avg_comp, type_cov, metrics = PythonAnalyzer().score_file(
         str(py_file), PROFILES["generic"]
     )
 
@@ -59,7 +59,7 @@ def test_acl_strictness(tmp_path: Path) -> None:
     py_file = tmp_path / "high_acl.py"
     py_file.write_text(content, encoding="utf-8")
 
-    score, details, loc, avg_comp, type_cov, metrics = score_file(
+    score, details, loc, avg_comp, type_cov, metrics = PythonAnalyzer().score_file(
         str(py_file), PROFILES["generic"]
     )
 

@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzer import get_function_stats
+from agent_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_acl_formula_favor_flat_long_over_short_nested(tmp_path: Path) -> None:
@@ -35,8 +35,8 @@ def test_acl_formula_favor_flat_long_over_short_nested(tmp_path: Path) -> None:
     nested_file = tmp_path / "nested.py"
     nested_file.write_text(short_nested_code, encoding="utf-8")
 
-    flat_metrics = get_function_stats(str(flat_file))
-    nested_metrics = get_function_stats(str(nested_file))
+    flat_metrics = PythonAnalyzer().get_function_stats(str(flat_file))
+    nested_metrics = PythonAnalyzer().get_function_stats(str(nested_file))
 
     flat_acl = flat_metrics[0]["acl"]
     nested_acl = nested_metrics[0]["acl"]

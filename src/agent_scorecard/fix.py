@@ -4,7 +4,7 @@ import re
 from typing import Dict, Any, List, Optional
 from rich.console import Console
 from .constants import AGENT_CONTEXT_TEMPLATE, INSTRUCTIONS_TEMPLATE
-from .metrics import get_function_stats
+from .analyzers.python import PythonAnalyzer
 from .llm import LLMClient
 
 console = Console()
@@ -53,7 +53,7 @@ def fix_file_issues(filepath: str, llm_config: Optional[Dict[str, Any]] = None) 
         None
     """
     try:
-        stats = get_function_stats(filepath)
+        stats = PythonAnalyzer().get_function_stats(filepath)
     except Exception:
         return
 

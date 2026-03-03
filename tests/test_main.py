@@ -1,11 +1,7 @@
 import pytest
 from pathlib import Path
-from agent_scorecard.analyzer import (
-    get_loc,
-    get_complexity_score,  # Renamed from analyze_complexity
-    check_type_hints,  # Renamed from analyze_type_hints
-    scan_project_docs,
-)
+from agent_scorecard.analyzer import scan_project_docs
+from agent_scorecard.analyzers.python import PythonAnalyzer
 from agent_scorecard.scoring import generate_badge
 
 
@@ -70,7 +66,7 @@ def test_get_loc(sample_file: Path) -> None:
     Returns:
         None
     """
-    assert get_loc(str(sample_file)) == 8
+    assert PythonAnalyzer()._get_loc(str(sample_file)) == 8
 
 
 def test_analyze_complexity(sample_file: Path) -> None:
@@ -83,7 +79,7 @@ def test_analyze_complexity(sample_file: Path) -> None:
     Returns:
         None
     """
-    avg = get_complexity_score(str(sample_file))
+    avg = PythonAnalyzer().get_complexity_score(str(sample_file))
     assert avg == 2.5
 
     # Penalty Logic Simulation (threshold=10)
@@ -106,7 +102,7 @@ def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     Returns:
         None
     """
-    cov = check_type_hints(str(sample_file))
+    cov = PythonAnalyzer().check_type_hints(str(sample_file))
     assert cov == 0
 
     # Penalty Logic Simulation (threshold=50)
@@ -114,7 +110,7 @@ def test_check_type_hints(sample_file: Path, typed_file: Path) -> None:
     assert penalty == 20
 
     # typed_file: 1/1 typed -> 100%
-    cov = check_type_hints(str(typed_file))
+    cov = PythonAnalyzer().check_type_hints(str(typed_file))
     assert cov == 100
 
     # Penalty Logic Simulation (threshold=50)
