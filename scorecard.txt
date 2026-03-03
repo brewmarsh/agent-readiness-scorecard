@@ -1,7 +1,7 @@
 # Agent Scorecard Report
 
 **Target Agent Profile:** Standard Agent Readiness checks (ACL & Type Safety)
-**Overall Score: 100.0/100** - PASS
+**Overall Score: 84.0/100** - PASS
 
 ✅ **Status: PASSED** - This codebase is Agent-Ready.
 
@@ -18,6 +18,16 @@ Target: >90% of functions must have explicit type signatures.
 ✅ All files meet type safety requirements.
 
 ## 🤖 Agent Prompts for Remediation (CRAFT Format)
+
+### File: `tests/test_config_analyzer.py` - Low Type Safety
+> **Context**: You are a Python Developer focused on static analysis.
+> **Request**: Add PEP 484 type hints to `tests/test_config_analyzer.py`.
+> **Actions**:
+> - Analyze functions missing explicit type signatures.
+> - Add comprehensive type hints to arguments and return values.
+> - Use the `typing` module for complex structures.
+> **Frame**: Target 90% type coverage. Do not change runtime logic.
+> **Template**: The full updated content of the Python file.
 
 
 ### 📂 File Analysis
