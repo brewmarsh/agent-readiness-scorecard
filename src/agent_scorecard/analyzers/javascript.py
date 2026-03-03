@@ -325,6 +325,8 @@ class JavascriptAnalyzer(BaseAnalyzer):
             "try_statement",
             "catch_clause",
             "switch_statement",
+            "arrow_function",
+            "function_expression",
         ):
             next_depth = current_depth + 1
         else:
@@ -337,8 +339,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         for child in n.children:
             if child.type not in (
                 "function_declaration",
-                "function_expression",
-                "arrow_function",
                 "method_definition",
             ):
                 d = self._visit_depth(child, next_depth)
