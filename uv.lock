@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agent-scorecard"
+name = "agent-readiness-scorecard"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
