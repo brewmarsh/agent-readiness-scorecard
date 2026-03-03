@@ -1,1 +1,2 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.10`.
 All checks passed!
