@@ -167,6 +167,50 @@ function add(a, b) {
     assert "Type Safety Index" in details
 
 
+def test_js_callback_hell(js_analyzer: JavascriptAnalyzer, tmp_path: Path) -> None:
+    """
+    Tests that Callback Hell correctly increments nesting depth and ACL.
+
+    Mathematical Breakdown:
+    - LOC: 9
+    - Complexity: 1 (base) + 1 (if) = 2
+    - Depth:
+        - function callbackHell (depth 0)
+            - function_expression (depth 1)
+                - arrow_function (depth 2)
+                    - if_statement (depth 3)
+      Max Depth = 3
+    - ACL Formula: (Depth * 2) + (Complexity * 1.5) + (LOC / 50)
+    - ACL = (3 * 2) + (1 * 1.5) + (9 / 50) = 6 + 1.5 + 0.18 = 7.68
+    """
+    js_file = tmp_path / "callback.js"
+    js_file.write_text(
+        """
+function callbackHell(a) {
+    doSomething(a, function(res1) {
+        doSomethingElse(res1, (res2) => {
+            if (res2) {
+                console.log(res2);
+            }
+        });
+    });
+}
+""",
+        encoding="utf-8",
+    )
+
+    metrics = js_analyzer.get_function_stats(str(js_file))
+
+    # We should get three functions. We focus on the outer one
+    # as it represents the highest depth.
+    callback_hell = next(f for f in metrics if f["name"] == "callbackHell")
+
+    assert callback_hell["loc"] == 9
+    assert callback_hell["complexity"] == 1.0
+    assert callback_hell["nesting_depth"] == 3
+    assert callback_hell["acl"] == 7.68
+
+
 # Auto-remediated: Added PEP 484 type hints (Verified)
 
 # Auto-remediated: Added PEP 484 type hints (Verified)
