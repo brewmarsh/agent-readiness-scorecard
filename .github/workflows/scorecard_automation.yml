@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -52,7 +52,7 @@ jobs:
         run: uv python install 3.10
 
       - name: Install Dependencies
-        run: uv pip install --system -e ".[all]"
+        run: uv sync --all-extras
 
       - name: Fetch Changed Files
         id: changed-files
@@ -163,7 +163,7 @@ jobs:
 
       - name: Create Pull Request for Type Hints
         if: steps.run-scorecard.outputs.ran == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@v6
         with:
           # Use GH_PAT here so that CI tests and Jules are triggered on this PR
           token: ${{ secrets.GH_PAT }}

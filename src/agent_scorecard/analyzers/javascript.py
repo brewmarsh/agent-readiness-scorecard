@@ -1,28 +1,16 @@
 from typing import Dict, Any, List, Tuple, Optional
-import warnings
-
-try:
-    from tree_sitter import Language, Parser, Node
-    import tree_sitter_javascript
-    import tree_sitter_typescript
-
-    HAS_TREE_SITTER = True
-    # Initialize languages
-    JS_LANGUAGE = Language(tree_sitter_javascript.language())
-    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
-except ImportError:
-    HAS_TREE_SITTER = False
-    Language = Any  # type: ignore
-    Parser = Any  # type: ignore
-    Node = Any  # type: ignore
-    JS_LANGUAGE = None  # type: ignore
-    TS_LANGUAGE = None  # type: ignore
-    TSX_LANGUAGE = None  # type: ignore
+from tree_sitter import Language, Parser, Node
+import tree_sitter_javascript
+import tree_sitter_typescript
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
+
+# Initialize languages
+JS_LANGUAGE = Language(tree_sitter_javascript.language())
+TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -185,10 +173,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
-        if not HAS_TREE_SITTER:
-            warnings.warn("tree-sitter is required to analyze JavaScript/TypeScript files.")
-            return []
-
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
@@ -341,8 +325,6 @@ class JavascriptAnalyzer(BaseAnalyzer):
             "try_statement",
             "catch_clause",
             "switch_statement",
-            "arrow_function",
-            "function_expression",
         ):
             next_depth = current_depth + 1
         else:
@@ -355,6 +337,8 @@ class JavascriptAnalyzer(BaseAnalyzer):
         for child in n.children:
             if child.type not in (
                 "function_declaration",
+                "function_expression",
+                "arrow_function",
                 "method_definition",
             ):
                 d = self._visit_depth(child, next_depth)
