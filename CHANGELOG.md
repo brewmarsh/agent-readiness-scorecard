@@ -2,25 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.80.0] - 2026-02-23
+## [v0.80.0] - 2026-03-03
 
-### 🌌 Physics of Context
-This release focuses on optimizing the **Agent Cognitive Load (ACL)** and mastering the **Economics of Context**. By refining how we analyze and report on code structural complexity, we ensure that AI agents can navigate the codebase with minimal entropy and maximal focus.
+### Features
+- **cli:** Advanced filtering, sorting, and limiting for `advise` command (dab7dae, 27e3c32).
 
-### 🚀 Features
-- **javascript:** Enhanced JavaScript Analyzer with callback hell detection and mathematical breakdown docstrings.
-- **core:** Integrated `uv` for faster environment setup and dependency management.
-- **cli:** Added advanced sorting and filtering options (`--failing`, `--sort`, `--top`) to the `score` and `advise` commands.
-- **java:** Full support for Java Agent Cognitive Load analysis.
+### Bug Fixes
+- **js:** Improved nesting depth calculation for callbacks in JavaScript analyzer (24afdcc).
+- **js:** Graceful handling of tree-sitter as optional import in JavaScript (5d90bd2).
+- **core:** Improved directory pruning and import parsing guards (d106db8, 1f95001).
 
-### 🐛 Bug Fixes
-- **javascript:** Fixed `node_modules` parsing error by improving directory pruning in dependency scanner.
-- **ci:** Hardened branch enforcement gates and standardized workflow requirements.
-
-### ⚙️ Maintenance
-- **ci:** Automated CHANGELOG generation and GitHub Release integration.
-- **pypi:** Setup PyPI registration and automated publishing via OIDC.
-- **security:** Hardened `.gitignore` to prevent leakage of transient analysis artifacts.
+### Chore
+- **deps:** Migration to `uv` for dependency management (a1f8bf2, 815cc9f).
+- **repo:** Comprehensive repository cleanup of clutter and updated `.gitignore` (6b0734e, aefbea3).
+- **ci:** Major overhaul of CI/CD workflows and Quality Gates (d6f6949, 72f9b8d).
+- **types:** Automated type hint improvements across the core engine (8ba56c6, 4bc8be1).
 
 ## [v0.70.0] - 2026-02-23
 
