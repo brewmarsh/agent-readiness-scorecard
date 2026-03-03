@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.0] - 2026-02-23
+
+### 🌌 Physics of Context
+This release focuses on optimizing the **Agent Cognitive Load (ACL)** and mastering the **Economics of Context**. By refining how we analyze and report on code structural complexity, we ensure that AI agents can navigate the codebase with minimal entropy and maximal focus.
+
+### 🚀 Features
+- **javascript:** Enhanced JavaScript Analyzer with callback hell detection and mathematical breakdown docstrings.
+- **core:** Integrated `uv` for faster environment setup and dependency management.
+- **cli:** Added advanced sorting and filtering options (`--failing`, `--sort`, `--top`) to the `score` and `advise` commands.
+- **java:** Full support for Java Agent Cognitive Load analysis.
+
+### 🐛 Bug Fixes
+- **javascript:** Fixed `node_modules` parsing error by improving directory pruning in dependency scanner.
+- **ci:** Hardened branch enforcement gates and standardized workflow requirements.
+
+### ⚙️ Maintenance
+- **ci:** Automated CHANGELOG generation and GitHub Release integration.
+- **pypi:** Setup PyPI registration and automated publishing via OIDC.
+- **security:** Hardened `.gitignore` to prevent leakage of transient analysis artifacts.
+
 ## [v0.70.0] - 2026-02-23
 
 ### Features
