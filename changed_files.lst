@@ -1,1 +1,2 @@
-tests/test_javascript_analyzer.py
+src/agent_scorecard/analyzers/javascript.py
+src/agent_scorecard/dependencies.py
