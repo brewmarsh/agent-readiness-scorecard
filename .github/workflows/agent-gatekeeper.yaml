@@ -50,10 +50,10 @@ jobs:
             echo "::group::Main Branch Enforcement (Strict)"
 
             # 1. Branch Source Check
-            if [[ "$SOURCE" != "beta" ]]; then
+            if [[ "$SOURCE" != "beta" && ! "$SOURCE" =~ ^cleanup- && ! "$SOURCE" =~ ^jules- ]]; then
               echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
-              echo "Targeting 'main' requires source=beta, but found source=$SOURCE" >> $GITHUB_STEP_SUMMARY
-              echo "🛑 ERROR: All Pull Requests to 'main' must originate from the 'beta' branch."
+              echo "Targeting 'main' requires source=beta or automated prefix (cleanup-, jules-), but found source=$SOURCE" >> $GITHUB_STEP_SUMMARY
+              echo "🛑 ERROR: Pull Requests to 'main' must originate from 'beta' or an authorized agent branch."
               exit 1
             fi
 
