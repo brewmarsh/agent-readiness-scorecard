@@ -9,6 +9,7 @@ description = "A tool to analyze codebases for AI-Agent Friendliness"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Jules", email = "jules@example.com" }]
+requires-python = ">=3.10"
 
 dependencies = [
     "mccabe>=0.7.0",
@@ -22,10 +23,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/brewmarsh/agent-readiness-scorecard"
+Documentation = "https://github.com/brewmarsh/agent-readiness-scorecard#readme"
 Repository = "https://github.com/brewmarsh/agent-readiness-scorecard.git"
 Issues = "https://github.com/brewmarsh/agent-readiness-scorecard/issues"
-
-requires-python = ">=3.10"
 
 [project.scripts]
 agent-score = "agent_scorecard.main:cli"
@@ -34,8 +34,8 @@ agent-score = "agent_scorecard.main:cli"
 llm = ["litellm>=1.0.0"]
 treesitter = [
     "tree-sitter>=0.22.0",
-    "tree-sitter-javascript>=0.20.0",
-    "tree-sitter-typescript>=0.20.0",
+    "tree-sitter-javascript>=0.21.0",
+    "tree-sitter-typescript>=0.21.0",
 ]
 all = [
     "agent-scorecard[llm,treesitter]",
