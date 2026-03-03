@@ -3,7 +3,8 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-scorecard"
+# CHANGED: Matches your PyPI registration name
+name = "agent-readiness-scorecard"
 dynamic = ["version"]
 description = "A tool to analyze codebases for AI-Agent Friendliness"
 readme = "README.md"
@@ -38,7 +39,8 @@ treesitter = [
     "tree-sitter-typescript>=0.21.0",
 ]
 all = [
-    "agent-scorecard[llm,treesitter]",
+    # CHANGED: Refers to the new project name
+    "agent-readiness-scorecard[llm,treesitter]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -53,7 +55,8 @@ dev = [
     "types-tabulate",
     "types-networkx",
     "types-PyYAML",
-    "agent-scorecard[all]",
+    # CHANGED: Refers to the new project name
+    "agent-readiness-scorecard[all]",
 ]
 
 [tool.hatch.version]
