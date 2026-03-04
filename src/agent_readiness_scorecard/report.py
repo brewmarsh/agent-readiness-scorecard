@@ -11,12 +11,10 @@ def _generate_summary_section(
     profile: Dict[str, Any],
     project_issues: Optional[List[str]],
     version: str = "0.0.0",
-    summary_stats: Optional[Dict[str, int]] = None,
 ) -> str:
     """
     Creates the executive summary section of the report.
     """
-    # RESOLUTION: Combined versioned header with detailed beta summary stats
     summary = f"# Agent Scorecard Report v{version}\n\n"
     profile_desc = profile.get("description", "Generic").split(".")[0]
     summary += f"**Target Agent Profile:** {profile_desc}\n"
@@ -26,13 +24,9 @@ def _generate_summary_section(
     if final_score >= 70:
         summary += "✅ **Status: PASSED** - This codebase is Agent-Ready.\n\n"
     else:
-        summary += "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
-
-    if summary_stats:
-        summary += "### 📊 Project Summary\n"
-        summary += f"- **Total Files Analyzed:** {summary_stats.get('total_files', 0)}\n"
-        summary += f"- **Total Red Functions:** {summary_stats.get('red_functions', 0)} 🔴\n"
-        summary += f"- **Total Yellow Functions:** {summary_stats.get('yellow_functions', 0)} 🟡\n\n"
+        summary += (
+            "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
+        )
 
     if project_issues:
         summary += "### ⚠️ Project Issues\n"
@@ -55,6 +49,7 @@ def _generate_acl_section(
     acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
 
     targets = "## 🎯 Top Refactoring Targets (Agent Cognitive Load (ACL))\n\n"
+    # RESOLUTION: Adopted the high-fidelity formula focusing on nesting depth
     targets += f"ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50). Target: ACL <= {acl_yellow}.\n\n"
 
     all_functions = []
@@ -63,11 +58,13 @@ def _generate_acl_section(
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
-    # --- RESOLUTION: SORTING & LIMITING LOGIC ---
+    # --- SORTING & LIMITING ---
+    # Filter for functions that exceed the yellow threshold
     high_acl_functions = [
         fn for fn in all_functions if cast(float, fn.get("acl", 0)) > acl_yellow
     ]
 
+    # Support sorting by acl, loc, or complexity; default to acl
     sort_key = sort_by if sort_by in ["acl", "loc", "complexity"] else "acl"
     sorted_funcs = sorted(
         high_acl_functions, key=lambda x: x.get(sort_key, 0), reverse=True
@@ -78,18 +75,116 @@ def _generate_acl_section(
     # --- END SORTING & LIMITING ---
 
     if sorted_funcs:
-        targets += "| Function | File | 🧠 ACL | Status |\n"
-        targets += "|----------|------|--------|--------|\n"
+        targets += "| Function | File | ACL | Status |\n"
+        targets += "|----------|------|-----|--------|\n"
         for fn in sorted_funcs:
             acl_val = cast(float, fn.get("acl", 0))
             status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
-            targets += f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+            targets += (
+                f"| `{fn['name']}` | `{fn['file']}` | {acl_val:.1f} | {status} |\n"
+            )
         targets += "\n"
     else:
         targets += f"✅ All functions meet the Agent Cognitive Load (ACL) target of <= {acl_yellow}.\n\n"
     return targets
 
-# ... [generate_type_safety_section and generate_file_table_section remain unchanged] ...
+
+def _generate_type_safety_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    thresholds: Dict[str, Any],
+    verbosity: str = "detailed",
+) -> str:
+    """
+    Summarizes type hint coverage across the project.
+    """
+    type_safety_threshold = thresholds.get(
+        "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+    )
+
+    types_section = "## 🛡️ Type Safety Index\n\n"
+    types_section += (
+        f"Target: >{type_safety_threshold}% of functions "
+        "must have explicit type signatures.\n\n"
+    )
+
+    sorted_types = sorted(stats, key=lambda x: x.get("type_coverage", 0))
+    table_rows = []
+    for res in sorted_types:
+        coverage = res.get("type_coverage", 0)
+        if verbosity == "summary" and coverage >= type_safety_threshold:
+            continue
+        status = "✅" if coverage >= type_safety_threshold else "❌"
+        table_rows.append(f"| {res['file']} | {coverage:.0f}% | {status} |")
+
+    if not table_rows:
+        return types_section + "✅ All files meet type safety requirements.\n\n"
+
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
+    types_section += "\n".join(table_rows)
+
+    return types_section + "\n\n"
+
+
+def _generate_file_table_section(
+    stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
+    verbosity: str = "detailed",
+) -> str:
+    """
+    Creates a breakdown of analysis for every file grouped by language.
+    """
+    if verbosity == "summary":
+        title = "### 📂 Failing File Analysis"
+    else:
+        title = "### 📂 Full File Analysis"
+
+    # Group files by language
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for res in stats:
+        lang = res.get("language", "Unknown")
+        if lang not in grouped:
+            grouped[lang] = []
+        grouped[lang].append(cast(Dict[str, Any], res))
+
+    sections = []
+    for lang in sorted(grouped.keys()):
+        lang_files = grouped[lang]
+        failing = [f for f in lang_files if f.get("score", 0) < 70]
+        passing = [f for f in lang_files if f.get("score", 0) >= 70]
+
+        if not failing and verbosity == "summary":
+            continue
+
+        lang_section = [f"#### {lang}"]
+
+        if failing:
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
+            for res in failing:
+                lang_section.append(
+                    f"| {res['file']} | {res['score']} ❌ | {res.get('issues', '')} |"
+                )
+
+        if passing and verbosity == "detailed":
+            lang_section.append("\n<details>")
+            lang_section.append(
+                f"<summary>View {len(passing)} Passing {lang} Files</summary>\n"
+            )
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
+            for res in passing:
+                lang_section.append(f"| {res['file']} | {res['score']} ✅ | |")
+            lang_section.append("\n</details>\n")
+        elif passing and failing and verbosity == "summary":
+            lang_section.append(f"\n*Plus {len(passing)} passing files hidden.*\n")
+
+        sections.append("\n".join(lang_section))
+
+    if not sections and verbosity == "summary":
+        return "### 📂 File Analysis\n\n✅ All files passed!\n"
+
+    return title + "\n\n" + "\n\n".join(sections)
+
 
 def generate_markdown_report(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
@@ -102,7 +197,6 @@ def generate_markdown_report(
     version: str = "0.0.0",
     sort_by: str = "acl",
     top_limit: Optional[int] = None,
-    summary: Optional[Dict[str, int]] = None,
 ) -> str:
     """
     Orchestrates the Markdown report generation using customizable styles.
@@ -113,20 +207,20 @@ def generate_markdown_report(
     style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
     verbosity = style_map.get(report_style, "summary")
 
-    summary_text = _generate_summary_section(
-        final_score, profile, project_issues, version=version, summary_stats=summary
-    )
+    # --- SORTING & LIMITING ---
+    summary = _generate_summary_section(final_score, profile, project_issues, version)
 
     if verbosity == "quiet":
-        return summary_text + "\n---\n*Generated by Agent-Readiness-Scorecard*"
+        return summary + "\n---\n*Generated by Agent-Readiness-Scorecard*"
 
     targets = _generate_acl_section(stats, thresholds, sort_by, top_limit)
+    # --- END SORTING & LIMITING ---
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
     return (
-        summary_text
+        summary
         + targets
         + types_section
         + prompts
@@ -134,3 +228,69 @@ def generate_markdown_report(
         + table
         + "\n---\n*Generated by Agent-Readiness-Scorecard*"
     )
+
+
+def generate_advisor_report(
+    stats: Union[List[AdvisorFileResult], List[Dict[str, Any]]],
+    dependency_stats: Dict[str, int],
+    entropy_stats: Dict[str, int],
+    cycles: List[List[str]],
+) -> str:
+    """
+    Generates the advanced Advisor Report based on Agent Physics.
+    """
+    report = "# 🧠 Agent Readiness Advisor Report\n\nAnalysis based on the **Physics of Agent-Code Interaction**.\n\n"
+
+    # RESOLUTION: Updated Advisor report to reflect high-fidelity ACL formula
+    report += "## 1. Agent Cognitive Load (ACL)\n*Formula: ACL = (Depth * 2) + (Complexity * 1.5) + (LOC / 50)*\n\n"
+
+    high_acl_files = sorted(
+        [s for s in stats if s.get("acl", 0) > 15],
+        key=lambda x: x.get("acl", 0),
+        reverse=True,
+    )
+    if high_acl_files:
+        report += "### 🚨 Hallucination Zones (ACL > 15)\n| File | ACL | Complexity | LOC |\n|---|---|---|---|\n"
+        for s in high_acl_files:
+            report += f"| `{s['file']}` | **{s.get('acl', 0):.1f}** | {s.get('complexity', 0):.1f} | {s.get('loc', 0)} |\n"
+    else:
+        report += "✅ No Hallucination Zones detected.\n"
+
+    report += "\n## 2. Context Economics\n"
+    high_token_files = [f for f in stats if f.get("tokens", 0) > 32000]
+    if high_token_files:
+        report += "### 🪙 Token Budget (> 32k tokens)\n"
+        for f in high_token_files:
+            report += f"- `{f['file']}`: {f.get('tokens', 0)} tokens\n"
+    else:
+        report += "✅ All files within context window limits.\n"
+
+    report += "\n## 3. Dependency Entanglement\n"
+    god_modules = sorted(
+        {k: v for k, v in dependency_stats.items() if v > 50}.items(),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    if god_modules:
+        report += "### 🕸 God Modules\n| File | Inbound Refs |\n|---|---|\n"
+        for k, v in god_modules:
+            report += f"| `{k}` | {v} |\n"
+
+    if cycles:
+        report += "### 🔄 Circular Dependencies\n"
+        for cycle in cycles:
+            report += f"- {' -> '.join(cycle)} -> {cycle[0]}\n"
+    else:
+        report += "✅ No Circular Dependencies detected.\n"
+
+    if entropy_stats:
+        report += "\n## 4. Directory Entropy\n"
+        crowded_dirs = {p: c for p, c in entropy_stats.items() if c > 15}
+        if crowded_dirs:
+            report += "### 📂 Crowded Directories (> 15 files)\n"
+            for p, c in crowded_dirs.items():
+                report += f"- `{p}`: {c} files\n"
+        else:
+            report += "✅ Directory structure is balanced.\n"
+
+    return report

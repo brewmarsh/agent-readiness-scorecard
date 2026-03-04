@@ -75,20 +75,11 @@ class TokenAnalysis(TypedDict):
     alert: bool
 
 
-class SummaryStats(TypedDict):
-    """High-level project summary metrics."""
-
-    total_files: int
-    yellow_functions: int
-    red_functions: int
-
-
 class AnalysisResult(TypedDict):
     """The final payload containing the full project analysis."""
 
     file_results: List[FileAnalysisResult]
     final_score: float
-    summary: SummaryStats
     missing_docs: List[str]
     project_issues: List[str]
     dep_analysis: DepAnalysis
