@@ -92,6 +92,139 @@ def get_changed_files(
         return []
 
 
+def _print_summary_card(
+    results: Union[Dict[str, Any], AnalysisResult], verbosity: str
+) -> None:
+    """
+    Prints a high-level summary card of the analysis.
+    """
+    if verbosity == "quiet":
+        return
+
+    summary = results.get("summary", {})
+    total_files = summary.get("total_files", 0)
+    red_fns = summary.get("red_functions", 0)
+    yellow_fns = summary.get("yellow_functions", 0)
+
+    # Calculate status colors
+    score = results["final_score"]
+    status_color = "green" if score >= 70 else "red"
+    status_text = "PASS" if score >= 70 else "FAIL"
+
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="left", ratio=1)
+    grid.add_column(justify="right", ratio=1)
+
+    grid.add_row(
+        f"Files Analyzed: [bold cyan]{total_files}[/bold cyan]",
+        f"Status: [bold {status_color}]{status_text}[/bold {status_color}]",
+    )
+    grid.add_row(
+        f"Red Functions: [bold red]{red_fns}[/bold red] 🔴",
+        f"Yellow Functions: [bold yellow]{yellow_fns}[/bold yellow] 🟡",
+    )
+
+    console.print(
+        Panel(
+            grid,
+            title="[bold]Project Summary[/bold]",
+            border_style=status_color,
+            expand=False,
+        )
+    )
+
+
+def _print_acl_targets(
+    results: Union[Dict[str, Any], AnalysisResult],
+    verbosity: str,
+    thresholds: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Prints the top ACL refactoring targets.
+    """
+    if verbosity == "quiet":
+        return
+
+    if thresholds is None:
+        from .constants import DEFAULT_THRESHOLDS
+
+        thresholds = DEFAULT_THRESHOLDS
+
+    acl_yellow = thresholds.get("acl_yellow", 10)
+    acl_red = thresholds.get("acl_red", 15)
+
+    all_functions = []
+    for f_res in results["file_results"]:
+        metrics = f_res.get("function_metrics", [])
+        for m in metrics:
+            all_functions.append({**m, "file": f_res["file"]})
+
+    # Filter for functions that exceed a base threshold
+    high_acl = sorted(
+        [fn for fn in all_functions if fn.get("acl", 0) > acl_yellow],
+        key=lambda x: x.get("acl", 0),
+        reverse=True,
+    )[:10]
+
+    if high_acl:
+        table = Table(title="Top Refactoring Targets (ACL)")
+        table.add_column("Function", style="cyan")
+        table.add_column("File", style="blue")
+        table.add_column("🧠 ACL", justify="right")
+        table.add_column("Status", justify="center")
+
+        for fn in high_acl:
+            acl_val = fn.get("acl", 0)
+            status = (
+                "[bold red]Red[/bold red]"
+                if acl_val > acl_red
+                else "[bold yellow]Yellow[/bold yellow]"
+            )
+            table.add_row(fn["name"], fn["file"], f"{acl_val:.1f}", status)
+
+        console.print(table)
+
+
+def _print_type_safety_index(
+    results: Union[Dict[str, Any], AnalysisResult],
+    verbosity: str,
+    thresholds: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Prints the type safety index for files.
+    """
+    if verbosity == "quiet":
+        return
+
+    if thresholds is None:
+        from .constants import DEFAULT_THRESHOLDS
+
+        thresholds = DEFAULT_THRESHOLDS
+
+    type_safety_threshold = thresholds.get("type_safety", 90)
+
+    table = Table(title="Type Safety Index")
+    table.add_column("File", style="cyan")
+    table.add_column("🛡️ Type Safety Index", justify="right")
+    table.add_column("Status", justify="center")
+
+    sorted_files = sorted(
+        results["file_results"], key=lambda x: x.get("type_coverage", 0)
+    )
+
+    has_rows = False
+    for res in sorted_files:
+        coverage = res.get("type_coverage", 0)
+        if verbosity == "summary" and coverage >= type_safety_threshold:
+            continue
+        status = "[green]✅[/green]" if coverage >= type_safety_threshold else "[red]❌[/red]"
+        table.add_row(res["file"], f"{coverage:.0f}%", status)
+        has_rows = True
+
+    if has_rows:
+        console.print(table)
+
+
 def _print_project_issues(project_issues: List[str], verbosity: str) -> None:
     """
     Prints systemic project issues using a high-visibility bulleted list.
@@ -180,7 +313,7 @@ def _print_file_analysis(
 
     table = Table(title="File Analysis")
     table.add_column("File", style="cyan")
-    table.add_column("Score", justify="right")
+    table.add_column("🎯 Score", justify="right")
     table.add_column("Issues", style="magenta")
 
     has_rows = False
@@ -478,6 +611,9 @@ def score(
 
     results["file_results"] = cast(List[FileAnalysisResult], file_results)
 
+    _print_summary_card(results, final_verbosity)
+    _print_acl_targets(results, final_verbosity, thresholds=thresholds)
+    _print_type_safety_index(results, final_verbosity, thresholds=thresholds)
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
     _print_project_issues(
@@ -489,6 +625,11 @@ def score(
     console.print(
         f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]"
     )
+
+    if top is not None and final_verbosity != "quiet":
+        console.print(
+            f"\n[dim]Showing top {top} issues. Run without --top to see the full list.[/dim]"
+        )
 
     if badge:
         svg = generate_badge(results["final_score"])
@@ -506,6 +647,7 @@ def score(
             project_issues=cast(List[str], results.get("project_issues", [])),
             thresholds=thresholds,
             report_style=final_report_style,
+            summary=cast(Dict[str, int], results.get("summary")),
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
