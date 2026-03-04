@@ -23,7 +23,7 @@ def test_verbosity_quiet() -> None:
         # Verify that Rich-enhanced components are suppressed
         assert "Environment Health" not in result.output
         assert "File Analysis" not in result.output
-        assert "Running Agent Scorecard" not in result.output
+        assert "Running Agent Readiness Scorecard" not in result.output
 
         # Only the core outcome should be visible
         assert "Final Agent Score" in result.output

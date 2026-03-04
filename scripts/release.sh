@@ -26,7 +26,7 @@ rm -rf dist/ build/ *.egg-info
 
 # 4. Build the package
 echo "📦 Building package..."
-python -m build
+uv build
 
 # 5. Verify the artifact
 echo "🔍 Verifying build..."

@@ -408,7 +408,7 @@ def score(
 
     if final_verbosity != "quiet":
         console.print(
-            Panel("[bold cyan]Running Agent Scorecard[/bold cyan]", expand=False)
+            Panel("[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False)
         )
 
     limit_to_files = list(limit_to) if limit_to else None
@@ -530,7 +530,7 @@ def advise(path: str, output_file: Optional[str]) -> None:
     Returns:
         None
     """
-    console.print(Panel("[bold cyan]Running Advisor Mode[/bold cyan]", expand=False))
+    console.print(Panel("[bold cyan]Running Agent Readiness Advisor[/bold cyan]", expand=False))
     cfg = load_config(path)
     results = analyzer.perform_analysis(
         path,

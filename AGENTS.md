@@ -1,4 +1,4 @@
-﻿# Agent Context: agent-readiness-scorecard
+# Agent Context: Agent Readiness Scorecard
 
 ## Project Goal
 `agent-readiness-scorecard` is a CLI tool that analyzes Python projects to determine how "friendly" they are for AI Agents. It scores projects based on file size, complexity, type coverage, and documentation presence.

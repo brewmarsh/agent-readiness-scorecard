@@ -67,6 +67,9 @@ version-file = "src/agent_readiness_scorecard/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_readiness_scorecard"]
 
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+
 [tool.agent-readiness-scorecard]
 agent = "generic"
 verbosity = "summary"
