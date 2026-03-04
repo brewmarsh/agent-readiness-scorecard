@@ -23,9 +23,12 @@ console = Console()
 
 # --- VERSION SETUP ---
 try:
-    __version__ = version("agent-readiness-scorecard")
-except PackageNotFoundError:
-    __version__ = "0.0.0"
+    from ._version import __version__
+except (ImportError, ModuleNotFoundError):
+    try:
+        __version__ = version("agent-readiness-scorecard")
+    except PackageNotFoundError:
+        __version__ = "0.0.0"
 
 
 # --- CLI DEFINITION ---
@@ -341,14 +344,14 @@ def fix(path: str, agent: str) -> None:
 )
 @click.option(
     "--sort",
-    type=click.Choice(["score", "acl", "tokens", "types"]),
-    default="score",
-    help="Sort results by metric.",
+    type=click.Choice(["acl", "loc", "complexity", "score", "tokens", "types"]),
+    default="acl",
+    help="Sort results by metric (default: acl).",
 )
 @click.option(
     "--top",
     type=int,
-    help="Limit output to the N worst-offending files.",
+    help="Limit results (files in console, functions in report).",
 )
 @click.option(
     "--failing",
@@ -408,7 +411,9 @@ def score(
 
     if final_verbosity != "quiet":
         console.print(
-            Panel("[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False)
+            Panel(
+                "[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False
+            )
         )
 
     limit_to_files = list(limit_to) if limit_to else None
@@ -454,7 +459,7 @@ def score(
         config=cast(Dict[str, Any], cfg),
     )
 
-    # --- Filtering, Sorting, and Limiting ---
+    # --- SORTING & LIMITING ---
     file_results = cast(List[Dict[str, Any]], results["file_results"])
 
     # 1. Filtering
@@ -462,10 +467,19 @@ def score(
         file_results = [res for res in file_results if res["score"] < 70]
 
     # 2. Sorting
-    reverse_map = {"score": False, "acl": True, "tokens": True, "types": False}
+    reverse_map = {
+        "acl": True,
+        "loc": True,
+        "complexity": True,
+        "score": False,
+        "tokens": True,
+        "types": False,
+    }
     key_map = {
-        "score": lambda x: x["score"],
         "acl": lambda x: x["acl"],
+        "loc": lambda x: x["loc"],
+        "complexity": lambda x: x["complexity"],
+        "score": lambda x: x["score"],
         "tokens": lambda x: x.get("cumulative_tokens", 0),
         "types": lambda x: x["type_coverage"],
     }
@@ -477,6 +491,7 @@ def score(
         file_results = file_results[:top]
 
     results["file_results"] = cast(List[FileAnalysisResult], file_results)
+    # --- END SORTING & LIMITING ---
 
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
@@ -506,6 +521,9 @@ def score(
             project_issues=cast(List[str], results.get("project_issues", [])),
             thresholds=thresholds,
             report_style=final_report_style,
+            version=__version__,
+            sort_by=sort,
+            top_limit=top,
         )
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -530,7 +548,9 @@ def advise(path: str, output_file: Optional[str]) -> None:
     Returns:
         None
     """
-    console.print(Panel("[bold cyan]Running Agent Readiness Advisor[/bold cyan]", expand=False))
+    console.print(
+        Panel("[bold cyan]Running Agent Readiness Advisor[/bold cyan]", expand=False)
+    )
     cfg = load_config(path)
     results = analyzer.perform_analysis(
         path,
