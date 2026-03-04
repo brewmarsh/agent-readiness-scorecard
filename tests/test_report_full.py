@@ -39,7 +39,7 @@ def test_report_full(tmp_path: Path) -> None:
     # Read the generated report and verify its content structure
     content = report_file.read_text(encoding="utf-8")
 
-    assert "# Agent Scorecard Report" in content
+    assert "# Agent Readiness Scorecard Report" in content
     assert "high_acl.py" in content
 
     # Verify the high-fidelity sections established in the Beta branch

@@ -123,7 +123,7 @@ def test_generate_advisor_report_standalone() -> None:
 
     report_md = generate_advisor_report(stats, dependency_stats, entropy_stats, cycles)
 
-    assert "# 🧠 Agent Advisor Report" in report_md
+    assert "# 🧠 Agent Readiness Advisor Report" in report_md
     assert "high_acl.py" in report_md
     assert "Hallucination Zones" in report_md
     assert "god.py" in report_md
@@ -209,6 +209,6 @@ def test_unified_score_report_content(tmp_path: Path) -> None:
         stats, 50, str(tmp_path), PROFILES["generic"]
     )
 
-    assert "Agent Scorecard Report" in report_md
+    assert "Agent Readiness Scorecard Report" in report_md
     assert "hallucination.py" in report_md
     assert "Agent Cognitive Load (ACL)" in report_md

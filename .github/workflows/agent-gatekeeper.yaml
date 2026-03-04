@@ -71,7 +71,7 @@ jobs:
             echo "Running Scorecard with High Threshold (>= 90)..."
             uv run agent-score . --verbosity summary --report pr_health.md --fail-under 90 || {
               echo "### 🛑 Scorecard Failure" >> $GITHUB_STEP_SUMMARY
-              echo "Targeting 'main' requires an Agent Scorecard pass >= 90." >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'main' requires an Agent Readiness Scorecard pass >= 90." >> $GITHUB_STEP_SUMMARY
               exit 1
             }
             echo "::endgroup::"
@@ -92,7 +92,7 @@ jobs:
             echo "Running Scorecard with Standard Threshold (>= 70)..."
             uv run agent-score . --verbosity summary --report pr_health.md --fail-under 70 || {
               echo "### 🛑 Scorecard Failure" >> $GITHUB_STEP_SUMMARY
-              echo "Targeting 'beta' requires an Agent Scorecard pass >= 70." >> $GITHUB_STEP_SUMMARY
+              echo "Targeting 'beta' requires an Agent Readiness Scorecard pass >= 70." >> $GITHUB_STEP_SUMMARY
               exit 1
             }
             echo "::endgroup::"

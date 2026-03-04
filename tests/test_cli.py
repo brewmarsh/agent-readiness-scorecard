@@ -23,7 +23,7 @@ def test_cli_happy_path() -> None:
         # cli is a group, so we need to invoke 'score'
         result = runner.invoke(cli, ["score", "."])
         assert result.exit_code == 0
-        assert "Running Agent Scorecard" in result.output
+        assert "Running Agent Readiness Scorecard" in result.output
         assert "Final Agent Score" in result.output
 
 
@@ -111,7 +111,7 @@ def test_cli_advise_command() -> None:
         with open("report.md", "r", encoding="utf-8") as f:
             content = f.read()
             # RESOLUTION: Verified the Advisor Report header exists
-            assert "Agent Advisor Report" in content
+            assert "Agent Readiness Advisor Report" in content
 
 
 def test_cli_check_prompts() -> None:

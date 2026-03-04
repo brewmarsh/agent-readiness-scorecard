@@ -2,11 +2,11 @@ Here is a draft for the v1.0 PRD that captures our strategic pillars, structured
 
 ---
 
-# Agent Scorecard v1.0: Product Requirements Document
+# Agent Readiness Scorecard v1.0: Product Requirements Document
 
 ## Executive Summary
 
-The Agent Scorecard measures the "Physics of Agent-Code Interaction." Version 1.0 transitions the tool from a baseline utility into a foundational CI/CD staple. The primary focus of this release is upgrading the fidelity of our scoring algorithms to reflect true cognitive friction, alongside a flexible, token-efficient remediation engine that allows teams to plug in their LLM of choice.
+The Agent Readiness Scorecard measures the "Physics of Agent-Code Interaction." Version 1.0 transitions the tool from a baseline utility into a foundational CI/CD staple. The primary focus of this release is upgrading the fidelity of our scoring algorithms to reflect true cognitive friction, alongside a flexible, token-efficient remediation engine that allows teams to plug in their LLM of choice.
 
 ## Core Objectives
 

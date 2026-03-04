@@ -155,7 +155,7 @@ def test_advise_command(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     # RESOLUTION: Verify the high-fidelity headers established in the Beta branch
-    assert "Agent Advisor Report" in result.output
+    assert "Agent Readiness Advisor Report" in result.output
     assert "Agent Cognitive Load" in result.output
 
 
@@ -181,7 +181,7 @@ def test_score_command_with_report(tmp_path: Path) -> None:
 
     report_content = report_path.read_text(encoding="utf-8")
 
-    assert "# Agent Scorecard Report" in report_content
+    assert "# Agent Readiness Scorecard Report" in report_content
     assert "Overall Score" in report_content
     # RESOLUTION: Check for the merged report sections established in modular reporting
     assert "Type Safety Index" in report_content
