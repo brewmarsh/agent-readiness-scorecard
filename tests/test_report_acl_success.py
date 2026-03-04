@@ -39,6 +39,6 @@ def test_generate_acl_section_with_targets() -> None:
 
     report = _generate_acl_section(stats, thresholds)
 
-    assert "| Function | File | ACL | Status |" in report
+    assert "| Function | File | 🧠 ACL | Status |" in report
     assert "| `func1` | `test.py` | 12.0 | 🟡 Yellow |" in report
     assert "`func2`" not in report  # func2 should be filtered out

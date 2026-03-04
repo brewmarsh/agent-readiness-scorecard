@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Any, Tuple, Set, Optional, cast
-from .constants import PROFILES
+from .constants import PROFILES, DEFAULT_THRESHOLDS
 from .analyzers.base import BaseAnalyzer
 from .analyzers.python import PythonAnalyzer
 from .analyzers.markdown import MarkdownAnalyzer
@@ -187,6 +187,9 @@ def perform_analysis(
 
     file_results: List[FileAnalysisResult] = []
     file_scores: List[int] = []
+    yellow_functions = 0
+    red_functions = 0
+    threshold_cache: Dict[str, Dict[str, Any]] = {}
 
     for filepath in analyzable_files:
         rel_path = os.path.relpath(filepath, start=project_root)
@@ -195,12 +198,16 @@ def perform_analysis(
         analyzer = get_analyzer(filepath)
         lang = analyzer.language
 
-        # Merge global thresholds with language-specific overrides if available
-        active_thresholds = (thresholds or {}).copy()
-        if config:
-            lang_cfg = config.get(lang.lower(), {})
-            lang_thresholds = lang_cfg.get("thresholds", {})
-            active_thresholds.update(lang_thresholds)
+        # Cache active thresholds per language to optimize lookup
+        if lang not in threshold_cache:
+            active_thresholds = (thresholds or {}).copy()
+            if config:
+                lang_cfg = config.get(lang.lower(), {})
+                lang_thresholds = lang_cfg.get("thresholds", {})
+                active_thresholds.update(lang_thresholds)
+            threshold_cache[lang] = active_thresholds
+
+        active_thresholds = threshold_cache[lang]
 
         score, issues, loc, complexity, type_safety, metrics_data = analyzer.score_file(
             filepath,
@@ -209,6 +216,17 @@ def perform_analysis(
             cumulative_tokens=cum_tokens,
         )
         file_scores.append(score)
+
+        # Count red/yellow functions based on ACL thresholds
+        acl_yellow = active_thresholds.get(
+            "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+        )
+        acl_red = active_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+        for m in metrics_data:
+            if m["acl"] > acl_red:
+                red_functions += 1
+            elif m["acl"] > acl_yellow:
+                yellow_functions += 1
 
         file_results.append(
             {
@@ -236,6 +254,11 @@ def perform_analysis(
     return {
         "file_results": file_results,
         "final_score": final_score,
+        "summary": {
+            "total_files": len(analyzable_files),
+            "yellow_functions": yellow_functions,
+            "red_functions": red_functions,
+        },
         "missing_docs": scan_project_docs(
             project_root, cast(List[str], profile.get("required_files", []))
         ),
