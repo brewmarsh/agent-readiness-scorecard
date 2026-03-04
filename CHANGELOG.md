@@ -2,12 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.91.0] - 2026-03-05
-
-### Refactoring
-- **core:** Finalize internal package rename to `agent_readiness_scorecard` and reconcile all internal imports.
-- **build:** Update `pyproject.toml` to explicitly map src-layout for Hatchling to ensure clean installations and prevent redundant 'src' folders in distribution.
-
 ## [v0.80.0] - 2026-03-03
 
 ### Features

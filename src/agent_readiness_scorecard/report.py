@@ -10,12 +10,12 @@ def _generate_summary_section(
     final_score: float,
     profile: Dict[str, Any],
     project_issues: Optional[List[str]],
-    summary_stats: Optional[Dict[str, int]] = None,
+    version: str = "0.0.0",
 ) -> str:
     """
     Creates the executive summary section of the report.
     """
-    summary = "# Agent Readiness Scorecard Report\n\n"
+    summary = f"# Agent Scorecard Report v{version}\n\n"
     profile_desc = profile.get("description", "Generic").split(".")[0]
     summary += f"**Target Agent Profile:** {profile_desc}\n"
     status_str = "PASS" if final_score >= 70 else "FAIL"
@@ -26,16 +26,6 @@ def _generate_summary_section(
     else:
         summary += (
             "❌ **Status: FAILED** - This codebase needs improvement for AI Agents.\n\n"
-        )
-
-    if summary_stats:
-        summary += "### 📊 Project Summary\n"
-        summary += f"- **Total Files Analyzed:** {summary_stats.get('total_files', 0)}\n"
-        summary += (
-            f"- **Total Red Functions:** {summary_stats.get('red_functions', 0)} 🔴\n"
-        )
-        summary += (
-            f"- **Total Yellow Functions:** {summary_stats.get('yellow_functions', 0)} 🟡\n\n"
         )
 
     if project_issues:
@@ -49,6 +39,8 @@ def _generate_summary_section(
 def _generate_acl_section(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     thresholds: Dict[str, Any],
+    sort_by: str = "acl",
+    top_limit: Optional[int] = None,
 ) -> str:
     """
     Analyzes and reports on units with high Agent Cognitive Load using AST-depth weights.
@@ -66,18 +58,26 @@ def _generate_acl_section(
         for m in metrics:
             all_functions.append({**m, "file": f_res["file"]})
 
+    # --- SORTING & LIMITING ---
     # Filter for functions that exceed the yellow threshold
     high_acl_functions = [
         fn for fn in all_functions if cast(float, fn.get("acl", 0)) > acl_yellow
     ]
-    top_acl = sorted(high_acl_functions, key=lambda x: x.get("acl", 0), reverse=True)[
-        :10
-    ]
 
-    if top_acl:
-        targets += "| Function | File | 🧠 ACL | Status |\n"
-        targets += "|----------|------|--------|--------|\n"
-        for fn in top_acl:
+    # Support sorting by acl, loc, or complexity; default to acl
+    sort_key = sort_by if sort_by in ["acl", "loc", "complexity"] else "acl"
+    sorted_funcs = sorted(
+        high_acl_functions, key=lambda x: x.get(sort_key, 0), reverse=True
+    )
+
+    if top_limit is not None:
+        sorted_funcs = sorted_funcs[:top_limit]
+    # --- END SORTING & LIMITING ---
+
+    if sorted_funcs:
+        targets += "| Function | File | ACL | Status |\n"
+        targets += "|----------|------|-----|--------|\n"
+        for fn in sorted_funcs:
             acl_val = cast(float, fn.get("acl", 0))
             status = "🔴 Red" if acl_val > acl_red else "🟡 Yellow"
             targets += (
@@ -119,8 +119,8 @@ def _generate_type_safety_section(
     if not table_rows:
         return types_section + "✅ All files meet type safety requirements.\n\n"
 
-    types_section += "| File | 🛡️ Type Safety Index | Status |\n"
-    types_section += "| :--- | :-----------------: | :----- |\n"
+    types_section += "| File | Type Safety Index | Status |\n"
+    types_section += "| :--- | :---------------: | :----- |\n"
     types_section += "\n".join(table_rows)
 
     return types_section + "\n\n"
@@ -158,8 +158,8 @@ def _generate_file_table_section(
         lang_section = [f"#### {lang}"]
 
         if failing:
-            lang_section.append("| File | 🎯 Score | Issues |")
-            lang_section.append("| :--- | :-----: | :--- |")
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
             for res in failing:
                 lang_section.append(
                     f"| {res['file']} | {res['score']} ❌ | {res.get('issues', '')} |"
@@ -170,8 +170,8 @@ def _generate_file_table_section(
             lang_section.append(
                 f"<summary>View {len(passing)} Passing {lang} Files</summary>\n"
             )
-            lang_section.append("| File | 🎯 Score | Issues |")
-            lang_section.append("| :--- | :-----: | :--- |")
+            lang_section.append("| File | Score | Issues |")
+            lang_section.append("| :--- | :---: | :--- |")
             for res in passing:
                 lang_section.append(f"| {res['file']} | {res['score']} ✅ | |")
             lang_section.append("\n</details>\n")
@@ -194,7 +194,9 @@ def generate_markdown_report(
     project_issues: Optional[List[str]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
     report_style: str = "actionable",
-    summary: Optional[Dict[str, int]] = None,
+    version: str = "0.0.0",
+    sort_by: str = "acl",
+    top_limit: Optional[int] = None,
 ) -> str:
     """
     Orchestrates the Markdown report generation using customizable styles.
@@ -205,20 +207,20 @@ def generate_markdown_report(
     style_map = {"full": "detailed", "actionable": "summary", "collapsed": "quiet"}
     verbosity = style_map.get(report_style, "summary")
 
-    summary_text = _generate_summary_section(
-        final_score, profile, project_issues, summary_stats=summary
-    )
+    # --- SORTING & LIMITING ---
+    summary = _generate_summary_section(final_score, profile, project_issues, version)
 
     if verbosity == "quiet":
-        return summary_text + "\n---\n*Generated by Agent-Readiness-Scorecard*"
+        return summary + "\n---\n*Generated by Agent-Readiness-Scorecard*"
 
-    targets = _generate_acl_section(stats, thresholds)
+    targets = _generate_acl_section(stats, thresholds, sort_by, top_limit)
+    # --- END SORTING & LIMITING ---
     types_section = _generate_type_safety_section(stats, thresholds, verbosity)
     prompts = generate_prompts_section(stats, thresholds, project_issues)
     table = _generate_file_table_section(stats, verbosity)
 
     return (
-        summary_text
+        summary
         + targets
         + types_section
         + prompts
@@ -248,7 +250,7 @@ def generate_advisor_report(
         reverse=True,
     )
     if high_acl_files:
-        report += "### 🚨 Hallucination Zones (ACL > 15)\n| File | 🧠 ACL | Complexity | 📏 LOC |\n|---|---|---|---|\n"
+        report += "### 🚨 Hallucination Zones (ACL > 15)\n| File | ACL | Complexity | LOC |\n|---|---|---|---|\n"
         for s in high_acl_files:
             report += f"| `{s['file']}` | **{s.get('acl', 0):.1f}** | {s.get('complexity', 0):.1f} | {s.get('loc', 0)} |\n"
     else:
