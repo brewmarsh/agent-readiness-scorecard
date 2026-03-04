@@ -1,9 +1,9 @@
 import textwrap
 import pytest
 from pathlib import Path
-from agent_scorecard.analyzers.python import PythonAnalyzer
-from agent_scorecard.constants import PROFILES
-from agent_scorecard import analyzer
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.constants import PROFILES
+from agent_readiness_scorecard import analyzer
 
 
 def test_bloated_files_penalty(tmp_path: Path) -> None:

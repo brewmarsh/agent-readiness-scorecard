@@ -1,15 +1,15 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard import report
-from agent_scorecard.constants import PROFILES
-from agent_scorecard.analyzer import get_import_graph
-from agent_scorecard.analyzers.python import PythonAnalyzer
-from agent_scorecard.dependencies import (
+from agent_readiness_scorecard import report
+from agent_readiness_scorecard.constants import PROFILES
+from agent_readiness_scorecard.analyzer import get_import_graph
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.dependencies import (
     get_inbound_imports,
     detect_cycles,
 )
-from agent_scorecard.auditor import get_crowded_directories
-from agent_scorecard.report import generate_advisor_report
+from agent_readiness_scorecard.auditor import get_crowded_directories
+from agent_readiness_scorecard.report import generate_advisor_report
 
 # --- Core Metric Tests ---
 

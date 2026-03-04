@@ -65,7 +65,7 @@ All notable changes to this project will be documented in this file.
 - **ci:** Update scorecard automation workflow to handle non-zero exit codes correctly (631354c).
 
 ### Refactoring
-- **core:** Modularize analyzers into `src/agent_scorecard/analyzers/` (Python, JavaScript, Docker, Markdown).
+- **core:** Modularize analyzers into `src/agent_readiness_scorecard/analyzers/` (Python, JavaScript, Docker, Markdown).
 - **core:** Move helper functions to `auditor_utils.py` to reduce `auditor.py` complexity (d680acd).
 - **core:** Refactor `analyzer.py` and `dependencies.py` to improve cohesion and reduce ACL (d9d95d1, 080fefe).
 

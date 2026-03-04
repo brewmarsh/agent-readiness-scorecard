@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
-from agent_scorecard.analyzers.python import PythonAnalyzer
-from agent_scorecard.constants import PROFILES
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.constants import PROFILES
 
 
 def test_acl_calculation_logic() -> None:

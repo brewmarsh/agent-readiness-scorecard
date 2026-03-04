@@ -1,8 +1,8 @@
-from agent_scorecard.report import (
+from agent_readiness_scorecard.report import (
     generate_markdown_report,
     generate_recommendations_report,
 )
-from agent_scorecard.constants import PROFILES
+from agent_readiness_scorecard.constants import PROFILES
 
 
 def test_generate_markdown_report() -> None:

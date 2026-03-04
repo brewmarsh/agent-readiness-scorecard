@@ -1,8 +1,8 @@
-# agent-scorecard.example.toml
-# This file shows all available configuration options for agent-scorecard.
-# You can copy this into your pyproject.toml under the [tool.agent-scorecard] section.
+# agent-readiness-scorecard.example.toml
+# This file shows all available configuration options for agent-readiness-scorecard.
+# You can copy this into your pyproject.toml under the [tool.agent-readiness-scorecard] section.
 
-[tool.agent-scorecard]
+[tool.agent-readiness-scorecard]
 # The default agent profile to use for scoring.
 # Available: "generic", "jules", "copilot"
 agent = "generic"
@@ -27,7 +27,7 @@ badge = false
 # Default path where the Markdown remediation report should be saved.
 report = "agent_report.md"
 
-[tool.agent-scorecard.thresholds]
+[tool.agent-readiness-scorecard.thresholds]
 # Agent Cognitive Load (ACL) thresholds.
 # ACL = Cyclomatic Complexity + (Lines of Code / 20).
 # Functions exceeding these values are flagged as "Hallucination Zones".

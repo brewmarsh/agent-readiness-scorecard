@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from agent_scorecard.report import _generate_acl_section
+from agent_readiness_scorecard.report import _generate_acl_section
 
 
 def test_generate_acl_section_success() -> None:

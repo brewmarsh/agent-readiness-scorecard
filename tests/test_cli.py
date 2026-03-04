@@ -1,6 +1,6 @@
 import os
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 
 
 def test_cli_happy_path() -> None:

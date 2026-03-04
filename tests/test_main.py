@@ -1,8 +1,8 @@
 import pytest
 from pathlib import Path
-from agent_scorecard.analyzer import scan_project_docs
-from agent_scorecard.analyzers.python import PythonAnalyzer
-from agent_scorecard.scoring import generate_badge
+from agent_readiness_scorecard.analyzer import scan_project_docs
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.scoring import generate_badge
 
 
 @pytest.fixture

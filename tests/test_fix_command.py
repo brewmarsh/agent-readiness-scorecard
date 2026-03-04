@@ -3,7 +3,7 @@ import textwrap
 import pytest
 from unittest.mock import patch
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 
 
 class TestFixCommand:
@@ -50,7 +50,8 @@ class TestFixCommand:
             ).strip()
 
             with patch(
-                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+                "agent_readiness_scorecard.llm.LLMClient.generate",
+                return_value=fixed_code,
             ) as mock_gen:
                 # Invoke dedicated 'fix' command
                 result = runner.invoke(cli, ["fix", "."])
@@ -105,7 +106,8 @@ class TestFixCommand:
             ).strip()
 
             with patch(
-                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+                "agent_readiness_scorecard.llm.LLMClient.generate",
+                return_value=fixed_code,
             ):
                 # Run fix command on subdir with jules agent (requires agents.md)
                 result = runner.invoke(cli, ["fix", "subdir", "--agent", "jules"])
@@ -141,7 +143,8 @@ class TestFixCommand:
             fixed_code = 'def foo() -> None:\n    """Doc."""\n    pass'
 
             with patch(
-                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+                "agent_readiness_scorecard.llm.LLMClient.generate",
+                return_value=fixed_code,
             ):
                 # Using the old --fix flag style
                 result = runner.invoke(cli, ["score", ".", "--fix"])
@@ -163,7 +166,7 @@ class TestFixCommand:
                 f.write("def foo():\n    pass\n")
 
             # Mock litellm to avoid ImportError in environments where it might not be loaded
-            with patch("agent_scorecard.llm.litellm") as mock_litellm:
+            with patch("agent_readiness_scorecard.llm.litellm") as mock_litellm:
                 mock_litellm.completion.return_value.choices[
                     0
                 ].message.content = "def foo() -> None:\n    pass\n"
@@ -184,7 +187,8 @@ class TestFixCommand:
             fixed_code = "```python\ndef foo() -> None:\n    pass\n```"
 
             with patch(
-                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+                "agent_readiness_scorecard.llm.LLMClient.generate",
+                return_value=fixed_code,
             ):
                 result = runner.invoke(cli, ["fix", "."])
                 assert result.exit_code == 0
@@ -204,7 +208,8 @@ class TestFixCommand:
             fixed_code = "def foo() -> None:\n    pass\n    UNFINISHED..."
 
             with patch(
-                "agent_scorecard.llm.LLMClient.generate", return_value=fixed_code
+                "agent_readiness_scorecard.llm.LLMClient.generate",
+                return_value=fixed_code,
             ):
                 result = runner.invoke(cli, ["fix", "."])
                 assert result.exit_code == 0

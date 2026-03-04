@@ -3,9 +3,9 @@ from pathlib import Path
 from click.testing import CliRunner
 
 # RESOLUTION: Import from the correct modules (analyzer/scoring) as per the architectural cleanup
-from agent_scorecard.constants import PROFILES
-from agent_scorecard.main import cli
-from agent_scorecard.analyzers.python import PythonAnalyzer
+from agent_readiness_scorecard.constants import PROFILES
+from agent_readiness_scorecard.main import cli
+from agent_readiness_scorecard.analyzers.python import PythonAnalyzer
 
 
 def test_get_loc(tmp_path: Path) -> None:

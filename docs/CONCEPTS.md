@@ -35,16 +35,16 @@ Context is currency.
 * **Directory Entropy:** Too many files in one folder confuses retrieval tools.
 
 ## 4. Multi-Language Support
-`agent-scorecard` uses the Strategy Pattern to apply language-specific "Physics" to different file types.
+`agent-readiness-scorecard` uses the Strategy Pattern to apply language-specific "Physics" to different file types.
 
 ### Language-Specific Configuration
 You can customize thresholds for each language in `pyproject.toml`. This allows for different complexity tolerances across your stack.
 
 ```toml
-[tool.agent-scorecard.python.thresholds]
+[tool.agent-readiness-scorecard.python.thresholds]
 acl_yellow = 10
 
-[tool.agent-scorecard.javascript.thresholds]
+[tool.agent-readiness-scorecard.javascript.thresholds]
 acl_yellow = 12
 acl_red = 18
 ```

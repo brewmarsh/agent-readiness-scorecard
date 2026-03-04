@@ -1,4 +1,4 @@
-from agent_scorecard.report import generate_markdown_report
+from agent_readiness_scorecard.report import generate_markdown_report
 
 
 def test_report_style_full() -> None:

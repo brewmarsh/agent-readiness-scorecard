@@ -1,6 +1,6 @@
 from pathlib import Path
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 
 
 def test_report_full(tmp_path: Path) -> None:

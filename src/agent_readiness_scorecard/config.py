@@ -73,7 +73,7 @@ def load_config(path: str = ".") -> Config:
     """
     Loads configuration from pyproject.toml and merges it with DEFAULT_CONFIG.
 
-    Looks for the [tool.agent-scorecard] section in accordance with PEP 518.
+    Looks for the [tool.agent-readiness-scorecard] section in accordance with PEP 518.
 
     Args:
         path (str): The path to the project or pyproject.toml file (default: ".").
@@ -93,8 +93,8 @@ def load_config(path: str = ".") -> Config:
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-                # Parse settings from the standardized [tool.agent-scorecard] table
-                user_config = data.get("tool", {}).get("agent-scorecard", {})
+                # Parse settings from the standardized [tool.agent-readiness-scorecard] table
+                user_config = data.get("tool", {}).get("agent-readiness-scorecard", {})
         except Exception:
             # Fallback to DEFAULT_CONFIG if file is malformed or inaccessible
             pass

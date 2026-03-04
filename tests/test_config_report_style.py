@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 import os
 
 
@@ -13,7 +13,7 @@ def test_pyproject_config_report_style() -> None:
 
         # Create pyproject.toml
         with open("pyproject.toml", "w") as f:
-            f.write("[tool.agent-scorecard]\nreport_style = 'collapsed'\n")
+            f.write("[tool.agent-readiness-scorecard]\nreport_style = 'collapsed'\n")
 
         # Run score with --report
         runner.invoke(cli, ["score", ".", "--report", "report.md"])

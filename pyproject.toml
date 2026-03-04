@@ -3,7 +3,6 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-# CHANGED: Matches your PyPI registration name
 name = "agent-readiness-scorecard"
 dynamic = ["version"]
 description = "A tool to analyze codebases for AI-Agent Friendliness"
@@ -29,7 +28,8 @@ Repository = "https://github.com/brewmarsh/agent-readiness-scorecard.git"
 Issues = "https://github.com/brewmarsh/agent-readiness-scorecard/issues"
 
 [project.scripts]
-agent-score = "agent_scorecard.main:cli"
+# Note: Ensure your internal folder is named agent_readiness_scorecard
+agent-score = "agent_readiness_scorecard.main:cli"
 
 [project.optional-dependencies]
 llm = ["litellm>=1.0.0"]
@@ -39,7 +39,6 @@ treesitter = [
     "tree-sitter-typescript>=0.21.0",
 ]
 all = [
-    # CHANGED: Refers to the new project name
     "agent-readiness-scorecard[llm,treesitter]",
 ]
 dev = [
@@ -55,7 +54,6 @@ dev = [
     "types-tabulate",
     "types-networkx",
     "types-PyYAML",
-    # CHANGED: Refers to the new project name
     "agent-readiness-scorecard[all]",
 ]
 
@@ -63,13 +61,13 @@ dev = [
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/agent_scorecard/_version.py"
+version-file = "src/agent_readiness_scorecard/_version.py"
 
+# RESOLUTION: Explicitly map src-layout to prevent 'src' folder from being installed
 [tool.hatch.build.targets.wheel]
-packages = ["src/agent_scorecard"]
-sources = ["src"]
+packages = ["src/agent_readiness_scorecard"]
 
-[tool.agent-scorecard]
+[tool.agent-readiness-scorecard]
 agent = "generic"
 verbosity = "summary"
 report_style = "actionable"

@@ -81,10 +81,10 @@ jobs:
 
             # 1. Parsing Fix Verification
             echo "Verifying node_modules pruning fix..."
-            if ! grep -q "node_modules" src/agent_scorecard/dependencies.py; then
+            if ! grep -q "node_modules" src/agent_readiness_scorecard/dependencies.py; then
               echo "### 🛑 Enforcement Failure" >> $GITHUB_STEP_SUMMARY
               echo "Targeting 'beta' requires 'node_modules' pruning logic fixes." >> $GITHUB_STEP_SUMMARY
-              echo "🛑 ERROR: node_modules parsing fixes are missing in src/agent_scorecard/dependencies.py"
+              echo "🛑 ERROR: node_modules parsing fixes are missing in src/agent_readiness_scorecard/dependencies.py"
               exit 1
             fi
 

@@ -1,7 +1,7 @@
 import os
 import tempfile
 import networkx as nx
-from agent_scorecard.graph import build_dependency_graph, analyze_graph
+from agent_readiness_scorecard.graph import build_dependency_graph, analyze_graph
 
 
 def test_build_dependency_graph() -> None:

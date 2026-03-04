@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from click.testing import CliRunner
-from agent_scorecard.main import cli
+from agent_readiness_scorecard.main import cli
 
 
 def test_check_prompts_plain_output_fail() -> None:
@@ -16,7 +16,7 @@ def test_check_prompts_plain_output_fail() -> None:
             "improvements": ["Add a role definition."],
         }
 
-        with patch("agent_scorecard.main.PromptAnalyzer") as MockAnalyzer:
+        with patch("agent_readiness_scorecard.main.PromptAnalyzer") as MockAnalyzer:
             instance = MockAnalyzer.return_value
             instance.analyze.return_value = mock_result
 
@@ -45,7 +45,7 @@ def test_check_prompts_plain_output_pass() -> None:
             "improvements": [],
         }
 
-        with patch("agent_scorecard.main.PromptAnalyzer") as MockAnalyzer:
+        with patch("agent_readiness_scorecard.main.PromptAnalyzer") as MockAnalyzer:
             instance = MockAnalyzer.return_value
             instance.analyze.return_value = mock_result
 
