@@ -65,6 +65,10 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "src/agent_scorecard/_version.py"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_scorecard"]
+sources = ["src"]
+
 [tool.agent-scorecard]
 agent = "generic"
 verbosity = "summary"
