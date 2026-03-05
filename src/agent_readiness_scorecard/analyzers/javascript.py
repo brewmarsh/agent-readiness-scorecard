@@ -16,6 +16,7 @@ except ImportError:
     class Node:
         pass  # type: ignore
 
+
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
