@@ -119,6 +119,21 @@ Used when generating a report via the `--report` flag.
 | `actionable` | (Default) Focuses on issues: hides passing files and high-coverage type safety rows from tables. |
 | `full` | Includes all sections and a complete breakdown of every file and metric. |
 
+## 🌐 Supported Languages
+
+While `agent-readiness-scorecard` is written in Python, it supports analyzing multiple languages:
+
+*   **Python**: First-class support, included by default.
+*   **Markdown**: Standard documentation analysis, included by default.
+*   **Docker**: Dockerfile analysis, included by default.
+*   **JavaScript/TypeScript**: Requires the `[treesitter]` extra.
+
+To enable analysis for non-Python languages, install the optional dependencies:
+
+```bash
+pip install agent-readiness-scorecard[treesitter]
+```
+
 ## 📊 The Scoring System
 
 Your codebase starts at **100 points**. Penalties are applied for:
