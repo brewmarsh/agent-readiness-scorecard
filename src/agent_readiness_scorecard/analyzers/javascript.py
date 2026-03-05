@@ -1,16 +1,32 @@
 from typing import Dict, Any, List, Tuple, Optional
-from tree_sitter import Language, Parser, Node
-import tree_sitter_javascript
-import tree_sitter_typescript
+
+try:
+    from tree_sitter import Language, Parser, Node
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+
+    HAS_TREESITTER = True
+except ImportError:
+    HAS_TREESITTER = False
+    # Define placeholder classes/types for Mypy if needed,
+    # or just use Any if we're not going to use them when HAS_TREESITTER is False
+    Language = Any  # type: ignore
+    Parser = Any  # type: ignore
+    Node = Any  # type: ignore
 
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-JS_LANGUAGE = Language(tree_sitter_javascript.language())
-TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+if HAS_TREESITTER:
+    JS_LANGUAGE = Language(tree_sitter_javascript.language())
+    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+else:
+    JS_LANGUAGE = None
+    TS_LANGUAGE = None
+    TSX_LANGUAGE = None
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -40,6 +56,16 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
+        if not HAS_TREESITTER:
+            return (
+                0,
+                "JavaScript/TypeScript parsing requires the [treesitter] extra. Install it with: pip install agent-readiness-scorecard[treesitter]",
+                0,
+                0.0,
+                0.0,
+                [],
+            )
+
         p_thresholds = profile.get("thresholds", {})
         if thresholds is None:
             thresholds = self._get_default_thresholds(p_thresholds)
@@ -173,6 +199,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
+        if not HAS_TREESITTER:
+            return []
+
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
