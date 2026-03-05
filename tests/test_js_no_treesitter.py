@@ -1,7 +1,6 @@
-import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Mock tree-sitter before importing JavascriptAnalyzer
 with patch.dict(sys.modules, {
