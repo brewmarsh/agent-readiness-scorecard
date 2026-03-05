@@ -1,16 +1,30 @@
 from typing import Dict, Any, List, Tuple, Optional
-from tree_sitter import Language, Parser, Node
-import tree_sitter_javascript
-import tree_sitter_typescript
+try:
+    from tree_sitter import Language, Parser, Node
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+    HAS_TREESITTER = True
+except ImportError:
+    HAS_TREESITTER = False
+    # Stub for typing if missing
+    class Node: pass  # type: ignore
 
+from rich.console import Console
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
 
 # Initialize languages
-JS_LANGUAGE = Language(tree_sitter_javascript.language())
-TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
-TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+if HAS_TREESITTER:
+    JS_LANGUAGE = Language(tree_sitter_javascript.language())
+    TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
+    TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
+else:
+    JS_LANGUAGE = None
+    TS_LANGUAGE = None
+    TSX_LANGUAGE = None
+
+WARN_TREESITTER = False
 
 
 class JavascriptAnalyzer(BaseAnalyzer):
@@ -40,6 +54,20 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile and Agent Readiness spec.
         """
+        loc = self._get_loc(filepath)
+        if not HAS_TREESITTER:
+            global WARN_TREESITTER
+            if not WARN_TREESITTER:
+                console = Console()
+                console.print(
+                    "[yellow]Warning: tree-sitter not found. JS/TS analysis will be skipped.[/yellow]"
+                )
+                console.print(
+                    "[yellow]Hint: Install the 'treesitter' extra: pip install agent-readiness-scorecard[treesitter][/yellow]"
+                )
+                WARN_TREESITTER = True
+            return (0, "Missing dependencies: Install [treesitter] extra", loc, 0.0, 100.0, [])
+
         p_thresholds = profile.get("thresholds", {})
         if thresholds is None:
             thresholds = self._get_default_thresholds(p_thresholds)
@@ -173,6 +201,9 @@ class JavascriptAnalyzer(BaseAnalyzer):
         """
         Returns statistics for each function in the file using tree-sitter.
         """
+        if not HAS_TREESITTER:
+            return []
+
         try:
             with open(filepath, "rb") as f:
                 source_bytes = f.read()
