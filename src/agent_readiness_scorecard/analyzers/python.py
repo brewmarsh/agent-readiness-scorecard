@@ -1,12 +1,6 @@
 import ast
-try:
-    import mccabe
-    HAS_MCCABE = True
-except ImportError:
-    HAS_MCCABE = False
-
+import mccabe
 from typing import Dict, Any, List, Tuple, Optional
-from rich.console import Console
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
@@ -65,9 +59,6 @@ class NestingDepthVisitor(ast.NodeVisitor):
         self._visit_control_block(node)
 
 
-WARN_MCCABE = False
-
-
 class PythonAnalyzer(BaseAnalyzer):
     """
     Python-specific implementation of the BaseAnalyzer.
@@ -108,16 +99,6 @@ class PythonAnalyzer(BaseAnalyzer):
 
         score = 100
         details = []
-
-        if not HAS_MCCABE:
-            global WARN_MCCABE
-            if not WARN_MCCABE:
-                console = Console()
-                console.print(
-                    "[yellow]Warning: mccabe not found. Python complexity analysis will be skipped.[/yellow]"
-                )
-                WARN_MCCABE = True
-            details.append("Missing dependency: mccabe (complexity skipped)")
 
         if loc > 200:
             bloat_penalty = (loc - 200) // 10
@@ -187,13 +168,11 @@ class PythonAnalyzer(BaseAnalyzer):
         except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
             return []
 
-        complexity_map = {}
-        if HAS_MCCABE:
-            visitor = mccabe.PathGraphingAstVisitor()
-            visitor.preorder(tree, visitor)
-            complexity_map = {
-                graph.lineno: graph.complexity() for graph in visitor.graphs.values()
-            }
+        visitor = mccabe.PathGraphingAstVisitor()
+        visitor.preorder(tree, visitor)
+        complexity_map = {
+            graph.lineno: graph.complexity() for graph in visitor.graphs.values()
+        }
 
         stats: List[FunctionMetric] = []
         for node in ast.walk(tree):
@@ -251,9 +230,6 @@ class PythonAnalyzer(BaseAnalyzer):
             tree = ast.parse(code, filepath)
         except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
             return 0.0
-
-        if not HAS_MCCABE:
-            return 1.0
 
         visitor = mccabe.PathGraphingAstVisitor()
         visitor.preorder(tree, visitor)

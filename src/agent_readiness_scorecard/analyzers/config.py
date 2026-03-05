@@ -15,13 +15,9 @@ except ImportError:
     except ImportError:
         toml_parser = None  # type: ignore
 
-from rich.console import Console
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
-
-WARN_YAML = False
-WARN_TOML = False
 
 
 class ConfigAnalyzer(BaseAnalyzer):
@@ -77,9 +73,6 @@ class ConfigAnalyzer(BaseAnalyzer):
             # Check if it was a parsing error
             try:
                 self._parse_config(filepath)
-            except ImportError as e:
-                details.append(f"Missing dependency: {str(e)}")
-                return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
             except Exception:
                 score -= 20
                 details.append("Malformed Configuration File (-20)")
@@ -170,26 +163,12 @@ class ConfigAnalyzer(BaseAnalyzer):
             if yaml:
                 return yaml.safe_load(content)
             else:
-                global WARN_YAML
-                if not WARN_YAML:
-                    console = Console()
-                    console.print(
-                        "[yellow]Warning: PyYAML not found. YAML analysis will be skipped.[/yellow]"
-                    )
-                    WARN_YAML = True
-                raise ImportError("PyYAML")
+                raise ImportError("PyYAML not installed")
         elif ext == ".toml":
             if toml_parser:
                 return toml_parser.loads(content)
             else:
-                global WARN_TOML
-                if not WARN_TOML:
-                    console = Console()
-                    console.print(
-                        "[yellow]Warning: TOML parser not found. TOML analysis will be skipped.[/yellow]"
-                    )
-                    WARN_TOML = True
-                raise ImportError("tomli or tomllib")
+                raise ImportError("TOML parser not available")
         else:
             raise ValueError(f"Unsupported extension: {ext}")
 

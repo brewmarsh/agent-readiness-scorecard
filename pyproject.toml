@@ -32,6 +32,7 @@ Issues = "https://github.com/brewmarsh/agent-readiness-scorecard/issues"
 agent-score = "agent_readiness_scorecard.main:cli"
 
 [project.optional-dependencies]
+# Optional dependencies for enhanced analysis (LLM and Tree-Sitter)
 llm = ["litellm>=1.0.0"]
 treesitter = [
     "tree-sitter>=0.22.0",

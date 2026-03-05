@@ -1,17 +1,8 @@
-try:
-    import tiktoken
-    HAS_TIKTOKEN = True
-except ImportError:
-    HAS_TIKTOKEN = False
-
+import tiktoken
 from typing import Dict, Any, List, Tuple, Optional
-from rich.console import Console
 from .base import BaseAnalyzer
 from ..types import FunctionMetric
 from ..constants import DEFAULT_THRESHOLDS
-
-
-WARN_TIKTOKEN = False
 
 
 class MarkdownAnalyzer(BaseAnalyzer):
@@ -52,19 +43,6 @@ class MarkdownAnalyzer(BaseAnalyzer):
 
         score = 100
         details = []
-
-        if not HAS_TIKTOKEN:
-            global WARN_TIKTOKEN
-            if not WARN_TIKTOKEN:
-                console = Console()
-                console.print(
-                    "[yellow]Warning: tiktoken not found. Markdown token analysis will use a heuristic.[/yellow]"
-                )
-                console.print(
-                    "[yellow]Hint: Install tiktoken for better accuracy: pip install tiktoken[/yellow]"
-                )
-                WARN_TIKTOKEN = True
-            details.append("Missing dependency: tiktoken (using heuristic)")
 
         # Markdown bloat penalty: > 500 lines
         if loc > 500:
@@ -128,8 +106,7 @@ class MarkdownAnalyzer(BaseAnalyzer):
             return []
 
         stats: List[FunctionMetric] = []
-        if HAS_TIKTOKEN:
-            enc = tiktoken.get_encoding("cl100k_base")
+        enc = tiktoken.get_encoding("cl100k_base")
 
         sections = []
         current_header = None
@@ -159,11 +136,7 @@ class MarkdownAnalyzer(BaseAnalyzer):
 
         for header, lineno, content_lines in sections:
             content = "".join(content_lines)
-            if HAS_TIKTOKEN:
-                tokens = len(enc.encode(content))
-            else:
-                # Heuristic: approx 4 characters per token
-                tokens = len(content) // 4
+            tokens = len(enc.encode(content))
 
             # Nesting depth is the number of # symbols
             nesting_depth = 0
