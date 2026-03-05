@@ -15,7 +15,7 @@ def _generate_summary_section(
     """
     Creates the executive summary section of the report.
     """
-    summary = f"# Agent Scorecard Report v{version}\n\n"
+    summary = f"# Agent Readiness Scorecard Report v{version}\n\n"
     profile_desc = profile.get("description", "Generic").split(".")[0]
     summary += f"**Target Agent Profile:** {profile_desc}\n"
     status_str = "PASS" if final_score >= 70 else "FAIL"
