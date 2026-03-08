@@ -57,6 +57,7 @@ class EnvironmentHealth(TypedDict):
     linter_config: bool
     lock_file: bool
     pyproject_valid: bool
+    baml_detected: bool
 
 
 class DirectoryEntropy(TypedDict):
@@ -85,3 +86,4 @@ class AnalysisResult(TypedDict):
     dep_analysis: DepAnalysis
     directory_stats: List[DirectoryStat]
     report_style: Optional[str]
+    environment_health: Optional[EnvironmentHealth]

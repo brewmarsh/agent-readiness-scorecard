@@ -63,7 +63,7 @@ def test_generate_markdown_report() -> None:
     )
 
     # Core Content Verification
-    assert "# Agent Scorecard Report v" in report_content
+    assert "# Agent Readiness Scorecard Report v" in report_content
     assert "Overall Score: 70.0/100" in report_content
     assert "PASSED" in report_content
 
