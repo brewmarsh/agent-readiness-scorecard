@@ -5,13 +5,13 @@ import unittest
 from agent_readiness_scorecard.auditor import check_agentic_ecosystem, check_environment_health
 
 class TestAuditorEcosystem(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
 
-    def test_detect_context_files(self):
+    def test_detect_context_files(self) -> None:
         # Create some context files
         open(os.path.join(self.test_dir, ".cursorrules"), "w").close()
         os.makedirs(os.path.join(self.test_dir, "cline_docs"))
@@ -22,7 +22,7 @@ class TestAuditorEcosystem(unittest.TestCase):
         self.assertIn("cline_docs", result["found_files"])
         self.assertFalse(result["has_agent_frameworks"])
 
-    def test_detect_frameworks_in_pyproject(self):
+    def test_detect_frameworks_in_pyproject(self) -> None:
         with open(os.path.join(self.test_dir, "pyproject.toml"), "w") as f:
             f.write('[project]\ndependencies = ["pydantic-ai", "instructor"]')
 
@@ -32,7 +32,7 @@ class TestAuditorEcosystem(unittest.TestCase):
         self.assertIn("instructor", result["found_frameworks"])
         self.assertFalse(result["has_context_files"])
 
-    def test_detect_frameworks_in_requirements(self):
+    def test_detect_frameworks_in_requirements(self) -> None:
         with open(os.path.join(self.test_dir, "requirements.txt"), "w") as f:
             f.write("crewai\nlangfuse")
 
@@ -41,7 +41,7 @@ class TestAuditorEcosystem(unittest.TestCase):
         self.assertIn("crewai", result["found_frameworks"])
         self.assertIn("langfuse", result["found_frameworks"])
 
-    def test_environment_health_integration(self):
+    def test_environment_health_integration(self) -> None:
         # Create a context file
         open(os.path.join(self.test_dir, ".windsurfrules"), "w").close()
 

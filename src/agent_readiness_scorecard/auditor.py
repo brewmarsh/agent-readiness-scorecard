@@ -1,6 +1,6 @@
 import os
 import tiktoken
-from typing import Dict, cast
+from typing import Dict, cast, Optional, Any, List
 from .types import (
     DirectoryEntropy,
     TokenAnalysis,
@@ -50,6 +50,27 @@ def check_directory_entropy(path: str) -> DirectoryEntropy:
     }
 
 
+def _is_hidden_path(path: str) -> bool:
+    """Helper to check if any part of the path starts with a dot."""
+    return any(part.startswith(".") for part in path.split(os.sep))
+
+
+def _get_rel_path(root: str, base_path: str) -> str:
+    """Helper to get relative path or base name if root equals base_path."""
+    rel_path = os.path.relpath(root, start=base_path)
+    if rel_path == ".":
+        return os.path.basename(os.path.abspath(base_path))
+    return rel_path
+
+
+def _collect_crowded_stats(
+    root: str, files: List[str], base: str, threshold: int, stats: Dict[str, int]
+) -> None:
+    """Helper to update stats if directory is crowded and not hidden."""
+    if not _is_hidden_path(root) and len(files) > threshold:
+        stats[_get_rel_path(root, base)] = len(files)
+
+
 def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, int]:
     """
     Returns a flat dictionary of directories exceeding the file count threshold.
@@ -62,19 +83,11 @@ def get_crowded_directories(root_path: str, threshold: int = 50) -> Dict[str, in
         Dict[str, int]: A dictionary mapping directory paths to their file counts.
     """
     entropy_stats: Dict[str, int] = {}
-    if os.path.isfile(root_path):
+    if not os.path.isdir(root_path):
         return entropy_stats
 
-    for root, dirs, files in os.walk(root_path):
-        if any(part.startswith(".") for part in root.split(os.sep)):
-            continue
-
-        count = len(files)
-        if count > threshold:
-            rel_path = os.path.relpath(root, start=root_path)
-            if rel_path == ".":
-                rel_path = os.path.basename(os.path.abspath(root_path))
-            entropy_stats[rel_path] = count
+    for root, _, files in os.walk(root_path):
+        _collect_crowded_stats(root, files, root_path, threshold, entropy_stats)
     return entropy_stats
 
 
@@ -97,6 +110,23 @@ def count_python_tokens(filepath: str) -> int:
         return 0
 
 
+def _get_token_encoding() -> Optional[Any]:
+    """Helper to get tiktoken encoding or None."""
+    try:
+        return tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        return None
+
+
+def _get_context_signatures(path: str) -> str:
+    """Helper to get project or file signatures."""
+    if os.path.isdir(path):
+        return _get_project_signatures(path)
+    if os.path.isfile(path) and path.endswith(".py"):
+        return get_python_signatures(path)
+    return ""
+
+
 def check_critical_context_tokens(path: str) -> TokenAnalysis:
     """
     Counts tokens for the project's 'Critical Context'.
@@ -109,22 +139,15 @@ def check_critical_context_tokens(path: str) -> TokenAnalysis:
     Returns:
         TokenAnalysis: Dictionary with token count and alert status.
     """
-
-    try:
-        enc = tiktoken.get_encoding("cl100k_base")
-    except Exception:
+    enc = _get_token_encoding()
+    if not enc:
         return {"token_count": 0, "alert": False}
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
     total_content = _get_critical_files_content(base_dir)
+    total_content += _get_context_signatures(path)
 
-    if os.path.isdir(path):
-        total_content += _get_project_signatures(path)
-    elif os.path.isfile(path) and path.endswith(".py"):
-        total_content += get_python_signatures(path)
-
-    tokens = enc.encode(total_content)
-    count = len(tokens)
+    count = len(enc.encode(total_content))
     return {"token_count": count, "alert": count > 32000}
 
 

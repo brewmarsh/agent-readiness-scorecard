@@ -42,10 +42,12 @@ def create_issue(file_path: str, issue_type: str, craft_prompt: str) -> None:
     """
     Creates a new GitHub issue using the gh CLI.
     The CRAFT prompt is used as the issue body.
+    Attempts to add labels but continues if they don't exist.
     """
     title = f"Refactor: {file_path} ({issue_type})"
     try:
-        subprocess.run(
+        # First create the issue without labels to ensure it gets created
+        result = subprocess.run(
             [
                 "gh",
                 "issue",
@@ -54,14 +56,26 @@ def create_issue(file_path: str, issue_type: str, craft_prompt: str) -> None:
                 title,
                 "--body",
                 craft_prompt,
-                "--label",
-                "tech-debt",
-                "--label",
-                "ai-ready",
             ],
+            capture_output=True,
+            text=True,
             check=True,
         )
-        print(f"Created issue for {file_path} ({issue_type})")
+        issue_url = result.stdout.strip()
+        print(f"Created issue for {file_path} ({issue_type}): {issue_url}")
+
+        # Attempt to add labels as a separate step
+        # This will fail gracefully if labels are missing from the repo
+        for label in ["tech-debt", "ai-ready"]:
+            try:
+                subprocess.run(
+                    ["gh", "issue", "edit", issue_url, "--add-label", label],
+                    capture_output=True,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Could not add label '{label}': {e.stderr.strip()}")
+
     except Exception as e:
         print(f"Error creating issue: {e}")
 
