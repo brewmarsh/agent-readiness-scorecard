@@ -2,7 +2,11 @@ import os
 import shutil
 import tempfile
 import unittest
-from agent_readiness_scorecard.auditor import check_agentic_ecosystem, check_environment_health
+from agent_readiness_scorecard.auditor import (
+    check_agentic_ecosystem,
+    check_environment_health,
+)
+
 
 class TestAuditorEcosystem(unittest.TestCase):
     def setUp(self) -> None:
@@ -49,6 +53,7 @@ class TestAuditorEcosystem(unittest.TestCase):
         self.assertIsNotNone(health["agentic_ecosystem"])
         self.assertTrue(health["agentic_ecosystem"]["has_context_files"])
         self.assertIn(".windsurfrules", health["agentic_ecosystem"]["found_files"])
+
 
 if __name__ == "__main__":
     unittest.main()

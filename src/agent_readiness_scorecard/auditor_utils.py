@@ -84,9 +84,11 @@ def _get_toml_tool() -> Any:
     """Helper to unify tomllib and tomli."""
     try:
         import tomllib as toml_tool  # type: ignore
+
         return toml_tool
     except ImportError:
         import tomli as toml_tool  # type: ignore
+
         return toml_tool
 
 
@@ -229,9 +231,7 @@ def _get_python_files_in_tree(path: str) -> List[str]:
     python_files = []
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
-        python_files.extend(
-            os.path.join(root, f) for f in files if f.endswith(".py")
-        )
+        python_files.extend(os.path.join(root, f) for f in files if f.endswith(".py"))
     return python_files
 
 
