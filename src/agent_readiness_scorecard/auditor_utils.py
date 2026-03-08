@@ -228,3 +228,57 @@ def _get_project_signatures(path: str) -> str:
                     get_python_signatures(os.path.join(root, file)) + "\n"
                 )
     return total_signatures
+
+
+def _scan_dependencies(base_path: str, targets: List[str]) -> List[str]:
+    """
+    Scans pyproject.toml and requirements.txt for specified frameworks.
+
+    Args:
+        base_path (str): The project root path.
+        targets (List[str]): List of framework names to search for.
+
+    Returns:
+        List[str]: Found frameworks.
+    """
+    found = []
+    dep_files = ["pyproject.toml", "requirements.txt"]
+
+    for dep_file in dep_files:
+        filepath = os.path.join(base_path, dep_file)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                    for target in targets:
+                        if target.lower() in content.lower() and target not in found:
+                            found.append(target)
+            except Exception:
+                pass
+    return found
+
+
+def _check_context_steering_files(base_path: str) -> List[str]:
+    """
+    Checks for the existence of context steering files and directories.
+
+    Args:
+        base_path (str): The project root path.
+
+    Returns:
+        List[str]: Found steering files/directories.
+    """
+    found = []
+    targets = [
+        ".cursorrules",
+        ".windsurfrules",
+        "cline_docs",
+        os.path.join(".github", "copilot-instructions.md"),
+    ]
+
+    for target in targets:
+        full_path = os.path.join(base_path, target)
+        if os.path.exists(full_path):
+            found.append(target)
+
+    return found

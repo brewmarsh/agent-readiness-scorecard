@@ -1,7 +1,12 @@
 import os
 import tiktoken
 from typing import Dict, cast
-from .types import DirectoryEntropy, TokenAnalysis, EnvironmentHealth
+from .types import (
+    DirectoryEntropy,
+    TokenAnalysis,
+    EnvironmentHealth,
+    AgenticEcosystem,
+)
 from .auditor_utils import (
     _collect_directory_stats,
     _get_critical_files_content,
@@ -11,6 +16,8 @@ from .auditor_utils import (
     _check_lock_file,
     _validate_pyproject,
     get_python_signatures,
+    _scan_dependencies,
+    _check_context_steering_files,
 )
 
 
@@ -121,6 +128,36 @@ def check_critical_context_tokens(path: str) -> TokenAnalysis:
     return {"token_count": count, "alert": count > 32000}
 
 
+def check_agentic_ecosystem(base_path: str) -> AgenticEcosystem:
+    """
+    Detect modern AI tools and structured output frameworks.
+
+    Args:
+        base_path (str): Project root directory.
+
+    Returns:
+        AgenticEcosystem: Findings about context files and frameworks.
+    """
+    framework_targets = [
+        "baml",
+        "instructor",
+        "outlines",
+        "pydantic-ai",
+        "crewai",
+        "langfuse",
+    ]
+
+    found_files = _check_context_steering_files(base_path)
+    found_frameworks = _scan_dependencies(base_path, framework_targets)
+
+    return {
+        "has_context_files": len(found_files) > 0,
+        "found_files": found_files,
+        "has_agent_frameworks": len(found_frameworks) > 0,
+        "found_frameworks": found_frameworks,
+    }
+
+
 def check_environment_health(path: str) -> EnvironmentHealth:
     """
     Check for essential agent configuration: AGENTS.md, Linters, and Lock files.
@@ -136,6 +173,7 @@ def check_environment_health(path: str) -> EnvironmentHealth:
         "linter_config": False,
         "lock_file": False,
         "pyproject_valid": True,
+        "agentic_ecosystem": None,
     }
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
@@ -148,5 +186,6 @@ def check_environment_health(path: str) -> EnvironmentHealth:
     results["linter_config"] = _check_linter_config(root_files)
     results["lock_file"] = _check_lock_file(root_files)
     results["pyproject_valid"] = _validate_pyproject(base_dir, root_files)
+    results["agentic_ecosystem"] = check_agentic_ecosystem(base_dir)
 
     return cast(EnvironmentHealth, results)
