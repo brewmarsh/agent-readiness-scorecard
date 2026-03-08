@@ -169,6 +169,7 @@ The `beta` branch includes upcoming capabilities for enhanced agent-readiness:
 * **Verbosity Control (`--verbosity`)**: Choose between `quiet`, `summary` (default), or `detailed` output.
 * **Enhanced Metrics**: Track "Average ACL" and "Average Type Safety" in the summary report.
 * **CI/CD Automation**: Automated badge updates and GitHub Actions workflows for continuous agent-readiness.
+* **Agentic Ecosystem Detection**: Detects modern AI tools (`baml`, `instructor`, `pydantic-ai`, etc.) and context steering files (`.cursorrules`, `.windsurfrules`).
 
 ## 🛡 Badges
 

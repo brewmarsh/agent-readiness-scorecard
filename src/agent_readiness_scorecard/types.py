@@ -50,6 +50,15 @@ class DirectoryStat(TypedDict):
     file_count: int
 
 
+class AgenticEcosystem(TypedDict):
+    """Detection results for AI Agent frameworks and context steering files."""
+
+    has_context_files: bool
+    found_files: List[str]
+    has_agent_frameworks: bool
+    found_frameworks: List[str]
+
+
 class EnvironmentHealth(TypedDict):
     """Checklist for the project's agent-readiness environment."""
 
@@ -57,6 +66,7 @@ class EnvironmentHealth(TypedDict):
     linter_config: bool
     lock_file: bool
     pyproject_valid: bool
+    agentic_ecosystem: Optional[AgenticEcosystem]
 
 
 class DirectoryEntropy(TypedDict):

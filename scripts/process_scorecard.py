@@ -38,32 +38,67 @@ def check_issue_exists(file_path: str, issue_type: str) -> bool:
         return False
 
 
+def _add_label_to_issue(issue_url: str, label: str) -> None:
+    """Gracefully attempt to add a label to a GitHub issue."""
+    try:
+        subprocess.run(
+            ["gh", "issue", "edit", issue_url, "--add-label", label],
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Could not add label '{label}': {e.stderr.strip()}")
+
+
 def create_issue(file_path: str, issue_type: str, craft_prompt: str) -> None:
     """
     Creates a new GitHub issue using the gh CLI.
     The CRAFT prompt is used as the issue body.
+    Attempts to add labels but continues if they don't exist.
     """
     title = f"Refactor: {file_path} ({issue_type})"
     try:
-        subprocess.run(
-            [
-                "gh",
-                "issue",
-                "create",
-                "--title",
-                title,
-                "--body",
-                craft_prompt,
-                "--label",
-                "tech-debt",
-                "--label",
-                "ai-ready",
-            ],
+        # First create the issue without labels to ensure it gets created
+        result = subprocess.run(
+            ["gh", "issue", "create", "--title", title, "--body", craft_prompt],
+            capture_output=True,
+            text=True,
             check=True,
         )
-        print(f"Created issue for {file_path} ({issue_type})")
+        issue_url = result.stdout.strip()
+        print(f"Created issue for {file_path} ({issue_type}): {issue_url}")
+
+        for label in ["tech-debt", "ai-ready"]:
+            _add_label_to_issue(issue_url, label)
+
     except Exception as e:
         print(f"Error creating issue: {e}")
+
+
+def _process_match(match: re.Match, typing_tasks: List[Dict[str, str]]) -> None:
+    """Process a single regex match from the scorecard."""
+    file_path = match.group(1)
+    issue_type = match.group(2)
+    craft_prompt = match.group(3).strip()
+
+    if issue_type == "High Cognitive Load":
+        if not check_issue_exists(file_path, issue_type):
+            create_issue(file_path, issue_type, craft_prompt)
+        else:
+            print(f"Issue already exists for {file_path} ({issue_type})")
+    elif issue_type == "Low Type Safety":
+        typing_tasks.append({"file": file_path, "prompt": craft_prompt})
+
+
+def _save_typing_tasks(typing_tasks: List[Dict[str, str]]) -> None:
+    """Save typing tasks to JSON for the next CI step."""
+    with open("typing_tasks.json", "w", encoding="utf-8") as f:
+        json.dump(typing_tasks, f, indent=2 if typing_tasks else None)
+
+    if typing_tasks:
+        print(f"Saved {len(typing_tasks)} typing tasks to typing_tasks.json")
+    else:
+        print("No typing tasks found. Created empty typing_tasks.json")
 
 
 def main() -> None:
@@ -79,41 +114,15 @@ def main() -> None:
     with open(scorecard_file, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Regex logic:
-    # 1. Look for headers: ### File: `path` - Type
-    # 2. Capture path and type
-    # 3. Capture all text following until the next file header or the next main section (Full File Analysis)
-    # 4. Use re.DOTALL to match across lines
+    # Regex logic: Capture path, type, and CRAFT prompt content.
     pattern = r"### File: `(.+?)` - (High Cognitive Load|Low Type Safety)\n(.*?)(?=\n### File:|\n### 📂 Full File Analysis|\Z)"
     matches = re.finditer(pattern, content, re.DOTALL)
 
     typing_tasks: List[Dict[str, str]] = []
-
     for match in matches:
-        file_path = match.group(1)
-        issue_type = match.group(2)
-        craft_prompt = match.group(3).strip()
+        _process_match(match, typing_tasks)
 
-        if issue_type == "High Cognitive Load":
-            # High Cognitive Load items trigger GitHub Issues
-            if not check_issue_exists(file_path, issue_type):
-                create_issue(file_path, issue_type, craft_prompt)
-            else:
-                print(f"Issue already exists for {file_path} ({issue_type})")
-        elif issue_type == "Low Type Safety":
-            # Low Type Safety items are collected for later processing
-            typing_tasks.append({"file": file_path, "prompt": craft_prompt})
-
-    # Save typing tasks to JSON for the next CI step
-    if typing_tasks:
-        with open("typing_tasks.json", "w", encoding="utf-8") as f:
-            json.dump(typing_tasks, f, indent=2)
-        print(f"Saved {len(typing_tasks)} typing tasks to typing_tasks.json")
-    else:
-        # Create an empty file if no tasks found to avoid CI step failure if it expects the file
-        with open("typing_tasks.json", "w", encoding="utf-8") as f:
-            json.dump([], f)
-        print("No typing tasks found. Created empty typing_tasks.json")
+    _save_typing_tasks(typing_tasks)
 
 
 if __name__ == "__main__":

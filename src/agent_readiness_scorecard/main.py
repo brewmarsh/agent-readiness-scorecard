@@ -147,6 +147,12 @@ def _print_environment_health(
         "Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]"
     )
 
+    ecosystem = health.get("agentic_ecosystem")
+    if ecosystem:
+        has_eco = ecosystem["has_context_files"] or ecosystem["has_agent_frameworks"]
+        eco_status = "[green]DETECTED[/green]" if has_eco else "[white]NONE[/white]"
+        health_table.add_row("Agentic Ecosystem", eco_status)
+
     entropy = auditor.check_directory_entropy(path)
     status = f"{entropy['avg_files']:.1f} files/dir"
     if entropy["warning"] and entropy.get("max_files", 0) > 50:

@@ -1,6 +1,6 @@
 import os
 import ast
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
 
 def _collect_directory_stats(path: str) -> Tuple[int, int, int, List[str]]:
@@ -80,6 +80,18 @@ def _check_lock_file(root_files: List[str]) -> bool:
     return any(f in root_files for f in lock_files)
 
 
+def _get_toml_tool() -> Any:
+    """Helper to unify tomllib and tomli."""
+    try:
+        import tomllib as toml_tool  # type: ignore
+
+        return toml_tool
+    except ImportError:
+        import tomli as toml_tool  # type: ignore
+
+        return toml_tool
+
+
 def _validate_pyproject(base_dir: str, root_files: List[str]) -> bool:
     """
     Validates pyproject.toml if it exists.
@@ -91,21 +103,52 @@ def _validate_pyproject(base_dir: str, root_files: List[str]) -> bool:
     Returns:
         bool: True if pyproject.toml is valid or doesn't exist, False if invalid.
     """
-    if "pyproject.toml" in root_files:
-        filepath = os.path.join(base_dir, "pyproject.toml")
-        try:
-            # Use toml_tool alias to unify tomllib and tomli
-            try:
-                import tomllib as toml_tool  # type: ignore
-            except ImportError:
-                import tomli as toml_tool  # type: ignore
+    if "pyproject.toml" not in root_files:
+        return True
 
-            with open(filepath, "rb") as f:
-                toml_tool.load(f)
-            return True
-        except Exception:
-            return False
-    return True
+    filepath = os.path.join(base_dir, "pyproject.toml")
+    try:
+        toml_tool = _get_toml_tool()
+        with open(filepath, "rb") as f:
+            toml_tool.load(f)
+        return True
+    except Exception:
+        return False
+
+
+def _unparse_signature(node: ast.AST) -> Optional[str]:
+    """Helper to unparse a signature with body replaced by pass (Python 3.9+)."""
+    orig_body = getattr(node, "body", [])
+    setattr(node, "body", [ast.Pass()])
+    try:
+        unparsed = ast.unparse(node)
+        lines = unparsed.splitlines()
+        if not lines:
+            return None
+        sig = "\n".join(lines[:-1]).strip()
+        return sig if sig else lines[0]
+    except Exception:
+        return None
+    finally:
+        setattr(node, "body", orig_body)
+
+
+def _fallback_signature(node: ast.AST) -> Optional[str]:
+    """Fallback signature extraction for older Python versions."""
+    deco_list = [
+        f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator"
+        for deco in getattr(node, "decorator_list", [])
+    ]
+
+    if isinstance(node, ast.ClassDef):
+        sig = f"class {node.name}:"
+    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+        sig = f"{prefix} {node.name}(...):"
+    else:
+        return None
+
+    return "\n".join(deco_list + [sig]) if deco_list else sig
 
 
 def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
@@ -124,38 +167,8 @@ def _extract_signature_from_node(node: ast.AST) -> Optional[str]:
         return None
 
     if hasattr(ast, "unparse"):
-        # Python 3.9+ logic: Replace body with 'pass' to get just the signature
-        orig_body = getattr(node, "body", [])
-        setattr(node, "body", [ast.Pass()])
-        try:
-            unparsed = ast.unparse(node)
-            lines = unparsed.splitlines()
-            if lines:
-                sig = "\n".join(lines[:-1]).strip()
-                if not sig:
-                    sig = lines[0]
-                return sig
-        except Exception:
-            pass
-        finally:
-            setattr(node, "body", orig_body)
-    else:
-        # Fallback for older Python versions
-        deco_list = [
-            f"@{deco.id}" if isinstance(deco, ast.Name) else "@decorator"
-            for deco in getattr(node, "decorator_list", [])
-        ]
-
-        if isinstance(node, ast.ClassDef):
-            sig = f"class {node.name}:"
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
-            sig = f"{prefix} {node.name}(...):"
-        else:
-            return None
-
-        return "\n".join(deco_list + [sig]) if deco_list else sig
-    return None
+        return _unparse_signature(node)
+    return _fallback_signature(node)
 
 
 def get_python_signatures(filepath: str) -> str:
@@ -175,14 +188,24 @@ def get_python_signatures(filepath: str) -> str:
     except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
         return ""
 
-    signatures: List[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            sig = _extract_signature_from_node(node)
-            if sig:
-                signatures.append(sig)
-
+    nodes = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    ]
+    signatures = [s for s in (_extract_signature_from_node(n) for n in nodes) if s]
     return "\n".join(signatures)
+
+
+def _read_file_safe(filepath: str) -> str:
+    """Reads a file safely, returning empty string on failure."""
+    if not os.path.exists(filepath):
+        return ""
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read() + "\n"
+    except Exception:
+        return ""
 
 
 def _get_critical_files_content(base_dir: str) -> str:
@@ -199,14 +222,17 @@ def _get_critical_files_content(base_dir: str) -> str:
     critical_files = ["README.md", "AGENTS.md"]
 
     for cf in critical_files:
-        cf_path = os.path.join(base_dir, cf)
-        if os.path.exists(cf_path):
-            try:
-                with open(cf_path, "r", encoding="utf-8", errors="ignore") as f:
-                    total_content += f.read() + "\n"
-            except Exception:
-                pass
+        total_content += _read_file_safe(os.path.join(base_dir, cf))
     return total_content
+
+
+def _get_python_files_in_tree(path: str) -> List[str]:
+    """Helper to collect Python files in directory tree."""
+    python_files = []
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        python_files.extend(os.path.join(root, f) for f in files if f.endswith(".py"))
+    return python_files
 
 
 def _get_project_signatures(path: str) -> str:
@@ -219,12 +245,77 @@ def _get_project_signatures(path: str) -> str:
     Returns:
         str: Concatenated signatures of all Python files.
     """
-    total_signatures = ""
-    for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
-        for file in files:
-            if file.endswith(".py"):
-                total_signatures += (
-                    get_python_signatures(os.path.join(root, file)) + "\n"
-                )
-    return total_signatures
+    files = _get_python_files_in_tree(path)
+    return "\n".join(get_python_signatures(f) for f in files)
+
+
+def _scan_file_content(filepath: str, targets: List[str]) -> List[str]:
+    """Helper to read and scan file content."""
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read().lower()
+    except Exception:
+        return []
+    return [t for t in targets if t.lower() in content]
+
+
+def _scan_file_for_frameworks(filepath: str, targets: List[str]) -> List[str]:
+    """
+    Helper to scan a single file for framework substrings.
+
+    Args:
+        filepath (str): Path to the file.
+        targets (List[str]): Frameworks to search for.
+
+    Returns:
+        List[str]: Found frameworks in this file.
+    """
+    return _scan_file_content(filepath, targets)
+
+
+def _scan_dependencies(base_path: str, targets: List[str]) -> List[str]:
+    """
+    Scans pyproject.toml and requirements.txt for specified frameworks.
+
+    Args:
+        base_path (str): The project root path.
+        targets (List[str]): List of framework names to search for.
+
+    Returns:
+        List[str]: Found frameworks.
+    """
+    found_set = set()
+    dep_files = ["pyproject.toml", "requirements.txt"]
+
+    for dep_file in dep_files:
+        filepath = os.path.join(base_path, dep_file)
+        if os.path.exists(filepath):
+            found_set.update(_scan_file_for_frameworks(filepath, targets))
+
+    return sorted(list(found_set))
+
+
+def _check_context_steering_files(base_path: str) -> List[str]:
+    """
+    Checks for the existence of context steering files and directories.
+
+    Args:
+        base_path (str): The project root path.
+
+    Returns:
+        List[str]: Found steering files/directories.
+    """
+    found = []
+    targets = [
+        ".cursorrules",
+        ".windsurfrules",
+        "cline_docs",
+        os.path.join(".github", "copilot-instructions.md"),
+    ]
+
+    for target in targets:
+        full_path = os.path.join(base_path, target)
+        if os.path.exists(full_path):
+            found.append(target)
+
+    return found
