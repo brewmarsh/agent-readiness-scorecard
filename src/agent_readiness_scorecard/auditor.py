@@ -121,6 +121,30 @@ def check_critical_context_tokens(path: str) -> TokenAnalysis:
     return {"token_count": count, "alert": count > 32000}
 
 
+def check_baml_usage(path: str) -> bool:
+    """
+    Checks if BAML structured outputs are being used.
+
+    Returns True if 'baml_src' directory or 'generators.baml' file exists.
+
+    Args:
+        path (str): The root project path.
+
+    Returns:
+        bool: True if BAML is detected.
+    """
+    if not os.path.isdir(path):
+        return False
+
+    root_items = os.listdir(path)
+    if "baml_src" in root_items and os.path.isdir(os.path.join(path, "baml_src")):
+        return True
+    if "generators.baml" in root_items:
+        return True
+
+    return False
+
+
 def check_environment_health(path: str) -> EnvironmentHealth:
     """
     Check for essential agent configuration: AGENTS.md, Linters, and Lock files.
@@ -136,6 +160,7 @@ def check_environment_health(path: str) -> EnvironmentHealth:
         "linter_config": False,
         "lock_file": False,
         "pyproject_valid": True,
+        "baml_detected": False,
     }
 
     base_dir = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
@@ -148,5 +173,6 @@ def check_environment_health(path: str) -> EnvironmentHealth:
     results["linter_config"] = _check_linter_config(root_files)
     results["lock_file"] = _check_lock_file(root_files)
     results["pyproject_valid"] = _validate_pyproject(base_dir, root_files)
+    results["baml_detected"] = check_baml_usage(base_dir)
 
     return cast(EnvironmentHealth, results)
