@@ -127,3 +127,4 @@ test_prompt.txt
 typing_tasks.json
 agent_report.md
 pr_health.md
+baml_client/
