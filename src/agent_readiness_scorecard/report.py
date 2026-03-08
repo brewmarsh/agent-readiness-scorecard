@@ -186,6 +186,33 @@ def _generate_file_table_section(
     return title + "\n\n" + "\n\n".join(sections)
 
 
+def _generate_environment_health_section(
+    health: Optional[EnvironmentHealth] = None,
+) -> str:
+    """
+    Creates the environment health section of the report.
+    """
+    if not health:
+        return ""
+
+    section = "## 🏗️ Environment Health\n\n"
+    section += "| Check | Status |\n"
+    section += "| :--- | :--- |\n"
+    section += f"| AGENTS.md | {'✅ PASS' if health['agents_md'] else '❌ FAIL'} |\n"
+    section += (
+        f"| Linter Config | {'✅ PASS' if health['linter_config'] else '❌ FAIL'} |\n"
+    )
+    section += f"| Lock File | {'✅ PASS' if health['lock_file'] else '❌ FAIL'} |\n"
+    if health.get("baml_detected"):
+        section += (
+            "| BAML Detection | ✅ [PASS] BAML Structured Outputs Detected (+10) |\n"
+        )
+    else:
+        section += "| BAML Detection | 🟡 NOT FOUND |\n"
+
+    return section + "\n"
+
+
 def generate_markdown_report(
     stats: Union[List[FileAnalysisResult], List[Dict[str, Any]]],
     final_score: float,

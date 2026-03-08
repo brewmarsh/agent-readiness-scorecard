@@ -1,5 +1,1 @@
-<<<<<<< auto-type-hints
-uv run agent-score score . --verbosity summary --report scorecard.txt --limit-to 'src/agent_readiness_scorecard/analyzers/config.py' --limit-to 'src/agent_readiness_scorecard/analyzers/javascript.py' --limit-to 'src/agent_readiness_scorecard/analyzers/markdown.py' --limit-to 'src/agent_readiness_scorecard/analyzers/python.py' --limit-to 'src/agent_readiness_scorecard/report.py' --limit-to 'tests/test_js_no_treesitter.py' --limit-to 'tests/test_report.py' --limit-to 'tests/test_robustness.py' > agent_score.log
-=======
-uv run agent-score score . --verbosity summary --report scorecard.txt --limit-to 'tests/test_config_analyzer.py' --limit-to 'tools/gen_changelog.py' > agent_score.log
->>>>>>> beta
+uv run agent-score score . --verbosity summary --report scorecard.txt --limit-to 'src/agent_readiness_scorecard/analyzer.py' --limit-to 'src/agent_readiness_scorecard/auditor.py' --limit-to 'src/agent_readiness_scorecard/main.py' --limit-to 'src/agent_readiness_scorecard/report.py' --limit-to 'src/agent_readiness_scorecard/types.py' --limit-to 'tests/test_report.py' > agent_score.log

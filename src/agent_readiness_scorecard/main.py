@@ -146,6 +146,12 @@ def _print_environment_health(
     health_table.add_row(
         "Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]"
     )
+    health_table.add_row(
+        "BAML Detection",
+        "[green]PASS (+10)[/green]"
+        if health.get("baml_detected")
+        else "[yellow]NOT FOUND[/yellow]",
+    )
 
     entropy = auditor.check_directory_entropy(path)
     status = f"{entropy['avg_files']:.1f} files/dir"
