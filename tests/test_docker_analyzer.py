@@ -126,6 +126,30 @@ ADD . /app
     assert "Best Practices Compliance" in details
 
 
+def test_docker_analyzer_multiline_with_comments(
+    docker_analyzer: DockerAnalyzer, tmp_path: Path
+) -> None:
+    dockerfile = tmp_path / "Dockerfile.multiline"
+    dockerfile.write_text(
+        """
+RUN apt-get update && \\
+    # This is a comment inside a multi-line instruction
+    apt-get install -y curl && \\
+    # Another comment
+    rm -rf /var/lib/apt/lists/*
+""",
+        encoding="utf-8",
+    )
+
+    stats = docker_analyzer.get_function_stats(str(dockerfile))
+    # Should be only 1 RUN instruction
+    assert len(stats) == 1
+    assert stats[0]["name"] == "RUN"
+    # Content should not contain the comments (or rather, the parser should have skipped them)
+    # Original logic skipped them entirely.
+    assert "# This is a comment" not in stats[0]["name"]
+
+
 # Auto-remediated: Added PEP 484 type hints (Verified)
 
 # Auto-remediated: Added PEP 484 type hints (Verified)
