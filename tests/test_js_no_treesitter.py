@@ -2,6 +2,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
+
 class TestJavascriptAnalyzerNoTreesitter(unittest.TestCase):
     def setUp(self):
         # We must delete the module from sys.modules to force a re-evaluation
@@ -21,6 +22,7 @@ class TestJavascriptAnalyzerNoTreesitter(unittest.TestCase):
         self.patcher.start()
 
         import agent_readiness_scorecard.analyzers.javascript as js_analyzer_mod
+
         self.analyzer_mod = js_analyzer_mod
 
     def tearDown(self):
@@ -49,6 +51,7 @@ class TestJavascriptAnalyzerNoTreesitter(unittest.TestCase):
         analyzer = self.analyzer_mod.JavascriptAnalyzer()
         stats = analyzer.get_function_stats("test.js")
         self.assertEqual(stats, [])
+
 
 if __name__ == "__main__":
     unittest.main()

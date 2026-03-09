@@ -97,3 +97,4 @@ class AnalysisResult(TypedDict):
     directory_stats: List[DirectoryStat]
     report_style: Optional[str]
     environment_health: Optional[EnvironmentHealth]
+    agentic_ecosystem: Optional[AgenticEcosystem]
