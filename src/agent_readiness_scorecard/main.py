@@ -208,6 +208,211 @@ def _print_file_analysis(
         console.print(table)
 
 
+def _load_prompt_content(path: str) -> str:
+    """Reads prompt content from file or stdin."""
+    if path == "-":
+        return sys.stdin.read()
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    console.print(f"[bold red]Error:[/bold red] File not found: {path}")
+    sys.exit(2)
+
+
+def _print_prompt_plain(path: str, result: Dict[str, Any]) -> None:
+    """Prints prompt analysis in plain text."""
+    print(f"Prompt Analysis: {path}")
+    print(f"Score: {result['score']}/100\n")
+    for k, passed in result["results"].items():
+        print(f"{k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
+
+    _print_plain_improvements(result["improvements"])
+    _print_plain_status(result["score"])
+
+
+def _print_plain_improvements(improvements: List[str]) -> None:
+    """Prints improvements in plain text."""
+    if improvements:
+        print("\nRefactored Suggestions:")
+        for imp in improvements:
+            print(f"- {imp}")
+
+
+def _print_plain_status(score: float) -> None:
+    """Prints pass/fail status in plain text."""
+    if score >= 80:
+        print("PASSED: Prompt is optimized!")
+    else:
+        print("FAILED: Prompt score too low.")
+
+
+def _print_prompt_rich(path: str, result: Dict[str, Any]) -> None:
+    """Prints prompt analysis in rich format."""
+    console.print(Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False))
+    style = "green" if result["score"] >= 80 else "red"
+    console.print(f"Score: [bold {style}]{result['score']}/100[/bold {style}]\n")
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Metric")
+    table.add_column("Status")
+
+    for k, passed in result["results"].items():
+        status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+        table.add_row(k.replace("_", " ").title(), status)
+
+    console.print(table)
+    _print_rich_improvements(result["improvements"])
+    _print_rich_status(result["score"])
+
+
+def _print_rich_improvements(improvements: List[str]) -> None:
+    """Prints improvements in rich format."""
+    if improvements:
+        console.print("\n[bold yellow]Suggestions:[/bold yellow]")
+        for imp in improvements:
+            console.print(f"💡 {imp}")
+
+
+def _print_rich_status(score: float) -> None:
+    """Prints pass/fail status in rich format."""
+    if score >= 80:
+        console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+
+
+def _resolve_limit_to_files(
+    diff: bool, diff_base: str, limit_to: tuple, final_verbosity: str
+) -> Optional[List[str]]:
+    """Resolves the list of files to analyze based on diff and limit_to filters."""
+    limit_to_files = list(limit_to) if limit_to else None
+    if not diff:
+        return limit_to_files
+
+    changed_files = get_changed_files(diff_base, None)
+    if final_verbosity != "quiet" and not changed_files:
+        console.print("[yellow]No changed files found to analyze.[/yellow]")
+
+    return _intersect_with_limit_to(changed_files, limit_to_files, final_verbosity)
+
+
+def _intersect_with_limit_to(
+    changed_files: List[str], limit_to_files: Optional[List[str]], final_verbosity: str
+) -> List[str]:
+    """Intersects changed files with limit_to patterns."""
+    if not limit_to_files:
+        return changed_files
+
+    filtered = [
+        f for f in changed_files
+        if any(f.endswith(pattern) for pattern in limit_to_files)
+    ]
+    if final_verbosity != "quiet" and not filtered:
+        console.print("[yellow]No changed files matched the provided filters.[/yellow]")
+    return filtered
+
+
+def _apply_results_processing(
+    results: AnalysisResult, sort: str, top: Optional[int], failing: bool
+) -> None:
+    """Applies filtering, sorting, and limiting to analysis results."""
+    # --- SORTING & LIMITING ---
+    file_results = cast(List[Dict[str, Any]], results["file_results"])
+
+    # 1. Filtering
+    if failing:
+        file_results = [res for res in file_results if res["score"] < 70]
+
+    # 2. Sorting
+    reverse_map = {
+        "acl": True,
+        "loc": True,
+        "complexity": True,
+        "score": False,
+        "tokens": True,
+        "types": False,
+    }
+    key_map = {
+        "acl": lambda x: x["acl"],
+        "loc": lambda x: x["loc"],
+        "complexity": lambda x: x["complexity"],
+        "score": lambda x: x["score"],
+        "tokens": lambda x: x.get("cumulative_tokens", 0),
+        "types": lambda x: x["type_coverage"],
+    }
+
+    file_results.sort(key=key_map[sort], reverse=reverse_map[sort])
+
+    # 3. Limiting
+    if top is not None:
+        file_results = file_results[:top]
+
+    results["file_results"] = cast(List[FileAnalysisResult], file_results)
+    # --- END SORTING & LIMITING ---
+
+
+def _handle_score_outputs(
+    results: AnalysisResult,
+    path: str,
+    agent: str,
+    report_path: Optional[str],
+    badge: bool,
+    thresholds: Optional[Dict[str, Any]],
+    report_style: str,
+    sort: str,
+    top: Optional[int],
+    final_verbosity: str,
+) -> None:
+    """Handles final CLI output, badge generation, and markdown reports."""
+    _print_environment_health(path, results, final_verbosity)
+    _print_file_analysis(results, final_verbosity)
+    _print_project_issues(cast(List[str], results.get("project_issues", [])), final_verbosity)
+
+    score_color = "green" if results["final_score"] >= 70 else "red"
+    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
+
+    if badge:
+        _save_badge(results["final_score"], final_verbosity)
+
+    if report_path:
+        _save_report(results, path, agent, report_path, thresholds, report_style, sort, top)
+
+
+def _save_badge(score: float, final_verbosity: str) -> None:
+    """Generates and saves the SVG badge."""
+    svg = generate_badge(score)
+    with open("agent_score.svg", "w", encoding="utf-8") as f:
+        f.write(svg)
+    if final_verbosity != "quiet":
+        console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
+
+
+def _save_report(
+    results: AnalysisResult,
+    path: str,
+    agent: str,
+    report_path: str,
+    thresholds: Optional[Dict[str, Any]],
+    report_style: str,
+    sort: str,
+    top: Optional[int],
+) -> None:
+    """Generates and saves the Markdown report."""
+    content = report.generate_markdown_report(
+        cast(List[Dict[str, Any]], results["file_results"]),
+        results["final_score"],
+        path,
+        PROFILES[agent],
+        project_issues=cast(List[str], results.get("project_issues", [])),
+        thresholds=thresholds,
+        report_style=report_style,
+        version=__version__,
+        sort_by=sort,
+        top_limit=top,
+        environment_health=results.get("environment_health"),
+    )
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
 # --- COMMANDS ---
 
 
@@ -225,59 +430,13 @@ def check_prompts(path: str, plain: bool) -> None:
     Returns:
         None
     """
-    content = ""
-    if path == "-":
-        content = sys.stdin.read()
-    elif os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
-    else:
-        console.print(f"[bold red]Error:[/bold red] File not found: {path}")
-        sys.exit(2)
-
-    analyzer_inst = PromptAnalyzer()
-    result = analyzer_inst.analyze(content)
+    content = _load_prompt_content(path)
+    result = PromptAnalyzer().analyze(content)
 
     if plain:
-        print(f"Prompt Analysis: {path}")
-        print(f"Score: {result['score']}/100\n")
-        for k, passed in result["results"].items():
-            print(f"{k.replace('_', ' ').title()}: {'PASS' if passed else 'FAIL'}")
-
-        if result["improvements"]:
-            # RESOLUTION: Adopted Beta branch bulleted list and newline formatting
-            print("\nRefactored Suggestions:")
-            for imp in result["improvements"]:
-                print(f"- {imp}")
-
-        if result["score"] >= 80:
-            print("PASSED: Prompt is optimized!")
-        else:
-            print("FAILED: Prompt score too low.")
+        _print_prompt_plain(path, result)
     else:
-        console.print(
-            Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False)
-        )
-        style = "green" if result["score"] >= 80 else "red"
-        console.print(f"Score: [bold {style}]{result['score']}/100[/bold {style}]\n")
-
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Metric")
-        table.add_column("Status")
-
-        for k, passed in result["results"].items():
-            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
-            table.add_row(k.replace("_", " ").title(), status)
-
-        console.print(table)
-
-        if result["improvements"]:
-            console.print("\n[bold yellow]Suggestions:[/bold yellow]")
-            for imp in result["improvements"]:
-                console.print(f"💡 {imp}")
-
-        if result["score"] >= 80:
-            console.print("\n[bold green]PASSED: Prompt is optimized![/bold green]")
+        _print_prompt_rich(path, result)
 
     if result["score"] < 80:
         sys.exit(1)
@@ -390,28 +549,9 @@ def score(
     failing: bool,
     fail_under: int,
 ) -> None:
-    """
-    Scores a codebase based on agent compatibility.
-
-    Args:
-        path (str): The path to score.
-        agent (str): The agent profile to use.
-        fix (bool): Whether to automatically fix issues.
-        report_path (str): Optional path to save a Markdown report.
-        verbosity (str): Optional verbosity override.
-        report_style (Optional[str]): Optional report style override.
-        badge (bool): Whether to generate an SVG badge.
-        limit_to (tuple): Optional list of files to limit analysis to.
-        diff (bool): Whether to limit analysis to changed files.
-        diff_base (str): The base reference for git diff.
-
-    Returns:
-        None
-    """
+    """Scores a codebase based on agent compatibility."""
     if agent not in PROFILES:
-        console.print(
-            f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]"
-        )
+        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
         agent = "generic"
 
     cfg = load_config(path)
@@ -420,124 +560,26 @@ def score(
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if final_verbosity != "quiet":
-        console.print(
-            Panel(
-                "[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False
-            )
-        )
+        console.print(Panel("[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False))
 
-    limit_to_files = list(limit_to) if limit_to else None
-
-    if diff:
-        changed_files = get_changed_files(diff_base, None)
-        if final_verbosity != "quiet" and not changed_files:
-            console.print("[yellow]No changed files found to analyze.[/yellow]")
-
-        if limit_to_files:
-            # Intersection: keep files in limit_to_files that are also in changed_files
-            limit_to_files = [
-                f
-                for f in changed_files
-                if any(f.endswith(pattern) for pattern in limit_to_files)
-            ]
-            if final_verbosity != "quiet" and not limit_to_files:
-                console.print(
-                    "[yellow]No changed files matched the provided filters.[/yellow]"
-                )
-        else:
-            limit_to_files = changed_files
-
-        if not limit_to_files:
-            return
+    limit_to_files = _resolve_limit_to_files(diff, diff_base, limit_to, final_verbosity)
+    if diff and not limit_to_files:
+        return
 
     if fix:
-        console.print(
-            Panel(
-                f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
-                expand=False,
-            )
-        )
-        profile = copy.deepcopy(PROFILES.get(agent, PROFILES["generic"]))
-        apply_fixes(path, profile, llm_config=cfg.get("llm", {}))
+        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
+        apply_fixes(path, copy.deepcopy(PROFILES.get(agent, PROFILES["generic"])), llm_config=cfg.get("llm", {}))
 
     results = analyzer.perform_analysis(
-        path,
-        agent,
-        limit_to_files=limit_to_files,
-        thresholds=thresholds,
-        report_style=final_report_style,
-        config=cast(Dict[str, Any], cfg),
+        path, agent, limit_to_files=limit_to_files, thresholds=thresholds,
+        report_style=final_report_style, config=cast(Dict[str, Any], cfg),
     )
 
-    # --- SORTING & LIMITING ---
-    file_results = cast(List[Dict[str, Any]], results["file_results"])
-
-    # 1. Filtering
-    if failing:
-        file_results = [res for res in file_results if res["score"] < 70]
-
-    # 2. Sorting
-    reverse_map = {
-        "acl": True,
-        "loc": True,
-        "complexity": True,
-        "score": False,
-        "tokens": True,
-        "types": False,
-    }
-    key_map = {
-        "acl": lambda x: x["acl"],
-        "loc": lambda x: x["loc"],
-        "complexity": lambda x: x["complexity"],
-        "score": lambda x: x["score"],
-        "tokens": lambda x: x.get("cumulative_tokens", 0),
-        "types": lambda x: x["type_coverage"],
-    }
-
-    file_results.sort(key=key_map[sort], reverse=reverse_map[sort])
-
-    # 3. Limiting
-    if top is not None:
-        file_results = file_results[:top]
-
-    results["file_results"] = cast(List[FileAnalysisResult], file_results)
-    # --- END SORTING & LIMITING ---
-
-    _print_environment_health(path, results, final_verbosity)
-    _print_file_analysis(results, final_verbosity)
-    _print_project_issues(
-        cast(List[str], results.get("project_issues", [])), final_verbosity
+    _apply_results_processing(results, sort, top, failing)
+    _handle_score_outputs(
+        results, path, agent, report_path, badge, thresholds,
+        final_report_style, sort, top, final_verbosity
     )
-
-    # Always print final score
-    score_color = "green" if results["final_score"] >= 70 else "red"
-    console.print(
-        f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]"
-    )
-
-    if badge:
-        svg = generate_badge(results["final_score"])
-        with open("agent_score.svg", "w", encoding="utf-8") as f:
-            f.write(svg)
-        if final_verbosity != "quiet":
-            console.print("[bold green]Badge saved to agent_score.svg[/bold green]")
-
-    if report_path:
-        content = report.generate_markdown_report(
-            cast(List[Dict[str, Any]], results["file_results"]),
-            results["final_score"],
-            path,
-            PROFILES[agent],
-            project_issues=cast(List[str], results.get("project_issues", [])),
-            thresholds=thresholds,
-            report_style=final_report_style,
-            version=__version__,
-            sort_by=sort,
-            top_limit=top,
-            environment_health=results.get("environment_health"),
-        )
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write(content)
 
     if results["final_score"] < fail_under or results.get("project_issues"):
         sys.exit(1)
