@@ -8,20 +8,13 @@ def _is_analyzable_file(filename: str) -> bool:
     Checks if a file is analyzable based on extension or name.
     Supported types: Python, Markdown, JavaScript, TypeScript, Dockerfile, Config.
     """
-    return (
-        filename.endswith(".py")
-        or filename.endswith(".md")
-        or filename.endswith(".js")
-        or filename.endswith(".jsx")
-        or filename.endswith(".ts")
-        or filename.endswith(".tsx")
-        or filename == "Dockerfile"
-        or filename.startswith("Dockerfile.")
-        or filename.endswith(".json")
-        or filename.endswith(".yaml")
-        or filename.endswith(".yml")
-        or filename.endswith(".toml")
+    extensions = (
+        ".py", ".md", ".js", ".jsx", ".ts", ".tsx",
+        ".json", ".yaml", ".yml", ".toml"
     )
+    if filename.endswith(extensions):
+        return True
+    return filename == "Dockerfile" or filename.startswith("Dockerfile.")
 
 
 def _scan_directory(path: str) -> List[str]:
@@ -37,17 +30,27 @@ def _scan_directory(path: str) -> List[str]:
     """
     analyzable_files = []
     for root, dirs, files in os.walk(path):
-        # Prune unwanted directories in-place to avoid unnecessary traversal
-        dirs[:] = [
-            d
-            for d in dirs
-            if not d.startswith(".") and d not in ("node_modules", "venv", ".venv")
-        ]
-
-        for file in files:
-            if _is_analyzable_file(file):
-                analyzable_files.append(os.path.join(root, file))
+        _prune_dirs(dirs)
+        analyzable_files.extend(_collect_files(root, files))
     return analyzable_files
+
+
+def _prune_dirs(dirs: List[str]) -> None:
+    """Prunes unwanted directories in-place."""
+    dirs[:] = [
+        d
+        for d in dirs
+        if not d.startswith(".") and d not in ("node_modules", "venv", ".venv")
+    ]
+
+
+def _collect_files(root: str, files: List[str]) -> List[str]:
+    """Collects analyzable files from a list of filenames."""
+    return [
+        os.path.join(root, f)
+        for f in files
+        if _is_analyzable_file(f)
+    ]
 
 
 def collect_python_files(path: str) -> List[str]:
@@ -80,11 +83,16 @@ def _extract_imports_from_ast(tree: ast.AST) -> Set[str]:
     """
     imported_names: Set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            _extract_from_import_node(node, imported_names)
-        elif isinstance(node, ast.ImportFrom):
-            _extract_from_import_from_node(node, imported_names)
+        _process_import_node(node, imported_names)
     return imported_names
+
+
+def _process_import_node(node: ast.AST, imported_names: Set[str]) -> None:
+    """Processes an AST node to extract imports."""
+    if isinstance(node, ast.Import):
+        _extract_from_import_node(node, imported_names)
+    elif isinstance(node, ast.ImportFrom):
+        _extract_from_import_from_node(node, imported_names)
 
 
 def _extract_from_import_node(node: ast.Import, imported_names: Set[str]) -> None:
@@ -152,15 +160,12 @@ def _find_imported_files(
     """
     Finds files that match the imported name.
     """
-    matches = set()
     suffix = imported_name.replace(".", os.sep)
-    for candidate in all_py_files:
-        if candidate == rel_path:
-            continue
-        candidate_no_ext = os.path.splitext(candidate)[0]
-        if _is_match(candidate_no_ext, suffix):
-            matches.add(candidate)
-    return matches
+    return {
+        f
+        for f in all_py_files
+        if f != rel_path and _is_match(os.path.splitext(f)[0], suffix)
+    }
 
 
 def get_import_graph(root_path: str) -> Dict[str, Set[str]]:
@@ -198,13 +203,15 @@ def get_inbound_imports(graph: Dict[str, Set[str]]) -> Dict[str, int]:
         Dict[str, int]: A mapping of file paths to their inbound import counts.
     """
     inbound: Dict[str, int] = {node: 0 for node in graph}
-    for source, targets in graph.items():
-        for target in targets:
-            if target in inbound:
-                inbound[target] += 1
-            else:
-                inbound[target] = 1
+    for targets in graph.values():
+        _count_inbound(targets, inbound)
     return inbound
+
+
+def _count_inbound(targets: Set[str], inbound: Dict[str, int]) -> None:
+    """Increments inbound counts for target files."""
+    for target in targets:
+        inbound[target] = inbound.get(target, 0) + 1
 
 
 def _dfs_visit_cycle(
@@ -240,18 +247,30 @@ def _process_neighbor(
     current_path: List[str],
     cycles: List[List[str]],
 ) -> None:
+    """Processes a neighbor node during cycle detection."""
     if neighbor in path_set:
-        try:
-            idx = current_path.index(neighbor)
-            cycle = current_path[idx:]
-            if cycle not in cycles:
-                cycles.append(cycle[:])
-        except ValueError:
-            pass
+        _record_cycle(neighbor, current_path, cycles)
     elif neighbor not in visited_global:
         _dfs_visit_cycle(
             neighbor, graph, visited_global, path_set, current_path, cycles
         )
+
+
+def _record_cycle(
+    neighbor: str, current_path: List[str], cycles: List[List[str]]
+) -> None:
+    """Records a detected cycle if it's new."""
+    try:
+        idx = current_path.index(neighbor)
+        _add_if_new(current_path[idx:], cycles)
+    except ValueError:
+        pass
+
+
+def _add_if_new(cycle: List[str], cycles: List[List[str]]) -> None:
+    """Adds cycle to the list if not already present."""
+    if cycle not in cycles:
+        cycles.append(cycle[:])
 
 
 def _find_raw_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
@@ -289,15 +308,24 @@ def _canonicalize_cycles(cycles: List[List[str]]) -> List[List[str]]:
     unique_cycles: List[List[str]] = []
     seen_cycle_sets: Set[Tuple[str, ...]] = set()
     for cycle in cycles:
-        if len(cycle) < 2:
-            continue
-        min_node = min(cycle)
-        min_idx = cycle.index(min_node)
-        canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
-        if canonical not in seen_cycle_sets:
-            seen_cycle_sets.add(canonical)
-            unique_cycles.append(list(canonical))
+        _process_cycle_for_canonicalization(cycle, unique_cycles, seen_cycle_sets)
     return unique_cycles
+
+
+def _process_cycle_for_canonicalization(
+    cycle: List[str],
+    unique_cycles: List[List[str]],
+    seen_cycle_sets: Set[Tuple[str, ...]],
+) -> None:
+    """Processes a single cycle for canonical representation."""
+    if len(cycle) < 2:
+        return
+    min_node = min(cycle)
+    min_idx = cycle.index(min_node)
+    canonical = tuple(cycle[min_idx:] + cycle[:min_idx])
+    if canonical not in seen_cycle_sets:
+        seen_cycle_sets.add(canonical)
+        unique_cycles.append(list(canonical))
 
 
 def detect_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
@@ -325,24 +353,32 @@ def _get_transitive_dependencies(
         graph (Dict[str, Set[str]]): The dependency graph.
 
     Returns:
-        Set[str]: Set of all transitive dependencies (excluding start_node unless cyclic).
+        Set[str]: Set of all transitive dependencies (including start_node).
     """
-    visited: Set[str] = set()
+    visited: Set[str] = {start_node}
     queue: List[str] = [start_node]
-    visited.add(start_node)
 
     idx = 0
     while idx < len(queue):
         current = queue[idx]
         idx += 1
-
-        neighbors = graph.get(current, set())
-        for neighbor in neighbors:
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append(neighbor)
+        _visit_neighbors(current, graph, visited, queue)
 
     return visited
+
+
+def _visit_neighbors(
+    current: str,
+    graph: Dict[str, Set[str]],
+    visited: Set[str],
+    queue: List[str],
+) -> None:
+    """Visits neighbors of a node in BFS."""
+    neighbors = graph.get(current, set())
+    for neighbor in neighbors:
+        if neighbor not in visited:
+            visited.add(neighbor)
+            queue.append(neighbor)
 
 
 def calculate_context_tokens(
