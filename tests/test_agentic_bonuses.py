@@ -10,7 +10,7 @@ class TestAgenticBonuses(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         # Create a dummy python file to analyze
         with open(os.path.join(self.test_dir, "core.py"), "w") as f:
-            f.write("def hello():\n    pass\n")
+            f.write("def hello() -> None:\n    pass\n")
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
@@ -55,8 +55,9 @@ class TestAgenticBonuses(unittest.TestCase):
 
         # Missing docs in generic profile?
         from agent_readiness_scorecard.constants import PROFILES
+
         profile = PROFILES["generic"].copy()
-        profile["required_files"] = ["MANDATORY.md"] # Induce penalty
+        profile["required_files"] = ["MANDATORY.md"]  # Induce penalty
 
         # No bonus
         results_no_bonus = perform_analysis(self.test_dir, profile=profile)

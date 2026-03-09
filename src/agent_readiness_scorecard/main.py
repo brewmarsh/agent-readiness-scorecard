@@ -150,13 +150,17 @@ def _print_environment_health(
     if ecosystem:
         if ecosystem.get("has_context_files"):
             files_str = ", ".join(ecosystem.get("found_files", []))
-            health_table.add_row("Context Steering", f"[green]PASS ({files_str})[/green]")
+            health_table.add_row(
+                "Context Steering", f"[green]PASS ({files_str})[/green]"
+            )
         else:
             health_table.add_row("Context Steering", "[yellow]None[/yellow]")
 
         if ecosystem.get("has_agent_frameworks"):
             frameworks_str = ", ".join(ecosystem.get("found_frameworks", []))
-            health_table.add_row("Agent Frameworks", f"[green]PASS ({frameworks_str})[/green]")
+            health_table.add_row(
+                "Agent Frameworks", f"[green]PASS ({frameworks_str})[/green]"
+            )
         else:
             health_table.add_row("Agent Frameworks", "[yellow]None[/yellow]")
 
@@ -251,7 +255,9 @@ def _print_plain_status(score: float) -> None:
 
 def _print_prompt_rich(path: str, result: Dict[str, Any]) -> None:
     """Prints prompt analysis in rich format."""
-    console.print(Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False))
+    console.print(
+        Panel(f"[bold cyan]Prompt Analysis: {path}[/bold cyan]", expand=False)
+    )
     style = "green" if result["score"] >= 80 else "red"
     console.print(f"Score: [bold {style}]{result['score']}/100[/bold {style}]\n")
 
@@ -305,7 +311,8 @@ def _intersect_with_limit_to(
         return changed_files
 
     filtered = [
-        f for f in changed_files
+        f
+        for f in changed_files
         if any(f.endswith(pattern) for pattern in limit_to_files)
     ]
     if final_verbosity != "quiet" and not filtered:
@@ -367,16 +374,22 @@ def _handle_score_outputs(
     """Handles final CLI output, badge generation, and markdown reports."""
     _print_environment_health(path, results, final_verbosity)
     _print_file_analysis(results, final_verbosity)
-    _print_project_issues(cast(List[str], results.get("project_issues", [])), final_verbosity)
+    _print_project_issues(
+        cast(List[str], results.get("project_issues", [])), final_verbosity
+    )
 
     score_color = "green" if results["final_score"] >= 70 else "red"
-    console.print(f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]")
+    console.print(
+        f"\n[bold]Final Agent Score: [{score_color}]{results['final_score']:.1f}/100[/{score_color}][/bold]"
+    )
 
     if badge:
         _save_badge(results["final_score"], final_verbosity)
 
     if report_path:
-        _save_report(results, path, agent, report_path, thresholds, report_style, sort, top)
+        _save_report(
+            results, path, agent, report_path, thresholds, report_style, sort, top
+        )
 
 
 def _save_badge(score: float, final_verbosity: str) -> None:
@@ -554,7 +567,9 @@ def score(
 ) -> None:
     """Scores a codebase based on agent compatibility."""
     if agent not in PROFILES:
-        console.print(f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]")
+        console.print(
+            f"[yellow]Unknown agent profile: {agent}. using generic.[/yellow]"
+        )
         agent = "generic"
 
     cfg = load_config(path)
@@ -563,25 +578,50 @@ def score(
     thresholds = cast(Dict[str, Any], cfg.get("thresholds"))
 
     if final_verbosity != "quiet":
-        console.print(Panel("[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False))
+        console.print(
+            Panel(
+                "[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False
+            )
+        )
 
     limit_to_files = _resolve_limit_to_files(diff, diff_base, limit_to, final_verbosity)
     if diff and not limit_to_files:
         return
 
     if fix:
-        console.print(Panel(f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}", expand=False))
-        apply_fixes(path, copy.deepcopy(PROFILES.get(agent, PROFILES["generic"])), llm_config=cfg.get("llm", {}))
+        console.print(
+            Panel(
+                f"[bold cyan]Applying Fixes[/bold cyan]\nProfile: {agent.upper()}",
+                expand=False,
+            )
+        )
+        apply_fixes(
+            path,
+            copy.deepcopy(PROFILES.get(agent, PROFILES["generic"])),
+            llm_config=cfg.get("llm", {}),
+        )
 
     results = analyzer.perform_analysis(
-        path, agent, limit_to_files=limit_to_files, thresholds=thresholds,
-        report_style=final_report_style, config=cast(Dict[str, Any], cfg),
+        path,
+        agent,
+        limit_to_files=limit_to_files,
+        thresholds=thresholds,
+        report_style=final_report_style,
+        config=cast(Dict[str, Any], cfg),
     )
 
     _apply_results_processing(results, sort, top, failing)
     _handle_score_outputs(
-        results, path, agent, report_path, badge, thresholds,
-        final_report_style, sort, top, final_verbosity
+        results,
+        path,
+        agent,
+        report_path,
+        badge,
+        thresholds,
+        final_report_style,
+        sort,
+        top,
+        final_verbosity,
     )
 
     if results["final_score"] < fail_under or results.get("project_issues"):
