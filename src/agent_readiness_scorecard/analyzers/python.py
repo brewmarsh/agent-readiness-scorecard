@@ -124,22 +124,18 @@ class PythonAnalyzer(BaseAnalyzer):
         self, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Merges profile and provided thresholds."""
-        p_thresholds = profile.get("thresholds", {})
-        if thresholds is not None:
-            return thresholds
+        # Start with defaults
+        effective = DEFAULT_THRESHOLDS.copy()
 
-        return {
-            "acl_yellow": p_thresholds.get(
-                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
-            ),
-            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-            "type_safety": p_thresholds.get(
-                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-            ),
-            "token_limit": p_thresholds.get(
-                "token_limit", DEFAULT_THRESHOLDS["token_limit"]
-            ),
-        }
+        # Override with profile specific thresholds if they exist
+        p_thresholds = profile.get("thresholds", {})
+        effective.update(p_thresholds)
+
+        # Finally override with explicitly provided thresholds (from CLI or config)
+        if thresholds:
+            effective.update(thresholds)
+
+        return effective
 
     def _apply_bloat_penalty(self, score: int, details: List[str], loc: int) -> int:
         """Applies penalty for bloated files (> 200 lines)."""

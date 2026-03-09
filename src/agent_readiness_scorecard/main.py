@@ -136,9 +136,10 @@ def _print_environment_health(
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
 @click.option("--sort", type=click.Choice(["acl", "loc", "complexity", "score", "tokens", "types"]), default="acl")
+@click.option("--limit-to", "limit_to_files", multiple=True, help="Only analyze these specific files.")
 @click.option("--top", type=int, help="Limit results to top N.")
 @click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]))
-def score(path, agent, fail_under, fix, report_path, sort, top, verbosity):
+def score(path, agent, fail_under, fix, report_path, sort, top, verbosity, limit_to_files):
     """Scores a codebase and evaluates the Agentic Ecosystem."""
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
@@ -147,7 +148,8 @@ def score(path, agent, fail_under, fix, report_path, sort, top, verbosity):
         console.print(Panel("[bold cyan]Running Agent Readiness Scorecard[/bold cyan]", expand=False))
 
     # Logic to handle diffs, fixes, and analysis...
-    results = analyzer.perform_analysis(path, agent, config=cfg)
+    limit_files = list(limit_to_files) if limit_to_files else None
+    results = analyzer.perform_analysis(path, agent, config=cfg, limit_to_files=limit_files)
 
     # Process results (Sorting/Filtering)
     _apply_results_processing(results, sort, top, failing=False)
