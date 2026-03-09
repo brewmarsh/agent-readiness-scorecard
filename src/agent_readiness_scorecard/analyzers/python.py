@@ -68,63 +68,111 @@ class PythonAnalyzer(BaseAnalyzer):
     def language(self) -> str:
         return "Python"
 
-    def score_file(
-        self,
-        filepath: str,
-        profile: Dict[str, Any],
-        thresholds: Optional[Dict[str, Any]] = None,
-        cumulative_tokens: int = 0,
-    ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
-        """
-        Calculates score based on the selected profile and Agent Readiness spec.
-        """
+    def _parse_code(self, filepath: str) -> Optional[ast.AST]:
+        """Reads and parses Python code from a file."""
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                code = f.read()
+            return ast.parse(code, filepath)
+        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+            return None
+
+    def _get_complexity_map(self, tree: ast.AST) -> Dict[int, float]:
+        """Returns a mapping of line numbers to cyclomatic complexity."""
+        visitor = mccabe.PathGraphingAstVisitor()
+        visitor.preorder(tree, visitor)
+        return {
+            graph.lineno: float(graph.complexity())
+            for graph in visitor.graphs.values()
+        }
+
+    def _is_typed(self, node: ast.AST) -> bool:
+        """Checks if a function node has return or argument type hints."""
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return False
+        has_return = node.returns is not None
+        has_args = any(arg.annotation is not None for arg in node.args.args)
+        return has_return or has_args
+
+    def _create_function_metric(
+        self, node: ast.AST, complexity_map: Dict[int, float]
+    ) -> Optional[FunctionMetric]:
+        """Calculates metrics for a single function node."""
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return None
+
+        start_line = node.lineno
+        end_line = getattr(node, "end_lineno", start_line)
+        loc = end_line - start_line + 1
+        complexity = float(complexity_map.get(start_line, 1.0))
+
+        depth_visitor = NestingDepthVisitor()
+        depth_visitor.visit(node)
+        nesting_depth = depth_visitor.max_depth
+
+        return {
+            "name": node.name,
+            "lineno": start_line,
+            "complexity": complexity,
+            "loc": loc,
+            "acl": self.calculate_acl(complexity, loc, nesting_depth),
+            "is_typed": self._is_typed(node),
+            "nesting_depth": nesting_depth,
+        }
+
+    def _get_effective_thresholds(
+        self, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Merges profile and provided thresholds."""
         p_thresholds = profile.get("thresholds", {})
+        if thresholds is not None:
+            return thresholds
 
-        if thresholds is None:
-            thresholds = {
-                "acl_yellow": p_thresholds.get(
-                    "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
-                ),
-                "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-                "type_safety": p_thresholds.get(
-                    "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-                ),
-                "token_limit": p_thresholds.get(
-                    "token_limit", DEFAULT_THRESHOLDS["token_limit"]
-                ),
-            }
+        return {
+            "acl_yellow": p_thresholds.get(
+                "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+            ),
+            "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
+            "type_safety": p_thresholds.get(
+                "type_safety", DEFAULT_THRESHOLDS["type_safety"]
+            ),
+            "token_limit": p_thresholds.get(
+                "token_limit", DEFAULT_THRESHOLDS["token_limit"]
+            ),
+        }
 
-        metrics = self.get_function_stats(filepath)
-        loc = self._get_loc(filepath)
-
-        score = 100
-        details = []
-
+    def _apply_bloat_penalty(self, score: int, details: List[str], loc: int) -> int:
+        """Applies penalty for bloated files (> 200 lines)."""
         if loc > 200:
             bloat_penalty = (loc - 200) // 10
             if bloat_penalty > 0:
-                score -= bloat_penalty
                 details.append(f"Bloated File: {loc} lines (-{bloat_penalty})")
+                return score - bloat_penalty
+        return score
 
-        if not metrics:
-            return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
-
-        acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-        acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-        type_safety_threshold = thresholds.get(
-            "type_safety", DEFAULT_THRESHOLDS["type_safety"]
-        )
-        token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
-
-        if cumulative_tokens > token_limit:
+    def _apply_token_penalty(
+        self, score: int, details: List[str], current: int, limit: int
+    ) -> int:
+        """Applies penalty if cumulative token budget is exceeded."""
+        if current > limit:
             penalty = 15
-            score -= penalty
             details.append(
-                f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
+                f"Cumulative Token Budget Exceeded: {current:,} > {limit:,} (-{penalty})"
             )
+            return score - penalty
+        return score
 
-        red_count = sum(1 for m in metrics if m["acl"] > acl_red)
-        yellow_count = sum(1 for m in metrics if acl_yellow < m["acl"] <= acl_red)
+    def _apply_acl_penalties(
+        self,
+        score: int,
+        details: List[str],
+        metrics: List[FunctionMetric],
+        yellow: float,
+        red: float,
+    ) -> int:
+        """Applies penalties for functions exceeding ACL thresholds."""
+        red_count = sum(1 for m in metrics if m["acl"] > red)
+        yellow_count = sum(1 for m in metrics if yellow < m["acl"] <= red)
 
         if red_count > 0:
             penalty = red_count * 15
@@ -135,19 +183,56 @@ class PythonAnalyzer(BaseAnalyzer):
             penalty = yellow_count * 5
             score -= penalty
             details.append(f"{yellow_count} Yellow ACL functions (-{penalty})")
+        return score
 
+    def _apply_type_safety_penalty(
+        self,
+        score: int,
+        details: List[str],
+        metrics: List[FunctionMetric],
+        threshold: float,
+    ) -> Tuple[int, float]:
+        """Applies penalty for low type safety coverage."""
         typed_count = sum(1 for m in metrics if m["is_typed"])
-        type_safety_index = (typed_count / len(metrics)) * 100
+        index = (typed_count / len(metrics)) * 100
 
-        if type_safety_index < type_safety_threshold:
+        if index < threshold:
             penalty = 20
             score -= penalty
             details.append(
-                f"Type Safety Index {type_safety_index:.0f}% < {type_safety_threshold}% (-{penalty})"
+                f"Type Safety Index {index:.0f}% < {threshold}% (-{penalty})"
             )
+        return score, index
+
+    def score_file(
+        self,
+        filepath: str,
+        profile: Dict[str, Any],
+        thresholds: Optional[Dict[str, Any]] = None,
+        cumulative_tokens: int = 0,
+    ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
+        """Calculates score based on selected profile and spec."""
+        thresholds = self._get_effective_thresholds(profile, thresholds)
+        metrics = self.get_function_stats(filepath)
+        loc = self._get_loc(filepath)
+
+        score, details = 100, []
+        score = self._apply_bloat_penalty(score, details, loc)
+
+        if not metrics:
+            return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
+
+        score = self._apply_token_penalty(
+            score, details, cumulative_tokens, thresholds["token_limit"]
+        )
+        score = self._apply_acl_penalties(
+            score, details, metrics, thresholds["acl_yellow"], thresholds["acl_red"]
+        )
+        score, type_safety_index = self._apply_type_safety_penalty(
+            score, details, metrics, thresholds["type_safety"]
+        )
 
         avg_complexity = sum(m["complexity"] for m in metrics) / len(metrics)
-
         return (
             max(score, 0),
             ", ".join(details),
@@ -158,49 +243,17 @@ class PythonAnalyzer(BaseAnalyzer):
         )
 
     def get_function_stats(self, filepath: str) -> List[FunctionMetric]:
-        """
-        Returns statistics for each function in the file including ACL and Type coverage.
-        """
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code, filepath)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+        """Returns statistics for each function in the file."""
+        tree = self._parse_code(filepath)
+        if tree is None:
             return []
 
-        visitor = mccabe.PathGraphingAstVisitor()
-        visitor.preorder(tree, visitor)
-        complexity_map = {
-            graph.lineno: graph.complexity() for graph in visitor.graphs.values()
-        }
-
-        stats: List[FunctionMetric] = []
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                start_line = node.lineno
-                end_line = getattr(node, "end_lineno", start_line)
-                loc = end_line - start_line + 1
-                complexity = float(complexity_map.get(start_line, 1))
-
-                depth_visitor = NestingDepthVisitor()
-                depth_visitor.visit(node)
-                nesting_depth = depth_visitor.max_depth
-
-                acl = self.calculate_acl(complexity, loc, nesting_depth)
-
-                stats.append(
-                    {
-                        "name": node.name,
-                        "lineno": start_line,
-                        "complexity": complexity,
-                        "loc": loc,
-                        "acl": acl,
-                        "is_typed": (node.returns is not None)
-                        or any(arg.annotation is not None for arg in node.args.args),
-                        "nesting_depth": nesting_depth,
-                    }
-                )
-        return stats
+        complexity_map = self._get_complexity_map(tree)
+        return [
+            m
+            for m in (self._create_function_metric(n, complexity_map) for n in ast.walk(tree))
+            if m
+        ]
 
     def calculate_acl(self, complexity: float, loc: int, depth: int) -> float:
         """
@@ -209,64 +262,43 @@ class PythonAnalyzer(BaseAnalyzer):
         return (depth * 2.0) + (complexity * 1.5) + (loc / 50.0)
 
     def _get_loc(self, filepath: str) -> int:
-        """
-        Returns lines of code excluding whitespace/comments.
-        """
+        """Returns lines of code excluding whitespace/comments."""
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                return sum(
-                    1 for line in f if line.strip() and not line.strip().startswith("#")
-                )
+                lines = f.readlines()
         except (UnicodeDecodeError, FileNotFoundError):
             return 0
 
+        return sum(
+            1
+            for line in lines
+            if line.strip() and not line.strip().startswith("#")
+        )
+
     def get_complexity_score(self, filepath: str) -> float:
-        """
-        Returns average cyclomatic complexity for all functions in a file.
-        """
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code, filepath)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+        """Returns average cyclomatic complexity for all functions in a file."""
+        tree = self._parse_code(filepath)
+        if tree is None:
             return 0.0
 
-        visitor = mccabe.PathGraphingAstVisitor()
-        visitor.preorder(tree, visitor)
-
-        complexities = [graph.complexity() for graph in visitor.graphs.values()]
-        if not complexities:
-            return 0.0
-
-        return sum(complexities) / len(complexities)
+        complexities = list(self._get_complexity_map(tree).values())
+        return sum(complexities) / len(complexities) if complexities else 0.0
 
     def check_type_hints(self, filepath: str) -> float:
-        """
-        Returns type hint coverage percentage for functions and async functions.
-        """
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                code = f.read()
-            tree = ast.parse(code)
-        except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
+        """Returns type hint coverage percentage for functions."""
+        tree = self._parse_code(filepath)
+        if tree is None:
             return 0.0
 
         functions = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            n for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
         ]
         if not functions:
             return 100.0
 
-        typed_functions = 0
-        for func in functions:
-            has_return = func.returns is not None
-            has_args = any(arg.annotation is not None for arg in func.args.args)
-            if has_return or has_args:
-                typed_functions += 1
-
-        return (typed_functions / len(functions)) * 100.0
+        typed = sum(1 for f in functions if self._is_typed(f))
+        return (typed / len(functions)) * 100.0
 
     def calculate_max_depth(self, source_code: str) -> int:
         """
