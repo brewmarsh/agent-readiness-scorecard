@@ -125,6 +125,7 @@ agent_score.svg
 pr_body.md
 test_prompt.txt
 typing_tasks.json
+run_scorecard.sh
 agent_report.md
 pr_health.md
 baml_client/
