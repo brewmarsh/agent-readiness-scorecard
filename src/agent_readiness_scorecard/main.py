@@ -132,12 +132,13 @@ def _print_environment_health(
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--agent", default="generic", help="Profile to use.")
+@click.option("--fail-under", type=int, default=70, help="Fail if the final score is below this threshold (default: 70).")
 @click.option("--fix", is_flag=True, help="Automatically fix issues.")
 @click.option("--report", "report_path", type=click.Path(), help="Save Markdown report.")
-@click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]))
 @click.option("--sort", type=click.Choice(["acl", "loc", "complexity", "score", "tokens", "types"]), default="acl")
 @click.option("--top", type=int, help="Limit results to top N.")
-def score(path, agent, fix, report_path, verbosity, sort, top):
+@click.option("--verbosity", type=click.Choice(["quiet", "summary", "detailed"]))
+def score(path, agent, fail_under, fix, report_path, sort, top, verbosity):
     """Scores a codebase and evaluates the Agentic Ecosystem."""
     cfg = load_config(path)
     final_verbosity = verbosity or cfg.get("verbosity", "summary")
@@ -154,7 +155,7 @@ def score(path, agent, fix, report_path, verbosity, sort, top):
     # Final Output
     _handle_score_outputs(results, path, agent, report_path, False, None, "actionable", sort, top, final_verbosity)
 
-    if results["final_score"] < 70:
+    if results["final_score"] < fail_under:
         sys.exit(1)
 
 if __name__ == "__main__":
