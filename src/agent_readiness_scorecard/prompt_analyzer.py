@@ -63,14 +63,28 @@ class PromptAnalyzer:
         Returns:
             PromptAnalysisResult: A dictionary containing the score, results, and improvements.
         """
-        results: Dict[str, bool] = {}
-        improvements: List[str] = []
-        score = 0
-
         if not text or not text.strip():
             return {"score": 0, "results": {}, "improvements": ["Prompt is empty."]}
 
         # 1. Standard heuristics (Simple Regex)
+        score, results, improvements = self._evaluate_standard_heuristics(text)
+
+        # 2. Context-Aware heuristics (Few-Shot & Negative Constraints)
+        score = self._evaluate_contextual_heuristics(text, results, improvements, score)
+
+        # Clamp score between 0 and 100
+        score = max(0, min(100, score))
+
+        return {"score": score, "results": results, "improvements": improvements}
+
+    def _evaluate_standard_heuristics(
+        self, text: str
+    ) -> tuple[int, Dict[str, bool], List[str]]:
+        """Evaluates standard regex-based heuristics."""
+        results: Dict[str, bool] = {}
+        improvements: List[str] = []
+        score = 0
+
         for key in ["role_definition", "cognitive_scaffolding", "delimiter_hygiene"]:
             h = cast(HeuristicConfig, self.HEURISTICS[key])
             pattern = cast(str, h["pattern"])
@@ -81,7 +95,13 @@ class PromptAnalyzer:
                 results[key] = False
                 improvements.append(cast(str, h["improvement"]))
 
-        # 2. Context-Aware Few-Shot Detection
+        return score, results, improvements
+
+    def _evaluate_contextual_heuristics(
+        self, text: str, results: Dict[str, bool], improvements: List[str], score: int
+    ) -> int:
+        """Evaluates heuristics that require context awareness (Few-Shot and Negative Constraints)."""
+        # Few-Shot Detection
         if self._check_few_shot(text):
             results["few_shot"] = True
             score += cast(int, self.HEURISTICS["few_shot"]["weight"])
@@ -89,7 +109,7 @@ class PromptAnalyzer:
             results["few_shot"] = False
             improvements.append(cast(str, self.HEURISTICS["few_shot"]["improvement"]))
 
-        # 3. Context-Aware Negative Constraint Detection
+        # Negative Constraint Detection
         if self._check_negative_constraints(text):
             results["negative_constraints"] = False  # Issue found
             score -= cast(int, self.HEURISTICS["negative_constraints"]["penalty"])
@@ -99,10 +119,7 @@ class PromptAnalyzer:
         else:
             results["negative_constraints"] = True  # No issue
 
-        # Clamp score between 0 and 100
-        score = max(0, min(100, score))
-
-        return {"score": score, "results": results, "improvements": improvements}
+        return score
 
     def _check_few_shot(self, text: str) -> bool:
         """
@@ -126,13 +143,22 @@ class PromptAnalyzer:
             return True
 
         # 3. Markdown code blocks preceded by lines containing "example" or "sample"
+        return self._has_example_code_blocks(text)
+
+    def _has_example_code_blocks(self, text: str) -> bool:
+        """Detects markdown code blocks preceded by lines containing 'example' or 'sample'."""
         lines = text.splitlines()
         for i, line in enumerate(lines):
             if re.search(r"(?i)(example|sample)", line):
-                # Check if next 2 lines contain a code block start
-                for j in range(i + 1, min(i + 3, len(lines))):
-                    if lines[j].strip().startswith("```"):
-                        return True
+                if self._has_code_block_after_example(lines, i):
+                    return True
+        return False
+
+    def _has_code_block_after_example(self, lines: List[str], index: int) -> bool:
+        """Checks if a code block starts within the next two lines of a given index."""
+        for j in range(index + 1, min(index + 3, len(lines))):
+            if lines[j].strip().startswith("```"):
+                return True
         return False
 
     def _check_negative_constraints(self, text: str) -> bool:
@@ -150,25 +176,32 @@ class PromptAnalyzer:
         threshold_20 = len(text) * 0.2
 
         for match in re.finditer(pattern, text):
-            # Rule 1: Ignore negative words in the first 20% (Context setting phase)
-            if match.start() < threshold_20:
-                continue
-
-            # Get the line containing the match for context
-            start_of_line = text.rfind("\n", 0, match.start()) + 1
-            end_of_line = text.find("\n", match.end())
-            if end_of_line == -1:
-                end_of_line = len(text)
-            line_content = text[start_of_line:end_of_line].strip()
-
-            # Rule 2: Ignore standard "anti-pattern" descriptions (e.g., "Currently, it does not work")
-            if re.search(r"(?i)currently.*not", line_content):
-                continue
-
-            # Rule 3: Only flag if they appear in imperative instruction sections (lists/numbers)
-            if not re.match(r"^(\*|\-|\d+\.)", line_content):
-                continue
-
-            return True  # Violation found
+            if self._is_penalty_worthy_negative_constraint(text, match, threshold_20):
+                return True
 
         return False
+
+    def _is_penalty_worthy_negative_constraint(
+        self, text: str, match: re.Match, threshold_20: float
+    ) -> bool:
+        """Evaluates if a specific regex match represents a penalty-worthy negative constraint."""
+        # Rule 1: Ignore negative words in the first 20% (Context setting phase)
+        if match.start() < threshold_20:
+            return False
+
+        line_content = self._get_line_at_match(text, match)
+
+        # Rule 2: Ignore standard "anti-pattern" descriptions (e.g., "Currently, it does not work")
+        if re.search(r"(?i)currently.*not", line_content):
+            return False
+
+        # Rule 3: Only flag if they appear in imperative instruction sections (lists/numbers)
+        return bool(re.match(r"^(\*|\-|\d+\.)", line_content))
+
+    def _get_line_at_match(self, text: str, match: re.Match) -> str:
+        """Retrieves the full line content containing the given regex match."""
+        start_of_line = text.rfind("\n", 0, match.start()) + 1
+        end_of_line = text.find("\n", match.end())
+        if end_of_line == -1:
+            end_of_line = len(text)
+        return text[start_of_line:end_of_line].strip()
