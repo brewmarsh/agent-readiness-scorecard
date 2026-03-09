@@ -125,10 +125,7 @@ class PythonAnalyzer(BaseAnalyzer):
     ) -> Dict[str, Any]:
         """Merges profile and provided thresholds."""
         p_thresholds = profile.get("thresholds", {})
-        if thresholds is not None:
-            return thresholds
-
-        return {
+        base = {
             "acl_yellow": p_thresholds.get(
                 "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
             ),
@@ -140,6 +137,9 @@ class PythonAnalyzer(BaseAnalyzer):
                 "token_limit", DEFAULT_THRESHOLDS["token_limit"]
             ),
         }
+        if thresholds:
+            base.update(thresholds)
+        return base
 
     def _apply_bloat_penalty(self, score: int, details: List[str], loc: int) -> int:
         """Applies penalty for bloated files (> 200 lines)."""
