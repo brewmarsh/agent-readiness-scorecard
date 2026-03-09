@@ -53,6 +53,14 @@ def test_json_depth(analyzer, tmp_path):
 
 
 def test_yaml_depth(analyzer, tmp_path):
+    try:
+        import yaml as yaml_lib
+    except ImportError:
+        yaml_lib = None
+
+    if yaml_lib is None:
+        pytest.skip("PyYAML not installed")
+
     yaml_content = """
 server:
   port: 8080
@@ -66,6 +74,7 @@ server:
         f.write(yaml_content)
 
     stats = analyzer.get_function_stats(str(config_file))
+    assert len(stats) == 1
     assert stats[0]["nesting_depth"] == 3
     assert stats[0]["loc"] == 6  # server, port, database, host, credentials, user
 
