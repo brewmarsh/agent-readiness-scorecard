@@ -99,7 +99,10 @@ def _generate_acl_section(
     sorted_funcs = _get_sorted_high_acl_functions(stats, acl_yellow, sort_by, top_limit)
 
     if not sorted_funcs:
-        return header + f"✅ All functions meet the Agent Cognitive Load (ACL) target of <= {acl_yellow}.\n\n"
+        return (
+            header
+            + f"✅ All functions meet the Agent Cognitive Load (ACL) target of <= {acl_yellow}.\n\n"
+        )
 
     rows = ["| Function | File | ACL | Status |", "|----------|------|-----|--------|"]
     for fn in sorted_funcs:
@@ -152,7 +155,10 @@ def _generate_type_safety_section(
     if not table_rows:
         return header + "✅ All files meet type safety requirements.\n\n"
 
-    table_header = ["| File | Type Safety Index | Status |", "| :--- | :---------------: | :----- |"]
+    table_header = [
+        "| File | Type Safety Index | Status |",
+        "| :--- | :---------------: | :----- |",
+    ]
     return header + "\n".join(table_header + table_rows) + "\n\n"
 
 
@@ -284,17 +290,15 @@ def _generate_environment_health_section(
     section = "## 🏗️ Environment Health\n\n"
     section += "| Check | Status |\n"
     section += "| :--- | :--- |\n"
-    section += (
-        f"| AGENTS.md | {'✅ PASS' if health['agents_md'] else '❌ FAIL'} |\n"
-    )
+    section += f"| AGENTS.md | {'✅ PASS' if health['agents_md'] else '❌ FAIL'} |\n"
     section += (
         f"| Linter Config | {'✅ PASS' if health['linter_config'] else '❌ FAIL'} |\n"
     )
-    section += (
-        f"| Lock File | {'✅ PASS' if health['lock_file'] else '❌ FAIL'} |\n"
-    )
+    section += f"| Lock File | {'✅ PASS' if health['lock_file'] else '❌ FAIL'} |\n"
     if health.get("baml_detected"):
-        section += "| BAML Detection | ✅ [PASS] BAML Structured Outputs Detected (+10) |\n"
+        section += (
+            "| BAML Detection | ✅ [PASS] BAML Structured Outputs Detected (+10) |\n"
+        )
     else:
         section += "| BAML Detection | 🟡 NOT FOUND |\n"
 

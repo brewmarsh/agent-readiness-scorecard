@@ -203,7 +203,7 @@ def _get_doc_recommendations(missing_docs: List[str]) -> List[Dict[str, str]]:
 
 
 def _get_recommendations(
-    results: Union[AnalysisResult, List[FileAnalysisResult], Any]
+    results: Union[AnalysisResult, List[FileAnalysisResult], Any],
 ) -> List[Dict[str, str]]:
     """Extracts all recommendations from analysis results."""
     file_list = (
