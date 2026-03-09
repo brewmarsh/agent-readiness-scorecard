@@ -50,61 +50,16 @@ class ConfigAnalyzer(BaseAnalyzer):
         """
         Calculates score based on the selected profile for configuration files.
         """
-        p_thresholds = profile.get("thresholds", {})
-
-        if thresholds is None:
-            thresholds = {
-                "acl_yellow": p_thresholds.get(
-                    "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
-                ),
-                "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
-                "token_limit": p_thresholds.get(
-                    "token_limit", DEFAULT_THRESHOLDS["token_limit"]
-                ),
-            }
-
+        resolved_thresholds = self._resolve_thresholds(profile, thresholds)
         metrics = self.get_function_stats(filepath)
         loc = self._get_loc(filepath)
 
-        score = 100
-        details = []
-
         if not metrics:
-            # Check if it was a parsing error
-            try:
-                self._parse_config(filepath)
-            except Exception:
-                score -= 20
-                details.append("Malformed Configuration File (-20)")
-                return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
+            return self._handle_malformed_config(filepath, loc)
 
-            return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
-
-        acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
-        acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
-        token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
-
-        if cumulative_tokens > token_limit:
-            penalty = 15
-            score -= penalty
-            details.append(
-                f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
-            )
-
-        # ConfigAnalyzer treats the whole file as one "metric"
-        file_metric = metrics[0]
-        acl = file_metric["acl"]
-
-        if acl > acl_red:
-            penalty = 15
-            score -= penalty
-            details.append(f"Red ACL detected: {acl:.1f} > {acl_red} (-{penalty})")
-        elif acl > acl_yellow:
-            penalty = 5
-            score -= penalty
-            details.append(
-                f"Yellow ACL detected: {acl:.1f} > {acl_yellow} (-{penalty})"
-            )
+        score, details = self._calculate_penalties(
+            metrics, resolved_thresholds, cumulative_tokens
+        )
 
         return (
             max(score, 0),
@@ -114,6 +69,67 @@ class ConfigAnalyzer(BaseAnalyzer):
             100.0,
             metrics,
         )
+
+    def _resolve_thresholds(
+        self, profile: Dict[str, Any], thresholds: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Resolves analysis thresholds from profile and defaults."""
+        p_thresholds = profile.get("thresholds", {})
+        if thresholds is None:
+            return {
+                "acl_yellow": p_thresholds.get(
+                    "acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"]
+                ),
+                "acl_red": p_thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"]),
+                "token_limit": p_thresholds.get(
+                    "token_limit", DEFAULT_THRESHOLDS["token_limit"]
+                ),
+            }
+        return thresholds
+
+    def _calculate_penalties(
+        self,
+        metrics: List[FunctionMetric],
+        thresholds: Dict[str, Any],
+        cumulative_tokens: int,
+    ) -> Tuple[int, List[str]]:
+        """Calculates score penalties based on metrics and tokens."""
+        score = 100
+        details = []
+
+        token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
+        if cumulative_tokens > token_limit:
+            penalty = 15
+            score -= penalty
+            details.append(
+                f"Cumulative Token Budget Exceeded: {cumulative_tokens:,} > {token_limit:,} (-{penalty})"
+            )
+
+        if not metrics:
+            return score, details
+
+        acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
+        acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
+        acl = metrics[0]["acl"]
+
+        if acl > acl_red:
+            score -= 15
+            details.append(f"Red ACL detected: {acl:.1f} > {acl_red} (-15)")
+        elif acl > acl_yellow:
+            score -= 5
+            details.append(f"Yellow ACL detected: {acl:.1f} > {acl_yellow} (-5)")
+
+        return score, details
+
+    def _handle_malformed_config(
+        self, filepath: str, loc: int
+    ) -> Tuple[int, str, int, float, float, List[FunctionMetric]]:
+        """Handles cases where the config file is malformed or cannot be parsed."""
+        try:
+            self._parse_config(filepath)
+            return 100, "", loc, 0.0, 100.0, []
+        except Exception:
+            return 80, "Malformed Configuration File (-20)", loc, 0.0, 100.0, []
 
     def get_function_stats(self, filepath: str) -> List[FunctionMetric]:
         """
@@ -125,16 +141,7 @@ class ConfigAnalyzer(BaseAnalyzer):
             return []
 
         loc = self._get_loc(filepath)
-
-        # Calculate max depth from root values
-        max_depth = 0
-        if isinstance(data, dict):
-            if data:
-                max_depth = max(self._calculate_depth(v) for v in data.values())
-        elif isinstance(data, list):
-            if data:
-                max_depth = max(self._calculate_depth(item) for item in data)
-
+        max_depth = self._get_max_depth(data)
         acl = self.calculate_acl(0.0, loc, max_depth)
 
         return [
@@ -149,6 +156,14 @@ class ConfigAnalyzer(BaseAnalyzer):
             }
         ]
 
+    def _get_max_depth(self, data: Any) -> int:
+        """Calculates the maximum nesting depth from the root of the data."""
+        if isinstance(data, dict) and data:
+            return max(self._calculate_depth(v) for v in data.values())
+        if isinstance(data, list) and data:
+            return max(self._calculate_depth(item) for item in data)
+        return 0
+
     def _parse_config(self, filepath: str) -> Any:
         """
         Parses the config file based on its extension.
@@ -159,18 +174,24 @@ class ConfigAnalyzer(BaseAnalyzer):
         ext = os.path.splitext(filepath)[1].lower()
         if ext == ".json":
             return json.loads(content)
-        elif ext in [".yaml", ".yml"]:
-            if yaml:
-                return yaml.safe_load(content)
-            else:
-                raise ImportError("PyYAML not installed")
-        elif ext == ".toml":
-            if toml_parser:
-                return toml_parser.loads(content)
-            else:
-                raise ImportError("TOML parser not available")
-        else:
-            raise ValueError(f"Unsupported extension: {ext}")
+        if ext in [".yaml", ".yml"]:
+            return self._parse_yaml(content)
+        if ext == ".toml":
+            return self._parse_toml(content)
+
+        raise ValueError(f"Unsupported extension: {ext}")
+
+    def _parse_yaml(self, content: str) -> Any:
+        """Parses YAML content if PyYAML is installed."""
+        if not yaml:
+            raise ImportError("PyYAML not installed")
+        return yaml.safe_load(content)
+
+    def _parse_toml(self, content: str) -> Any:
+        """Parses TOML content if a parser is available."""
+        if not toml_parser:
+            raise ImportError("TOML parser not available")
+        return toml_parser.loads(content)
 
     def _get_loc(self, filepath: str) -> int:
         """
