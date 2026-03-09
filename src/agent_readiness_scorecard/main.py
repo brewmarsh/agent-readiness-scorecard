@@ -146,16 +146,19 @@ def _print_environment_health(
     health_table.add_row(
         "Lock File", "[green]PASS[/green]" if health["lock_file"] else "[red]FAIL[/red]"
     )
-    health_table.add_row(
-        "BAML Detection",
-        "[green]PASS (+10)[/green]" if health.get("baml_detected") else "[yellow]NOT FOUND[/yellow]",
-    )
-
     ecosystem = health.get("agentic_ecosystem")
     if ecosystem:
-        has_eco = ecosystem["has_context_files"] or ecosystem["has_agent_frameworks"]
-        eco_status = "[green]DETECTED[/green]" if has_eco else "[white]NONE[/white]"
-        health_table.add_row("Agentic Ecosystem", eco_status)
+        if ecosystem.get("has_context_files"):
+            files_str = ", ".join(ecosystem.get("found_files", []))
+            health_table.add_row("Context Steering", f"[green]PASS ({files_str})[/green]")
+        else:
+            health_table.add_row("Context Steering", "[yellow]None[/yellow]")
+
+        if ecosystem.get("has_agent_frameworks"):
+            frameworks_str = ", ".join(ecosystem.get("found_frameworks", []))
+            health_table.add_row("Agent Frameworks", f"[green]PASS ({frameworks_str})[/green]")
+        else:
+            health_table.add_row("Agent Frameworks", "[yellow]None[/yellow]")
 
     entropy = auditor.check_directory_entropy(path)
     status = f"{entropy['avg_files']:.1f} files/dir"

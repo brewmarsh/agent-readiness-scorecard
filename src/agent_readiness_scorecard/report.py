@@ -293,10 +293,19 @@ def _generate_environment_health_section(
     section += (
         f"| Lock File | {'✅ PASS' if health['lock_file'] else '❌ FAIL'} |\n"
     )
-    if health.get("baml_detected"):
-        section += "| BAML Detection | ✅ [PASS] BAML Structured Outputs Detected (+10) |\n"
-    else:
-        section += "| BAML Detection | 🟡 NOT FOUND |\n"
+    ecosystem = health.get("agentic_ecosystem")
+    if ecosystem:
+        if ecosystem.get("has_context_files"):
+            files_str = ", ".join(ecosystem.get("found_files", []))
+            section += f"| Context Steering | 📜 [PASS] ({files_str}) (+5) |\n"
+        else:
+            section += "| Context Steering | 🟡 None |\n"
+
+        if ecosystem.get("has_agent_frameworks"):
+            frameworks_str = ", ".join(ecosystem.get("found_frameworks", []))
+            section += f"| Agent Frameworks | 🤖 [PASS] ({frameworks_str}) (+10) |\n"
+        else:
+            section += "| Agent Frameworks | 🟡 None |\n"
 
     return section + "\n"
 

@@ -233,10 +233,16 @@ def perform_analysis(
     avg_file_score = sum(file_scores) / len(file_scores) if file_scores else 0
     final_score = (avg_file_score * 0.8) + (project_score * 0.2)
 
-    # Agent-Native Bonus: +10 for BAML
+    # Agent-Native Bonuses
     health = auditor.check_environment_health(project_root)
-    if health.get("baml_detected"):
-        final_score = min(100.0, final_score + 10.0)
+    eco = health.get("agentic_ecosystem")
+    if eco:
+        if eco.get("has_context_files"):
+            final_score += 5.0
+        if eco.get("has_agent_frameworks"):
+            final_score += 10.0
+
+    final_score = min(100.0, final_score)
 
     return {
         "file_results": file_results,
@@ -246,6 +252,7 @@ def perform_analysis(
         ),
         "project_issues": project_issues,
         "environment_health": health,
+        "agentic_ecosystem": eco,
         "dep_analysis": {
             "cycles": dependencies.detect_cycles(graph),
             "god_modules": {
