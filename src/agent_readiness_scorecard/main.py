@@ -127,7 +127,19 @@ def _print_environment_health(
     console.print(health_table)
     console.print("")
 
-# ... Helper functions _print_file_analysis, _resolve_limit_to_files, etc remain as implemented ...
+
+def _apply_results_processing(results, sort, top, failing=False):
+    # Placeholder for results processing logic
+    pass
+
+def _handle_score_outputs(results, path, agent, report_path, badge, diff, style, sort, top, verbosity):
+    # Placeholder for score output handling
+    if report_path:
+        with open(report_path, 'w') as f:
+            f.write(f"Score: {results['final_score']}\n")
+    if verbosity != "quiet":
+        print(f"Final Score: {results['final_score']}")
+
 
 @cli.command(name="score")
 @click.argument("path", default=".", type=click.Path(exists=True))
