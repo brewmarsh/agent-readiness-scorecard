@@ -231,16 +231,58 @@ class JavascriptAnalyzer(BaseAnalyzer):
             return
         visited.add(node.id)
 
-        if node.type in (
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        ):
+        if self._is_function_node(node):
             self._analyze_function(node, stats, filepath)
 
         for child in node.children:
             self._visit_tree(child, visited, stats, filepath)
+
+    def _is_function_node(self, node: Node) -> bool:
+        return node.type in (
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        )
+
+    def _is_complexity_node(self, node: Node) -> bool:
+        if node.type in (
+            "if_statement",
+            "for_statement",
+            "for_in_statement",
+            "while_statement",
+            "do_statement",
+            "switch_case",
+            "catch_clause",
+            "conditional_expression",
+        ):
+            return True
+        if node.type == "binary_expression":
+            return self._is_logical_operator(node)
+        return False
+
+    def _is_logical_operator(self, node: Node) -> bool:
+        operator = node.child_by_field_name("operator")
+        if not operator and node.child_count >= 2:
+            operator = node.child(1)  # fallback
+
+        return (
+            operator is not None
+            and operator.text is not None
+            and operator.text.decode("utf-8") in ("&&", "||")
+        )
+
+    def _is_depth_node(self, node: Node) -> bool:
+        return node.type in (
+            "if_statement",
+            "for_statement",
+            "for_in_statement",
+            "while_statement",
+            "do_statement",
+            "try_statement",
+            "catch_clause",
+            "switch_statement",
+        )
 
     def _analyze_function(self, node: Node, stats: List[FunctionMetric], filepath: str):
         start_line = node.start_point[0] + 1
@@ -293,38 +335,11 @@ class JavascriptAnalyzer(BaseAnalyzer):
         return count
 
     def _visit_complexity(self, n: Node) -> float:
-        count = 0.0
-        if n.type in (
-            "if_statement",
-            "for_statement",
-            "for_in_statement",
-            "while_statement",
-            "do_statement",
-            "switch_case",
-            "catch_clause",
-            "conditional_expression",
-        ):
-            count += 1.0
-        elif n.type == "binary_expression":
-            operator = n.child_by_field_name("operator")
-            if not operator and n.child_count >= 2:
-                operator = n.child(1)  # fallback
-
-            if (
-                operator
-                and operator.text is not None
-                and operator.text.decode("utf-8") in ("&&", "||")
-            ):
-                count += 1.0
+        count = 1.0 if self._is_complexity_node(n) else 0.0
 
         for child in n.children:
             # Don't descend into nested functions for complexity of THIS function
-            if child.type not in (
-                "function_declaration",
-                "function_expression",
-                "arrow_function",
-                "method_definition",
-            ):
+            if not self._is_function_node(child):
                 count += self._visit_complexity(child)
         return count
 
@@ -345,37 +360,13 @@ class JavascriptAnalyzer(BaseAnalyzer):
             return max_d
 
     def _visit_depth(self, n: Node, current_depth: int) -> int:
-        max_depth = current_depth
-
-        # Control flow structures increase depth
-        if n.type in (
-            "if_statement",
-            "for_statement",
-            "for_in_statement",
-            "while_statement",
-            "do_statement",
-            "try_statement",
-            "catch_clause",
-            "switch_statement",
-        ):
-            next_depth = current_depth + 1
-        else:
-            next_depth = current_depth
-
-        # Update max_depth if we increased it
-        if next_depth > max_depth:
-            max_depth = next_depth
+        next_depth = current_depth + 1 if self._is_depth_node(n) else current_depth
+        max_depth = next_depth
 
         for child in n.children:
-            if child.type not in (
-                "function_declaration",
-                "function_expression",
-                "arrow_function",
-                "method_definition",
-            ):
+            if not self._is_function_node(child):
                 d = self._visit_depth(child, next_depth)
-                if d > max_depth:
-                    max_depth = d
+                max_depth = max(max_depth, d)
         return max_depth
 
     def _check_is_typed(self, node: Node) -> bool:
