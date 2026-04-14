@@ -35,7 +35,7 @@ jobs:
           uv sync --all-extras
 
       - name: Run Gatekeeper Analysis
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GH_PAT }}
           script: |
