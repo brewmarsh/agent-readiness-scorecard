@@ -39,7 +39,9 @@ class DockerAnalyzer(BaseAnalyzer):
             return max(score, 0), ", ".join(details), loc, 0.0, 100.0, []
 
         token_limit = thresholds.get("token_limit", DEFAULT_THRESHOLDS["token_limit"])
-        score = self._apply_token_penalty(score, details, cumulative_tokens, token_limit)
+        score = self._apply_token_penalty(
+            score, details, cumulative_tokens, token_limit
+        )
 
         acl_yellow = thresholds.get("acl_yellow", DEFAULT_THRESHOLDS["acl_yellow"])
         acl_red = thresholds.get("acl_red", DEFAULT_THRESHOLDS["acl_red"])
