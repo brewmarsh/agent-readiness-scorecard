@@ -82,8 +82,7 @@ class PythonAnalyzer(BaseAnalyzer):
         visitor = mccabe.PathGraphingAstVisitor()
         visitor.preorder(tree, visitor)
         return {
-            graph.lineno: float(graph.complexity())
-            for graph in visitor.graphs.values()
+            graph.lineno: float(graph.complexity()) for graph in visitor.graphs.values()
         }
 
     def _is_typed(self, node: ast.AST) -> bool:
@@ -247,7 +246,9 @@ class PythonAnalyzer(BaseAnalyzer):
         complexity_map = self._get_complexity_map(tree)
         return [
             m
-            for m in (self._create_function_metric(n, complexity_map) for n in ast.walk(tree))
+            for m in (
+                self._create_function_metric(n, complexity_map) for n in ast.walk(tree)
+            )
             if m
         ]
 
@@ -266,9 +267,7 @@ class PythonAnalyzer(BaseAnalyzer):
             return 0
 
         return sum(
-            1
-            for line in lines
-            if line.strip() and not line.strip().startswith("#")
+            1 for line in lines if line.strip() and not line.strip().startswith("#")
         )
 
     def get_complexity_score(self, filepath: str) -> float:
@@ -287,7 +286,8 @@ class PythonAnalyzer(BaseAnalyzer):
             return 0.0
 
         functions = [
-            n for n in ast.walk(tree)
+            n
+            for n in ast.walk(tree)
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
         ]
         if not functions:

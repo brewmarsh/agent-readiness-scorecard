@@ -1,9 +1,8 @@
-from typing import List, Dict, Any, Optional, Union, cast, Tuple
-from .constants import DEFAULT_THRESHOLDS
-from .types import FileAnalysisResult, AdvisorFileResult, EnvironmentHealth
-from .remediation import generate_prompts_section, generate_recommendations_report
+from typing import Optional
+from .types import EnvironmentHealth
 
 # ... Helper functions _get_status_message, _generate_summary_section, _flatten_functions remain as implemented ...
+
 
 def _generate_environment_health_section(
     health: Optional[EnvironmentHealth] = None,
@@ -22,13 +21,15 @@ def _generate_environment_health_section(
 
     # RESOLUTION: Unified BAML Detection into the broader Agentic Ecosystem view
     ecosystem = health.get("agentic_ecosystem")
-    
+
     # 1. BAML / Framework Detection (+10 Bonus)
-    if health.get("baml_detected") or (ecosystem and ecosystem.get("has_agent_frameworks")):
+    if health.get("baml_detected") or (
+        ecosystem and ecosystem.get("has_agent_frameworks")
+    ):
         frameworks = ecosystem.get("found_frameworks", []) if ecosystem else []
         if health.get("baml_detected") and "baml" not in frameworks:
             frameworks.append("baml")
-        
+
         frameworks_str = ", ".join(frameworks)
         section += f"| Agent Frameworks | 🤖 [PASS] ({frameworks_str}) (+10) |\n"
     else:
@@ -42,5 +43,6 @@ def _generate_environment_health_section(
         section += "| Context Steering | 🟡 None |\n"
 
     return section + "\n"
+
 
 # ... Orchestration logic for generate_markdown_report and generate_advisor_report remain as implemented ...
