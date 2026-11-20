@@ -215,7 +215,9 @@ def _ensure_project_files(path: str, profile: Dict[str, Any]) -> None:
         _check_and_create_files(path, required)
 
 
-def _add_python_files_from_list(root: str, files: List[str], py_files: List[str]) -> None:
+def _add_python_files_from_list(
+    root: str, files: List[str], py_files: List[str]
+) -> None:
     """
     Filters Python files from a list and adds them to a target list.
 
